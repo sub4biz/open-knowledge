@@ -17,7 +17,7 @@ export function ConflictsSection() {
 
   if (loading) return null;
 
-  if (error !== null) {
+  if (error === 'server') {
     return (
       <section
         data-testid="conflicts-section"

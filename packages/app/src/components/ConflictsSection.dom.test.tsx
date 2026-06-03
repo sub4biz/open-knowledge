@@ -106,12 +106,20 @@ describe('ConflictsSection', () => {
     expect(screen.getByTestId('conflicts-section-count').textContent).toBe('3');
   });
 
-  test('renders an error band when the hook reports a fetch error', () => {
+  test('renders an error band when the hook reports a server-side fetch error', () => {
     mockResult = { conflicts: [], loading: false, error: 'server' };
     render(<ConflictsSection />);
     const errorBand = screen.getByTestId('conflicts-section-error');
     expect(errorBand).not.toBeNull();
     expect(errorBand.textContent ?? '').toMatch(/Couldn't load conflicts/i);
+  });
+
+  test('returns null on a network-level fetch error (FileTree owns the global signal)', () => {
+    mockResult = { conflicts: [], loading: false, error: 'network' };
+    const { container } = render(<ConflictsSection />);
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByTestId('conflicts-section')).toBeNull();
+    expect(screen.queryByTestId('conflicts-section-error')).toBeNull();
   });
 
   test('returns null while the initial fetch is still loading', () => {
