@@ -10,6 +10,7 @@ import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk
 import {
   BasicTracerProvider,
   BatchSpanProcessor,
+  SimpleSpanProcessor,
   type SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
@@ -65,7 +66,7 @@ export function initTelemetry(opts: InitTelemetryOptions = {}): { tracer: Tracer
     spanProcessors.push(new ScrubbingSpanProcessor({ attributeDenylist }));
     if (fileSinkEnabled && opts.localSink !== undefined) {
       spanProcessors.push(
-        new BatchSpanProcessor(
+        new SimpleSpanProcessor(
           new FileSpanExporter({
             contentDir: opts.localSink.contentDir,
             maxBytes: opts.localSink.spansMaxBytes,

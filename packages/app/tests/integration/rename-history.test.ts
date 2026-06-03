@@ -201,11 +201,13 @@ async function awaitWipCommit(
   timeoutMs = 20_000,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
+  const intervals = [100, 250, 500, 1000];
+  let attempt = 0;
   while (Date.now() < deadline) {
     const h = await getHistory(server.port, docName);
     const newWip = h.entries.find((e) => e.type === 'wip' && !beforeShas.has(e.sha));
     if (newWip !== undefined) return newWip.sha;
-    await wait(50);
+    await wait(intervals[Math.min(attempt++, intervals.length - 1)]);
   }
   throw new Error(`awaitWipCommit: no NEW WIP commit for ${docName} within ${timeoutMs}ms`);
 }

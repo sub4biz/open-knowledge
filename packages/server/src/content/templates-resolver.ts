@@ -82,7 +82,7 @@ export function resolveProjectTemplates(projectDir: string): ProjectTemplatesRes
     const absDir = folderRel ? join(projectDir, folderRel) : projectDir;
     let entries: string[];
     try {
-      entries = readdirSync(absDir);
+      entries = readdirSync(absDir).sort();
     } catch (err) {
       const code = (err as NodeJS.ErrnoException | undefined)?.code;
       if (code !== 'ENOENT' && !templateMetaWarnedPaths.has(absDir)) {

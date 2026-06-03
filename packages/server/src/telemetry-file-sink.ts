@@ -1,4 +1,5 @@
 import { statSync } from 'node:fs';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { Writable } from 'node:stream';
 import type { Context } from '@opentelemetry/api';
@@ -11,7 +12,6 @@ import type {
   SpanExporter,
   SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
-import { tracedMkdir, tracedRename, tracedWriteFile } from './fs-traced.ts';
 
 export interface RotatingAppenderOpts {
   currentPath: string;
@@ -44,10 +44,10 @@ export class RotatingAppender {
 
   async #doAppend(data: string | Uint8Array): Promise<void> {
     if (!this.#parentDirEnsured) {
-      await tracedMkdir(dirname(this.#currentPath), { recursive: true });
+      await mkdir(dirname(this.#currentPath), { recursive: true });
       this.#parentDirEnsured = true;
     }
-    await tracedWriteFile(this.#currentPath, data, { flag: 'a' });
+    await writeFile(this.#currentPath, data, { flag: 'a' });
     let size: number;
     try {
       size = statSync(this.#currentPath).size;
@@ -56,7 +56,7 @@ export class RotatingAppender {
       return;
     }
     if (size > this.#maxBytes) {
-      await tracedRename(this.#currentPath, this.#previousPath);
+      await rename(this.#currentPath, this.#previousPath);
     }
   }
 }

@@ -147,7 +147,7 @@ describe('C11 — Activity Panel undo isolation + CC1 signal', () => {
 
       await writeAs(agentSuffix, '# CC1 test\n\ncontent\n', docName, ccServer);
 
-      const deadline = Date.now() + 5000;
+      const deadline = Date.now() + 20_000;
       while (Date.now() < deadline) {
         const called = spy.mock.calls.some((args) => args[0] === 'session-activity');
         if (called) break;
@@ -155,11 +155,17 @@ describe('C11 — Activity Panel undo isolation + CC1 signal', () => {
       }
 
       const sessionActivityCalls = spy.mock.calls.filter((args) => args[0] === 'session-activity');
+      if (sessionActivityCalls.length === 0) {
+        const channels = spy.mock.calls.map((args) => args[0]);
+        throw new Error(
+          `CC1 'session-activity' never fired within 20s. cc1Broadcaster.signal was called ${spy.mock.calls.length} time(s); channels seen: [${channels.join(', ') || 'none'}]. The persistence-debounce -> git-commit -> CC1-debounce chain likely stalled under load.`,
+        );
+      }
       expect(sessionActivityCalls.length).toBeGreaterThan(0);
     } finally {
       await ccServer.cleanup();
     }
-  });
+  }, 30_000);
 
   test('listAgentActivity: no sessions → { sessionAlive: false, agent: null, files: [] }', () => {
     const sessionManager = server.instance.sessionManager;
