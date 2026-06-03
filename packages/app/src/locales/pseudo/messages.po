@@ -5038,6 +5038,16 @@ msgstr ""
 #~ msgid "Showing first {truncatedShownCount} items (truncated)"
 #~ msgstr ""
 
+#. placeholder {0}: items.length
+#: src/editor/wiki-link-suggestion/WikiLinkSuggestionMenu.tsx
+msgid "Showing top {0} headings — keep typing to narrow"
+msgstr ""
+
+#. placeholder {0}: items.length
+#: src/editor/wiki-link-suggestion/WikiLinkSuggestionMenu.tsx
+msgid "Showing top {0} matches — keep typing to narrow"
+msgstr ""
+
 #: src/editor/extensions/CodeBlockView.tsx
 msgid "Shows above the code body. Round-trips as `title=\"...\"` in markdown."
 msgstr ""

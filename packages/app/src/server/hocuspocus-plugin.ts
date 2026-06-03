@@ -290,6 +290,7 @@ export function hocuspocusPlugin(): Plugin {
           path.startsWith('/@id/') ||
           path === '/@react-refresh' ||
           path.startsWith('/node_modules/') ||
+          path.startsWith('/src/') ||
           path === '/favicon.svg' ||
           params?.has('import') ||
           params?.has('html-proxy')

@@ -386,8 +386,10 @@ export function configureWikiLinkSuggestion(editor: Editor) {
             : mode === 'anchor'
               ? !cachedHeadings.has(pageTarget)
               : !pagesLoaded;
+        const items = props.items ?? [];
+        const onlyCreateFallback = items.length === 1 && items[0]?.kind === 'create';
         return {
-          items: props.items,
+          items,
           query: props.query ?? '',
           selectedIndex,
           onSelect: onSelectCb,
@@ -396,6 +398,7 @@ export function configureWikiLinkSuggestion(editor: Editor) {
           mode,
           pageTarget,
           anchorQuery,
+          hasMore: !onlyCreateFallback && items.length >= MAX_ITEMS,
         };
       }
 

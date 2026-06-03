@@ -13,6 +13,7 @@ interface WikiLinkSuggestionMenuProps {
   mode?: 'page' | 'anchor';
   pageTarget?: string;
   anchorQuery?: string;
+  hasMore?: boolean;
 }
 
 function itemKey(item: WikiLinkSuggestionItem): string {
@@ -43,6 +44,7 @@ export function WikiLinkSuggestionMenu({
   mode = 'page',
   pageTarget = '',
   anchorQuery = '',
+  hasMore = false,
 }: WikiLinkSuggestionMenuProps) {
   const { t } = useLingui();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -198,6 +200,16 @@ export function WikiLinkSuggestionMenu({
           </button>
         );
       })}
+      {hasMore && (
+        <div
+          data-prop-suggestion-more-hint=""
+          className="border-t border-border mt-1 px-2 py-1.5 text-xs text-muted-foreground"
+        >
+          {mode === 'anchor'
+            ? t`Showing top ${items.length} headings — keep typing to narrow`
+            : t`Showing top ${items.length} matches — keep typing to narrow`}
+        </div>
+      )}
     </div>
   );
 }

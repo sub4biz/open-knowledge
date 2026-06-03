@@ -130,6 +130,7 @@
     "3Ib6FN": ["Move down"],
     "3J7d2N": ["Big section heading."],
     "3JYy1p": ["Branch ", ["0"], " no longer exists. Cloned to default branch."],
+    "3MnvrL": ["Showing top ", ["0"], " matches — keep typing to narrow"],
     "3Mwaly": ["Could not initialize ", ["0"], "."],
     "3SDfZl": [
       "<0>Mirror — pick a source.</0> Set <1>src</1> + <2>anchor</2> via the property panel to point at a <3><MirrorSource></3> elsewhere."
@@ -1866,6 +1867,7 @@
     ],
     "yjExfe": ["Branch <0>", ["shareBranch"], "</0> is checked out in:"],
     "ynIa4S": ["Visual editor list item"],
+    "ypw6My": ["Showing top ", ["0"], " headings — keep typing to narrow"],
     "ysxgu8": ["project"],
     "ytlX5Z": [
       "Chrome uses this for browser find. Open Knowledge overrides it in visual editor mode."
