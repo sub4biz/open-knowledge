@@ -7,7 +7,6 @@
         { "one": ["matches ", "#", " file"], "other": ["matches ", "#", " files"] }
       ]
     ],
-    "-3Yi6m": ["Type to edit; <0>⌘</0>+<1>Enter</1> saves, <2>Esc</2> cancels."],
     "-3ois8": ["Hard break"],
     "-8PP0T": ["Match case"],
     "-K0AvT": ["Disconnect"],
@@ -34,7 +33,6 @@
     "092Wah": ["Enter a name for this template."],
     "0BB9ID": ["No headings yet."],
     "0NA4b3": ["Keep my version"],
-    "0R4wMK": ["External Link"],
     "0S9PW_": ["Open in claude.ai →"],
     "0YEbfk": ["Connect to AI tools"],
     "0_J12R": [
@@ -64,13 +62,6 @@
     "1L-NBV": ["OK config is committed alongside content (default)."],
     "1QfxQT": ["Dismiss"],
     "1RluQD": ["Show replace"],
-    "1RnNJW": [
-      "This doc was shared from branch <0>",
-      ["shareBranch"],
-      "</0>. You're currently on <1>",
-      ["currentLabel"],
-      "</1>."
-    ],
     "1TNIig": ["Open"],
     "1Ta7Fd": ["Open ", ["basename"]],
     "1WgmEM": ["Failed to load template: ", ["errorMessage"]],
@@ -78,17 +69,9 @@
       "Switching to <0>local-only</0> will refuse until they're untracked via<1> git rm --cached</1>."
     ],
     "1ZpfyB": ["Open with AI ", ["displayName"], ", ", ["hint"]],
-    "1ZwmkP": ["template"],
-    "1aPxWt": ["New blank field name"],
     "1bDVu5": ["Workspace Command Palette"],
     "1d1F11": ["Select all files and folders"],
     "1di5fu": ["Document not found"],
-    "1kQhxE": [
-      "A blank field every doc in this folder gets — fill it in to add it to this doc (set in ",
-      ["path"],
-      ")."
-    ],
-    "1n_qZ9": ["Open the selection handoff popover so you can choose an installed AI agent."],
     "1nke1r": ["Open ", ["0"], " on GitHub (opens in a new tab)"],
     "1t_NnN": ["Reject"],
     "2277Tu": ["Collapse graph"],
@@ -128,7 +111,6 @@
     "38foVZ": ["Loading diff"],
     "3Fcb0I": ["Open graph"],
     "3HNlwb": ["Hello, world!"],
-    "3IKxHW": ["\"", ["trimmed"], "\" is already a blank field in this folder"],
     "3Ib6FN": ["Move down"],
     "3J7d2N": ["Big section heading."],
     "3JYy1p": ["Branch ", ["0"], " no longer exists. Cloned to default branch."],
@@ -171,20 +153,12 @@
     "4PYsOz": ["Hide Files (", ["sidebarShortcutLabel"], ")"],
     "4Sxexw": ["Source undo or redo"],
     "4TzU0n": ["Initialize"],
-    "4XPQ3u": [
-      "Folder properties are descriptive only — use title, description, or tags. For per-doc starting values, add a template."
-    ],
     "4buZWd": ["Inherited from ", ["path"]],
     "4c_a6S": ["Nothing set yet."],
     "4etMqs": [["files", "plural", { "one": ["#", " file"], "other": ["#", " files"] }]],
     "4g19V6": ["Failed to update property"],
     "4hJhzz": ["Table"],
     "4jDd0j": ["Anyone can see"],
-    "4k4_JI": [
-      "This doc only exists on branch <0>",
-      ["shareBranch"],
-      "</0>. You have uncommitted changes that prevent switching. Commit or stash your changes, then open the share link again."
-    ],
     "4niEzY": ["Sandboxed HTML embed — write HTML, see the rendered preview live."],
     "4nj6n8": ["/api/config returned HTTP ", ["code"]],
     "4uNLmk": ["Pulling"],
@@ -251,10 +225,6 @@
     "636K3K": ["Delete adjacent chip"],
     "67f-3g": ["Duplicate succeeded but the sidebar may be out of date — refresh to resync"],
     "6Aih4U": ["Offline"],
-    "6Jub5m": ["Open the Ask AI menu for the current editor selection."],
-    "6NTJqD": [
-      "Chrome and the page use this to select page content. CodeMirror handles it while source editor focus is inside the page."
-    ],
     "6O626z": ["No headings match \"", ["trimmedAnchorQuery"], "\""],
     "6Pxqwv": [
       "No project templates yet. Create one to make it available everywhere in this project. Folder-scoped templates live on each folder's overview page."
@@ -278,7 +248,6 @@
     "6q0rnH": ["writing"],
     "6u9LvN": [["days", "plural", { "one": ["#", " day ago"], "other": ["#", " days ago"] }]],
     "6vEr3W": ["Link target"],
-    "7-KLnW": ["\"", ["trimmed"], "\" is already a blank field here"],
     "74-bX-": ["A pull quote stands out from the surrounding text."],
     "74eHt-": ["No file or folder selected"],
     "75Y1dk": ["Horizontal pill strip + active panel below; click a pill to switch panels."],
@@ -286,7 +255,6 @@
     "7FamGZ": ["Go to line"],
     "7Fkcej": ["+ Add ", ["addChildName"]],
     "7H4UHD": ["Documents tagged <0>#", ["tagName"], "</0>"],
-    "7IcK2R": ["Set a shared value"],
     "7JtSLi": ["Failed to delete path"],
     "7KeV5F": ["Undo all failed: ", ["message"]],
     "7OhaRy": ["Source search"],
@@ -294,16 +262,12 @@
     "7PzzBU": ["User"],
     "7_bFEL": ["Drag ", ["patternText"], " to reorder"],
     "7d1a0d": ["Public"],
-    "7kJ8LU": ["File not found on this branch"],
     "7kdoVR": ["Open the Open with AI menu for the current editor selection."],
     "7nrKys": [
       "Open Knowledge is using a GitHub account provided by the gh CLI. There's no separate Open Knowledge credential to disconnect."
     ],
     "7qRHf0": ["Install for Claude Chat & Cowork"],
     "7rQXBC": ["Pulls may overwrite uncommitted local file changes."],
-    "7t0mNx": [
-      "Could not read branch state for this project. Open the project window and try again."
-    ],
     "80c4-P": ["Code copied to clipboard"],
     "81H_23": ["Add properties"],
     "881Uwh": ["Delete selected table"],
@@ -333,7 +297,6 @@
     ],
     "8XQ7Ib": ["Pick an owner"],
     "8XQRON": ["Loading repositories"],
-    "8XS8nG": ["Open in your favorite AI editor."],
     "8_brI5": ["Name is required"],
     "8cS0nH": ["Config sharing unavailable: ", ["0"], "."],
     "8cpOa8": ["Couldn't disconnect — please try again."],
@@ -374,7 +337,6 @@
     "9o1bIV": [["behind"], " behind"],
     "9oE4C3": ["Browse your repos:"],
     "9zb2WA": ["Connecting"],
-    "A-NuoR": ["Sharing mode set to local-only."],
     "A1taO8": ["Search"],
     "A5CYnd": ["Broken link"],
     "A5hiCy": ["Create template"],
@@ -382,9 +344,6 @@
     "A6h5b-": ["File duplicated"],
     "AAlr5Y": [
       "No collab server for this worktree — run <0>ok start</0> here, or reopen the project."
-    ],
-    "AGXyLT": [
-      "Chrome uses these for browser find. CodeMirror handles them while source editor search is active."
     ],
     "AMyJts": [
       "This path is on an external volume (/Volumes/...). Open Knowledge will lose track of files when the drive ejects."
@@ -449,32 +408,15 @@
     "CTJLpz": ["\"", ["trimmed"], "\" already exists here"],
     "CU3AiE": ["Switching branches"],
     "CXj9C-": ["New property name"],
-    "C_KeJm": [
-      "This document doesn't exist on your local copy of branch <0>",
-      ["currentBranchLabel"],
-      "</0>. Your branch may be behind the remote — pull the latest changes from GitHub, then reopen this link."
-    ],
     "C_cPoW": ["Your GitHub session expired — sign in again to verify push access."],
     "ChAtFg": ["You don't have permission to push to this repo"],
-    "ClDdyg": ["Link to an external URL."],
-    "CnaE4o": ["Sharing mode unavailable: ", ["0"], "."],
     "CvsD6Y": ["via ", ["viaTags"]],
-    "D2Nu_J": [
-      "Open Knowledge's list item extension handles Enter before TipTap's base split-block keymap while the cursor is inside a list item."
-    ],
     "D4H2N6": ["Remove ", ["tag"]],
     "D8OV7J": ["Only collaborators"],
     "DDTdLl": ["Code block settings"],
     "DF1MtZ": ["Loading conflict for ", ["filePath"]],
     "DFfRbX": ["Sync status: ", ["syncStateLabel"], " — git identity unset"],
     "DId6MT": ["Project-level pages with no outgoing graph edges."],
-    "DOSkSZ": [
-      "This doc was shared from branch <0>",
-      ["shareBranch"],
-      "</0>. It doesn't exist on your current branch (<1>",
-      ["currentLabel"],
-      "</1>)."
-    ],
     "DPfwMq": ["Done"],
     "DVh_Tb": ["Failed to clean up after trash"],
     "DYwdxG": ["Could not open Terminal"],
@@ -482,9 +424,6 @@
     "DeDYLr": ["Unrecognized wiki link"],
     "DhLHEb": ["Failed to load activity"],
     "DiFKSL": ["Counting markdown files"],
-    "DnYq8I": [
-      "Properties every doc in this folder gets. Set a value they all share (like a status or an owner), or add a blank field that each doc fills in on its own. Docs in subfolders get them too."
-    ],
     "Dnn2XG": ["Automatic"],
     "DrYM2Z": ["Sync disabled"],
     "DskIkK": ["Sign-in stream ended without confirmation — please try again"],
@@ -494,7 +433,6 @@
     "Dw1T_W": ["Rename ", ["label"]],
     "E1_c72": ["Task list"],
     "E2Mv-X": ["Copy source"],
-    "E62FLF": ["Each doc in this folder fills in its own value"],
     "E7BhZn": ["Blank note"],
     "E9bKSA": ["Creating"],
     "EBVbtP": ["Could not duplicate item"],
@@ -505,9 +443,6 @@
     "EOjU5V": ["Inline Math Properties"],
     "ETyvvg": ["No language match."],
     "EVnzPs": ["Edit with AI"],
-    "EYiWQv": [
-      "TipTap's table extension handles these bindings only when the selected cells cover the whole table."
-    ],
     "EZVxVz": ["Replace the active match from the replace field."],
     "E_BHoD": [
       "Could not move \"",
@@ -535,8 +470,6 @@
     "Evq3lu": ["Orphan mode"],
     "ExPiRQ": ["Move to the next CodeMirror lint diagnostic."],
     "F-NRCj": ["Add property"],
-    "F3HenJ": ["project root"],
-    "F3zbZr": ["Shared with team"],
     "F4IYWe": ["Share doc"],
     "F4vEsL": ["Sync status: ", ["syncStateLabel"]],
     "F6pfE9": ["Active"],
@@ -558,7 +491,6 @@
     "FvpFSZ": ["Reveal in Finder, ", ["hint"]],
     "Fxf4jq": ["Description (optional)"],
     "FyW0WO": ["Authorize in browser"],
-    "FyYWwq": ["to fill in"],
     "G-JBA1": [
       "Source mode requires a live connection — your edits are saved and will appear when you reconnect."
     ],
@@ -570,9 +502,6 @@
     "G8t9NN": ["Add a property"],
     "GA-UkN": [["keyName"], " type: ", ["typeLabel"], ". Click to change."],
     "GDvlUT": ["Role"],
-    "GGPU8c": [
-      "Chrome uses Cmd/Ctrl+Shift+I for DevTools. Open Knowledge handles it in editor selection contexts."
-    ],
     "GGsM4y": ["Selected in graph"],
     "GK-IRZ": ["Undo buttons are disabled — per-session state has been garbage-collected."],
     "GN6L5F": ["Filename"],
@@ -589,12 +518,7 @@
       "You picked your home directory. Open Knowledge will index everything in your home tree — large and may surface personal files."
     ],
     "GhjUB_": ["Reconnected"],
-    "GjElCU": ["Select a file from the sidebar, or pick where to edit alongside your agent."],
     "Gp_twO": ["Local path"],
-    "GqkSSi": [
-      "On macOS Chrome uses ⌘, for Chrome Settings. In OK Desktop the native app menu captures the shortcut for Open Knowledge settings."
-    ],
-    "GrJ37h": ["Chrome uses Ctrl+H for History on Windows/Linux and ⌘⌥F for web search on macOS."],
     "GsBUCk": ["Loading settings"],
     "GuqOb1": ["Failed to load headings"],
     "Gx0VS1": ["e.g. drafts/ or *.draft.md"],
@@ -633,9 +557,6 @@
     "IX7-sq": ["Something went wrong opening \"", ["docName"], "\"."],
     "IajAbS": ["Add a starter pack"],
     "If0crP": ["Open with AI ", ["targetDisplayName"], ", ", ["hint"]],
-    "IfH0sD": [
-      "TipTap also has a base Mod+Enter exit-code binding. Open Knowledge registers its hard-break extension before the base keymap, so hard break wins in normal visual editing."
-    ],
     "IgTwLt": ["Open this document in the editor and collapse the graph."],
     "Ik-gP0": ["Heading H", ["level"], ": ", ["text"]],
     "IrB5AK": [
@@ -658,9 +579,6 @@
     "JLUTgi": ["No tags yet — author `#tagname` in any doc to populate the index."],
     "JLzQi_": ["Close ", ["accessibleLabel"]],
     "JOcPqH": ["Bring a remote repository onto this machine."],
-    "JQrdoT": [
-      "Describes this folder (its title, description, and tags). These are about the folder itself and don't flow into the docs inside it — to give new docs starting properties, add a template."
-    ],
     "JUamR6": [
       "This name has no characters that are safe for a folder identifier. Try a name with at least one letter or number."
     ],
@@ -706,7 +624,6 @@
     "L-rMC9": ["Reset to default"],
     "L1ZE3M": ["Document statistics"],
     "L3CEC1": ["this item"],
-    "L4M_Z5": ["Sharing status read failed"],
     "L6Hhh6": ["(root)"],
     "L8fKuc": ["Run this in your terminal"],
     "L9Y9Om": ["Top linked pages"],
@@ -748,9 +665,6 @@
     "MV-Dkb": ["Found ", ["countDisplay"], " markdown files"],
     "MVxpbf": ["Find and replace"],
     "MW64zN": ["New File"],
-    "MWSgmN": [
-      "Properties that describe this folder itself — any properties you like, just like a doc's. They don't flow into the docs inside it; to give new docs starting properties, add a template."
-    ],
     "MWrUEd": ["Undo all"],
     "MZSBsh": [
       "No templates yet. Add one to give new docs in this folder a ready-made starting point."
@@ -762,17 +676,11 @@
     "Mnavhe": [["propPanelDescriptorLabel"], " Properties"],
     "MrwYIK": ["Toggle a source comment through CodeMirror."],
     "MsuXaI": ["Hide panel (", ["panelShortcut"], ")"],
-    "MwIw-l": [
-      "Available in the Open Knowledge desktop app. From a terminal, use<0> ok sharing status</0> / <1>share</1> / <2>unshare</2>."
-    ],
     "N1YYa7": ["Loading image"],
     "N2FcBE": ["Synced"],
     "N2S1rs": ["Empty"],
     "N2eHWq": ["Code Block"],
     "N3_ozB": ["Hubs"],
-    "N9hwhU": [
-      "Chrome uses ⌘E with its find bar on macOS. The editor binding applies while the visual editor is focused."
-    ],
     "NIWAux": ["No docs registered under #", ["tagDocsName"], "."],
     "NJyQi_": ["Branch ", ["shareBranch"], " no longer exists on the remote."],
     "NKkZXl": ["Initialize and open"],
@@ -803,7 +711,6 @@
     "O2UpM1": ["Browse"],
     "O3oNi5": ["Email"],
     "O7_W_a": ["Open with AI"],
-    "OC4Tzv": ["here"],
     "OD0FCX": ["Hidden “", ["basename"], "”"],
     "ODD5Jc": ["Edit ", ["templateLabel"]],
     "ODGGlj": ["Folder name: ", ["detail"]],
@@ -826,14 +733,12 @@
     "OiHJdA": [
       "Move through slash, wiki-link, tag, and path suggestions; accept or dismiss the active suggestion."
     ],
-    "OjurNp": ["The document could not be opened — try navigating to it manually."],
     "Okd2Xv": ["Toggle underline formatting."],
     "OlAl5i": ["Expand all"],
     "OmHTGj": ["Disable git auto-sync"],
     "On0aF2": ["Website"],
     "Oo_WWc": ["No pages found"],
     "Oos8fo": ["Copy command"],
-    "Ooz820": ["Open Knowledge uses this for the command palette when no editor text is selected."],
     "OuY8t9": ["Open in current branch"],
     "OvEjsP": ["Copying..."],
     "Oxyd5f": ["Pick a name"],
@@ -845,7 +750,6 @@
     "P6lAT3": ["Folder target: ", ["linkTitle"], ". Click to open the overview."],
     "P8yDjG": ["Name can’t be empty, \".\", \"..\", or contain / or \\"],
     "PB4upl": ["Find previous match"],
-    "PHRoEJ": ["Open shared document"],
     "PKLY-1": ["Opening..."],
     "PMyJ9C": ["No edit session yet"],
     "PQCdtv": ["\"", ["docName"], "\" doesn't exist."],
@@ -865,19 +769,11 @@
     "Q6hhn8": ["Preferences"],
     "Q8A-U_": ["Connected to"],
     "QDZbvN": [["diffDays"], "d ago"],
-    "QFgeUB": [
-      "Chrome uses Ctrl/Cmd+N for new browser windows. OK Desktop captures Ctrl/Cmd+N natively; browser mode can use Ctrl/Cmd+Alt+N outside text fields."
-    ],
     "QI4KgP": [["fileLabel"], " · ", ["folderLabel"]],
-    "QJX5AO": ["Sharing"],
     "QQghPu": ["Install in Claude Desktop"],
     "QR5SP1": ["created template"],
-    "QWT-Z9": ["Read the <0>docs<1> ↗</1></0> for details."],
     "QWks14": ["A short line shown under the name in the template list."],
     "QcpeeE": ["Navigate to ", ["docName"]],
-    "Qffit1": [
-      "On macOS Chrome uses ⌘⇧H to open the home page. The editor binding applies while the visual editor is focused."
-    ],
     "QqBQu1": ["Label <0>(visible link text)</0>"],
     "QyioBP": ["Move up"],
     "R0jJzV": ["Paste URL, owner/repo, or search your repos"],
@@ -886,27 +782,16 @@
       "If this repo is shared, your in-progress edits become visible to collaborators as soon as they sync."
     ],
     "RDrXh4": ["Configure user, project, and integration settings."],
-    "RFNftC": [
-      "Chrome uses this for profile or user switching. CodeMirror handles it only while source editor focus is inside the page."
-    ],
     "RFQ1Yx": ["Restore this version"],
     "RGCCrg": ["Copy share link"],
     "RGkNeJ": ["Initialize a starter pack"],
-    "RIJLBf": [
-      "Chrome uses this for the browser find bar. Open Knowledge handles it when visual-editor find is open."
-    ],
     "RJ3a8Z": ["Looking for <0>", ["lookingForUrl"], "</0>."],
-    "RLBc2X": [
-      "On macOS Chrome uses ⌘⌥N for split view in the active tab. The shortcut is safest in OK Desktop."
-    ],
     "RN62Q8": [
       "We'll build <0>openknowledge.skill</0>, save it to <1>~/Downloads</1>, and open the Claude Desktop App for you."
     ],
-    "RPo77p": ["Open the Ask AI menu for the current selection."],
     "RSqaSd": ["Project root"],
     "RY6Bq1": ["Open shared ", ["targetNoun"]],
     "RaPMZv": ["Keyboard shortcuts available in the editor and workspace."],
-    "Rah7yq": ["What should the AI do? (optional)"],
     "RfHNf8": ["Open activity panel for ", ["tooltipName"]],
     "RfaEio": ["Toggle source comment"],
     "RgbKEe": ["You don't have access to this repository."],
@@ -947,7 +832,6 @@
     ],
     "TJnkyf": ["ok ui responded but server.lock has no port yet"],
     "TKQ7K-": ["Install"],
-    "TKaWtw": ["Could not switch to ", ["0"], ". Try switching manually."],
     "TLIO3j": ["Toggle italic formatting."],
     "T_wG4n": ["We couldn't check your GitHub connection."],
     "Ta25TG": ["No history yet"],
@@ -996,7 +880,6 @@
     "VUijjF": ["Embed an image with optional alt text."],
     "VYd_YA": ["Open an existing project folder from disk."],
     "VZGh8G": ["Fold, unfold, fold all, or unfold all source ranges."],
-    "Va3xJe": ["Add field"],
     "VbqhBI": ["Already at ", ["assetContentPath"], " — reusing."],
     "VdXv4D": ["Clone from GitHub"],
     "Vlc75q": ["Keep file deleted"],
@@ -1004,9 +887,6 @@
     "VvS_k_": ["Config sharing is now local-only."],
     "W-ntoW": ["heading-slug"],
     "W1qRuM": ["This document is already active in the editor. Use Open to collapse the graph."],
-    "W3AYIT": [
-      "Chrome uses this to bookmark the page. CodeMirror handles it only while source editor focus is inside the page."
-    ],
     "W5A0Ly": ["An unexpected error occurred."],
     "W8uemY": ["Pick a starter pack to scaffold folders, templates, and AI-readable rules."],
     "W8vpBM": ["starter pack"],
@@ -1052,13 +932,9 @@
     "XU0OXn": ["Enable auto-sync"],
     "XW18jo": ["Page headings response did not match success schema"],
     "XYlJJT": ["Setting up"],
-    "Xaas54": ["Sharing mode set to shared. Commit the OK files to share with your team."],
     "Xet9MX": ["Failed to load backlinks"],
     "XfzqjK": ["template \"", ["name"], "\""],
     "Xl-UUg": ["guides/install or https://example.com"],
-    "Xmbh7Q": [
-      "Chrome uses this to search from the page or focus the address bar. Open Knowledge overrides it while the app has focus."
-    ],
     "XnlF3W": ["Add the next matching source selection."],
     "XnoA1k": [
       "This ",
@@ -1112,7 +988,6 @@
       ["burstCount", "plural", { "one": ["#", " burst"], "other": ["#", " bursts"] }],
       "). Other files and writers are unaffected."
     ],
-    "ZBt4rI": ["Instruction for the AI"],
     "ZLQol-": ["You can turn this on later in <0>Settings → Sync</0>."],
     "ZNK2Tq": ["root"],
     "ZQLDTl": ["created folder"],
@@ -1128,7 +1003,6 @@
     "ZmGmNh": ["Let's set up your project."],
     "Zon_qG": ["Mirror source <0>", ["label"], "</0>"],
     "ZptNUh": ["Show ", ["hidden"], " more"],
-    "ZrdW5C": ["Sharing mode unchanged — see details below."],
     "ZsGpr_": ["Paste link"],
     "Zue_jx": ["Your GitHub token is missing required scopes. Try signing in again."],
     "Zul8Ry": ["never"],
@@ -1169,9 +1043,6 @@
     "_rP3HI": [["minutes"], "m ago"],
     "_tekeB": ["updated folder properties"],
     "a-cKXz": ["Select all source"],
-    "a4_eNe": [
-      "Branch switched but the document could not be opened — try navigating to it manually."
-    ],
     "a5Gha5": ["Local changes blocked the merge"],
     "a5W0q0": [
       "Are you sure you want to delete ",
@@ -1245,14 +1116,12 @@
     "cdm00A": ["No Incoming"],
     "cklVjM": ["Timeline"],
     "cnGeoo": ["Delete"],
-    "cqA3od": ["Link to another page in this project."],
     "cqQyPB": ["Folder name"],
     "cs4mps": ["Config sharing"],
     "csDS2L": ["Available"],
     "ct2kv5": ["No headings in ", ["pageTarget"]],
     "d2uTPx": ["Server error (HTTP ", ["status"], ")"],
     "d5rK4X": [["chars", "plural", { "one": ["char"], "other": ["chars"] }]],
-    "d8yrin": ["No git repository — sharing mode does not apply here."],
     "dD7NPy": ["Outline"],
     "dDpCOp": ["Rename succeeded but the sidebar may be out of date — refresh to resync"],
     "dEgA5A": ["Cancel"],
@@ -1260,7 +1129,6 @@
     "dOxPd4": ["Footnote"],
     "dTaauv": ["Reason: ", ["reason"]],
     "dURmlQ": ["\"frontmatter\" is a reserved property name"],
-    "dZHyu7": ["Add a blank field"],
     "dbhUX1": ["Hide this file"],
     "dbtjJh": ["(opens in new tab)"],
     "dprWmL": ["Anchor in this page"],
@@ -1269,9 +1137,6 @@
     "e0NrBM": ["Project"],
     "e1hptq": ["Embed a video with native player controls."],
     "e4GHWP": ["Pull"],
-    "e6pmcJ": [
-      "What this folder is about — give it a title, description, tags, or any properties you like, just like a doc has. This describes the folder itself; it is not copied into the docs inside it. To start new docs in this folder with a ready-made set of properties, add a template instead."
-    ],
     "e8L17t": ["A non-empty folder already exists at this path. Pick a different folder."],
     "e8zRrb": ["Show Files"],
     "eBIT9h": ["Paste failed.", ["restoreSuffix"]],
@@ -1284,7 +1149,6 @@
     ],
     "eVPynQ": ["Open <0><1>", ["verificationUri"], "</1><2/></0> and enter this code:"],
     "ehLu5O": ["Open in Terminal, ", ["hint"]],
-    "eiXVx8": ["Properties that describe this folder."],
     "emgiet": ["Authoritative content; mirrored verbatim everywhere it's referenced."],
     "ensWZc": ["or start from scratch <0/>"],
     "euc6Ns": ["Duplicate"],
@@ -1295,14 +1159,12 @@
     "fG0X0e": ["Install ", ["brand"], " →"],
     "fIgqfQ": ["Reinstalling"],
     "fJgQHX": ["Failed to create file"],
-    "fMNS4C": ["Sharing toggle failed"],
     "fRv-ei": ["Start a new Open Knowledge project."],
     "fVcm9t": [["0", "plural", { "one": ["#", " doc"], "other": ["#", " docs"] }]],
     "fWi7pn": ["Initialize starter pack"],
     "fX82Jn": [
       "Open Knowledge will create a <0>.ok/</0> folder here to track this project's metadata."
     ],
-    "fXGQbT": ["Showing first ", ["truncatedShownCount"], " items (truncated)"],
     "fYKgzG": ["Failed to load recent projects."],
     "fYjgXu": ["Unordered list of items."],
     "fbdLmk": ["Toggle bold formatting."],
@@ -1316,7 +1178,6 @@
       ["descriptorLabel"],
       "> failed to render (likely a bad prop). Copy the source to see what went wrong, or delete the block."
     ],
-    "g6d81C": ["Conflict: "],
     "gBbxn_": ["Checking sign-in status"],
     "gGVP4q": ["Click <0>+</0> <1/> <2>Create skill</2> <3/> <4>Upload skill</4>."],
     "gITz7o": [
@@ -1375,7 +1236,6 @@
     "hZoBHK": ["Empty starting content"],
     "h_HYHD": ["Opened ", ["displayName"], " in your browser."],
     "haHgQj": ["Copied relative path"],
-    "hbNg4Y": ["Branch ", ["0"], " no longer exists on the remote."],
     "he3ygx": ["Copy"],
     "hjO0Mq": ["Add tab"],
     "hpDtUm": ["External wiki link"],
@@ -1426,9 +1286,6 @@
     "j9Vqvc": ["inherited"],
     "jEdF24": ["Missing page: ", ["linkTitle"], ". Click to create."],
     "jGJy-9": ["Downloads ", ["shareOwner"], "/", ["shareRepo"], " from GitHub."],
-    "jLz9i6": [
-      "Chrome uses this for browser find. CodeMirror handles it while source editor focus is inside the page."
-    ],
     "jPUPvG": ["Couldn't resolve the conflict for ", ["filePath"], "."],
     "jRHdCz": ["Failed to load PDF"],
     "jSO1X5": ["Inherited templates can't be renamed here — rename it in the folder that owns it."],
@@ -1442,11 +1299,7 @@
     "jjmuxV": ["Lost connection to the main process"],
     "jjtmV_": ["First file name"],
     "jnXr0e": ["Clone failed. Please try again."],
-    "jol4Ow": [
-      "Chrome uses this to bookmark the page. Open Knowledge only handles it when the Files sidebar has focus."
-    ],
     "jol95m": ["Failed to open Project Navigator."],
-    "jp8yoJ": ["Open at current checkout (", ["currentLabel"], ")"],
     "ju38ms": [
       "This project has no git repository — sharing mode does not apply. Initialize a repo to enable the toggle."
     ],
@@ -1486,7 +1339,6 @@
     "l1l8sj": [["0"], "d ago"],
     "l3mSlL": ["Append-only timeline"],
     "l6OXqI": ["No installed agents found"],
-    "l6zqhi": ["Branch switch failed — try opening the doc manually."],
     "l8G3S9": ["Auto-sync is off — you don't have permission to push to this repo"],
     "lAiyU_": ["Only the current document uses <0>#", ["tag"], "</0>."],
     "lGs_bQ": ["Page <0>*</0>"],
@@ -1527,14 +1379,8 @@
     "mYGY3B": ["Date"],
     "mYLRjR": ["You picked ~/Desktop. Open Knowledge will index everything on your desktop."],
     "mZ1r4i": ["Create a document from ", ["label"]],
-    "mZHJju": ["Link to a page"],
     "maDWIB": ["Mirror source <0>api-spec</0>"],
     "makN88": ["No patterns yet. Type a folder or file name below to start hiding files."],
-    "mcWHC0": [
-      "\"",
-      ["trimmed"],
-      "\" already has a shared value here — pick a different name, or remove the shared value first."
-    ],
     "mdKFEy": ["You cancelled loading \"", ["docName"], "\"."],
     "mdzKSV": [["nodeCount", "plural", { "one": ["#", " node"], "other": ["#", " nodes"] }]],
     "mf37rL": ["Retrying"],
@@ -1560,9 +1406,6 @@
       "Auto-sync periodically fetches, pulls, and pushes commits to your remote git repository so your edits stay in sync across machines."
     ],
     "n7aopT": ["Editor mode"],
-    "nAtGcg": [
-      "Tables also use Tab and Shift+Tab for cell navigation. The list shortcut only handles events while the cursor is inside a list item."
-    ],
     "nCzR-G": ["Copy code ", ["userCode"]],
     "nDT8qt": ["Initialized ", ["0"], " but could not open it."],
     "nNYV3Y": ["and ", ["remaining"], " more"],
@@ -1586,7 +1429,6 @@
     "nrGWJ7": [
       "Git identity isn't set — commits use a default author. Set yours so teammates see your name."
     ],
-    "nrXDdR": ["Field name"],
     "nzaV6Q": ["Page thumbnails"],
     "o2yoFu": ["Reveal in Finder, No workspace"],
     "o49mDZ": ["Loading timeline history"],
@@ -1597,9 +1439,6 @@
     "oXKEsy": ["Delete an adjacent wiki-link or tag chip."],
     "ogAuyr": ["Back to document view"],
     "omXJcU": ["Close others"],
-    "opEayO": [
-      "<0>.ok/</0>, <1>.mcp.json</1> (and per-editor variants), project skills, and <2>.claude/launch.json</2>. Switch later via Settings → Sharing or <3>ok sharing share|unshare</3>."
-    ],
     "optX0N": [["0"], "h ago"],
     "oqB2ez": ["Previous match"],
     "ot5BRK": ["Duplicate selected file or folder"],
@@ -1617,9 +1456,6 @@
     "pAlxX6": ["Open this folder with Open Knowledge"],
     "pEQFsW": ["No matching projects."],
     "pFagOn": ["Source editing"],
-    "pFb1SE": [
-      "On macOS Chrome uses ⌘⌥B for Bookmark Manager. OK Desktop captures this through the native View menu."
-    ],
     "pHYP6v": ["Open <0>Customize</0> in the sidebar <1/> <2>Skills</2>."],
     "pRc-Im": ["Undone all edits on ", ["docName"]],
     "pTPqMK": ["Toggle a fenced code block."],
@@ -1631,9 +1467,6 @@
     "pckX1A": [["0", "plural", { "one": ["#", " use"], "other": ["#", " uses"] }]],
     "pd0UH2": ["Align right"],
     "pgq_xf": [["0"], "/", ["1"], " ", ["2"]],
-    "ph-JfW": [
-      "Chrome uses this to open a local file. The shortcut is owned by the OK Desktop native File menu."
-    ],
     "phM8Kh": ["Found the repo but could not open the project. Please try again."],
     "pha01Y": ["Project-level pages with no incoming graph edges."],
     "pkAft1": ["Search failed."],
@@ -1643,7 +1476,6 @@
     "pzutoc": ["Italic"],
     "q2kXMG": ["Inline Math"],
     "q6-JVU": ["Loading pages"],
-    "q6IUff": ["Renaming moves the file on disk (a git mv) and changes the id agents use."],
     "q7zsRM": ["Couldn't save version — try again"],
     "qAQVSD": ["Page headings response was not JSON"],
     "qAhFeg": [
@@ -1688,7 +1520,6 @@
     "rJVoVX": ["Source find results"],
     "rQAQus": ["Couldn't save template: ", ["error"]],
     "rQRrkB": ["yesterday"],
-    "rTV1fX": ["to fill in · ", ["0"]],
     "rVgSRB": ["Collapse ", ["docName"]],
     "rVxu1k": ["No pages link here yet."],
     "rXz97P": ["Numbered list of items."],
@@ -1698,9 +1529,6 @@
     "rdE6_3": ["Version saved"],
     "rdU729": ["Layout"],
     "rfFpcF": ["Remove ", ["chip"]],
-    "rgAjvl": [
-      "<0>.ok/</0>, <1>.mcp.json</1> (and per-editor variants), project skills, and <2>.claude/launch.json</2>. Switch later in Settings → Sharing, or from the command line with <3>ok config-sharing share|unshare</3>."
-    ],
     "rgPqOw": ["Convert the current block to a paragraph."],
     "riqekz": ["Suggestion menu navigation"],
     "rlUzXK": ["Could not validate folder. Please try again."],
@@ -1714,7 +1542,6 @@
     "s-XOaI": ["File name"],
     "s1c0ja": ["Bullet List"],
     "s3caR3": ["Deleting"],
-    "s8XlGV": ["activity"],
     "sE7R19": [
       "Could not load templates: ",
       ["templatesError"],
@@ -1763,11 +1590,7 @@
     "tgWuMB": ["Modified"],
     "tiWX6q": ["Source editor"],
     "tjXez2": ["blog-post"],
-    "tp15x4": ["folder properties"],
     "u-9fWA": ["See <0>Architecture</0> for the system overview."],
-    "u0iUdo": [
-      "Chrome and the page use this to select text or page content. Open Knowledge only handles it when the Files sidebar has focus."
-    ],
     "u3BOHd": [["fileCount", "plural", { "one": ["#", " file"], "other": ["#", " files"] }]],
     "u3YnKw": ["Could not construct share URL."],
     "u3wRF-": ["Published"],
@@ -1801,7 +1624,6 @@
     "uynXup": [["tokens", "plural", { "one": ["token"], "other": ["tokens"] }]],
     "v-h2hx": ["Delete ", ["targetGitPath"]],
     "v41fCm": ["File not found"],
-    "v77jrg": ["Visual editor selection"],
     "v7lbnC": ["Find next match"],
     "vDXqVv": ["Insert a markdown hard break."],
     "vEJDlt": ["The file is in your Trash; the file-watcher will reconcile."],
@@ -1816,7 +1638,6 @@
     "ve8vEM": ["Code expired — please try again"],
     "vfRlCI": ["Could not copy full path"],
     "viwC-K": ["Failed to remove project."],
-    "vsqoSu": ["Sharing mode"],
     "vv7kpg": ["Cancelled"],
     "vvWZnu": ["Diff unavailable"],
     "w3tVpc": ["No links yet. Add wiki links or markdown links to build a graph."],
@@ -1856,7 +1677,6 @@
     "xNyj3h": ["Reinstall for Claude Chat & Cowork"],
     "xOTzt5": ["just now"],
     "xSVO3J": ["What gets created"],
-    "xWEvuo": ["Ask AI"],
     "xXo8FT": ["Save failed: ", ["error"]],
     "xYMPyY": [
       "Paste was incomplete — ",
@@ -1898,9 +1718,6 @@
     "ynIa4S": ["Visual editor list item"],
     "ypw6My": ["Showing top ", ["0"], " headings — keep typing to narrow"],
     "ysxgu8": ["project"],
-    "ytlX5Z": [
-      "Chrome uses this for browser find. Open Knowledge overrides it in visual editor mode."
-    ],
     "yu8Pzy": ["Not detected"],
     "yutJKi": ["Checklist with checkboxes."],
     "yvG-l1": ["Open source lint panel"],
@@ -1924,9 +1741,6 @@
       "Saves the file to <0>~/Downloads/openknowledge.skill</0> and opens the Claude Desktop App. Requires Node.js or Bun on your PATH."
     ],
     "zAsDLY": ["Graph visualization of document links"],
-    "zH-69K": [
-      "The collaboration extension owns these bindings so undo and redo operate on the shared Yjs-backed editor history."
-    ],
     "zL0LPh": ["Global outside text fields"],
     "zLGXna": ["No starter packs available."],
     "zLak8b": ["Activate new tab"],
@@ -1945,11 +1759,9 @@
     "zbymaY": [["0"], "m ago"],
     "zd00pH": ["Copy Path"],
     "zgSFyG": ["External link"],
-    "zkWs-l": ["Sharing mode unchanged — see message below."],
     "zkz0Fg": ["Set up syncing"],
     "zlErBl": ["Page headings error response did not match RFC 9457"],
     "zo3Dl7": ["Toggle thumbnails"],
-    "zr7ADI": ["Branch switch timed out — try opening the doc manually."],
     "zwBp5t": ["Private"]
   }
 }
