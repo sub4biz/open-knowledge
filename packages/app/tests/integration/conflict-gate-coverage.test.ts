@@ -17,6 +17,7 @@ const REQUIRED_HANDLERS = [
   'handleTemplate',
   'handleTemplatePut',
   'handleTemplateDelete',
+  'handleTemplateMove',
 ];
 
 const EXEMPT_HANDLERS = new Set([
@@ -138,7 +139,9 @@ describe('conflict-gate coverage (FR9)', () => {
       const spineRouting =
         body.includes('applyAgentMarkdownWrite(') || body.includes('applyAgentUndo(');
       const dispatcherRouting =
-        body.includes('handleTemplatePut(') || body.includes('handleTemplateDelete(');
+        body.includes('handleTemplatePut(') ||
+        body.includes('handleTemplateDelete(') ||
+        body.includes('handleTemplateMove(');
       if (!directGate && !spineRouting && !dispatcherRouting) {
         failures.push(
           `${handler}: missing conflict gate — must call respondDocInConflict(...) directly, route through applyAgentMarkdownWrite/applyAgentUndo, or dispatch to a gated sub-handler`,

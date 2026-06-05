@@ -3,9 +3,8 @@ import { renderInventoryFooter, stripFrontmatter } from '@inkeep/open-knowledge-
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 import { resolveContentDir, resolveLockDir } from '../../config/paths.ts';
-import { applyFolderFrontmatterPatch } from '../../content/folder-frontmatter-write.ts';
 import { mergePatch } from '../../content/frontmatter-merge.ts';
-import { applyTemplateWrite, type TemplateFrontmatter } from '../../content/templates-write.ts';
+import type { TemplateFrontmatter } from '../../content/templates-write.ts';
 import { SUPPORTED_DOC_EXTENSIONS } from '../../doc-extensions.ts';
 import type { AgentIdentity } from '../agent-identity.ts';
 import { formatContentDivergenceLine, parseContentDivergence } from './content-divergence.ts';
@@ -17,6 +16,7 @@ import {
   documentResultBaseShape,
   HOCUSPOCUS_NOT_RUNNING_ERROR,
   httpPost,
+  httpPut,
   nestDocResult,
   normalizeDocName,
   outputSchemaWithText,
@@ -43,8 +43,8 @@ const BASE_DESCRIPTION = [
   '',
   '- `document` — Edit a doc [Requires: Hocuspocus server]. Body: `{ path, find, replace, occurrence? }` (occurrence = which match, 1 = first). Metadata: `{ path, frontmatter }` (merge-patch; `null` deletes a key). Body find/replace is body-only; frontmatter-intersecting finds are rejected.',
   '- `folder` — Edit a folder (folders have no body): `{ path, frontmatter }` (merge-patch).',
-  '- `template` — Edit a template (fs-direct): `{ path: "<folder>/<name>", ... }`; body `find`/`replace`/`occurrence?` or metadata `frontmatter`.',
-  '- `summary` — Optional one-line user-outcome (≤80 chars) for the timeline, recorded for DOCUMENT edits only (folder and template edits are fs-direct git rewrites and do not record a timeline summary). Avoid secrets or PII — persisted to git history.',
+  '- `template` — Edit a template: `{ path: "<folder>/<name>", ... }`; body `find`/`replace`/`occurrence?` or metadata `frontmatter`.',
+  '- `summary` — Optional one-line user-outcome (≤80 chars) recorded in the timeline for any `document`, `folder`, or `template` edit. Avoid secrets or PII — persisted to git history.',
   '',
   'Responses may include `structuredContent.document.contentDivergence` when the converged Y.Text doesn\'t match the bytes your edit composed to. The edit still landed; re-read the doc with `exec("cat <path>")` to see what converged.',
 ].join('\n');
@@ -300,7 +300,7 @@ function parseTemplateFrontmatter(raw: string): TemplateFrontmatter {
   };
 }
 
-function handleTemplate(
+async function handleTemplate(
   template: {
     path: string;
     find?: string;
@@ -308,7 +308,10 @@ function handleTemplate(
     occurrence?: number;
     frontmatter?: FrontmatterPatch;
   },
+  summary: string | undefined,
   cwd: string,
+  url: string | undefined,
+  deps: EditDeps,
 ) {
   const teaching = bodyOrFrontmatterError(template, 'template');
   if (teaching) return textResult(`Error: ${teaching}`, true);
@@ -317,6 +320,7 @@ function handleTemplate(
   if (!resolved.ok) return textResult(`Error: ${resolved.error}`, true);
   const { folder, name } = resolved;
 
+  if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
   const filePath = templateFilePath(cwd, folder, name);
   if (!filePath.ok || !existsSync(filePath.abs)) {
     return textResult(
@@ -338,11 +342,22 @@ function handleTemplate(
       existingFm as Record<string, unknown>,
       template.frontmatter as Record<string, unknown>,
     ) as TemplateFrontmatter;
-    const result = applyTemplateWrite({ projectDir: cwd, folder, name, body, frontmatter: merged });
-    if (!result.ok) return textResult(`Error: ${result.error.message}`, true);
-    return textPlusStructured(`Patched template "${name}" frontmatter (${result.path}).`, {
-      template: { ok: true, path: result.path },
+    const result = await httpPut(url, '/api/template', {
+      folder,
+      name,
+      body,
+      frontmatter: merged,
+      ...(summary !== undefined ? { summary } : {}),
+      ...agentIdentityFields(deps.identityRef?.current),
     });
+    if (!result.ok) return textResult(`Error: ${result.error}`, true);
+    const path = typeof result.path === 'string' ? result.path : undefined;
+    return textPlusStructured(
+      `Patched template "${name}" frontmatter${path ? ` (${path})` : ''}.`,
+      {
+        template: { ok: true, path },
+      },
+    );
   }
 
   const occurrence = template.occurrence ?? 1;
@@ -357,30 +372,41 @@ function handleTemplate(
     body.slice(0, idx) +
     (template.replace as string) +
     body.slice(idx + (template.find as string).length);
-  const result = applyTemplateWrite({
-    projectDir: cwd,
+  const result = await httpPut(url, '/api/template', {
     folder,
     name,
     body: newBody,
     frontmatter: existingFm,
+    ...(summary !== undefined ? { summary } : {}),
+    ...agentIdentityFields(deps.identityRef?.current),
   });
-  if (!result.ok) return textResult(`Error: ${result.error.message}`, true);
-  return textPlusStructured(`Edited template "${name}" (${result.path}).`, {
-    template: { ok: true, path: result.path },
+  if (!result.ok) return textResult(`Error: ${result.error}`, true);
+  const path = typeof result.path === 'string' ? result.path : undefined;
+  return textPlusStructured(`Edited template "${name}"${path ? ` (${path})` : ''}.`, {
+    template: { ok: true, path },
   });
 }
 
-function handleFolder(folder: { path: string; frontmatter: FrontmatterPatch }, contentDir: string) {
-  const result = applyFolderFrontmatterPatch({
-    anchorDir: contentDir,
-    folderRel: folder.path,
-    patch: folder.frontmatter as Record<string, unknown>,
+async function handleFolder(
+  folder: { path: string; frontmatter: FrontmatterPatch },
+  summary: string | undefined,
+  url: string | undefined,
+  deps: EditDeps,
+) {
+  if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
+  const result = await httpPut(url, '/api/folder-config', {
+    path: folder.path,
+    frontmatter: folder.frontmatter,
+    ...(summary !== undefined ? { summary } : {}),
+    ...agentIdentityFields(deps.identityRef?.current),
   });
-  if (!result.ok) return textResult(`Error: ${result.error.message}`, true);
-  const verb =
-    result.action === 'deleted' ? 'Cleared' : result.action === 'noop' ? 'No change to' : 'Updated';
-  return textPlusStructured(`${verb} folder properties for ${folder.path} (${result.path}).`, {
-    folder: { ok: true, path: result.path, action: result.action },
+  if (!result.ok) return textResult(`Error: ${result.error}`, true);
+  const applied = Array.isArray(result.applied) ? result.applied : [];
+  const entry = (applied[0] ?? {}) as { path?: string; action?: string };
+  const action = entry.action ?? 'written';
+  const verb = action === 'deleted' ? 'Cleared' : action === 'noop' ? 'No change to' : 'Updated';
+  return textPlusStructured(`${verb} folder properties for ${folder.path}.`, {
+    folder: { ok: true, path: entry.path ?? `${folder.path}/.ok/frontmatter.yml`, action },
   });
 }
 
@@ -509,8 +535,14 @@ export function register(server: ServerInstance, deps: EditDeps): void {
         }
         return handleDocBody(args.document, args, cwd, contentDir, url, deps, autoOpen);
       }
-      if (args.folder !== undefined) return handleFolder(args.folder, contentDir);
-      return handleTemplate(args.template as NonNullable<typeof args.template>, cwd);
+      if (args.folder !== undefined) return handleFolder(args.folder, args.summary, url, deps);
+      return handleTemplate(
+        args.template as NonNullable<typeof args.template>,
+        args.summary,
+        cwd,
+        url,
+        deps,
+      );
     },
   );
 }

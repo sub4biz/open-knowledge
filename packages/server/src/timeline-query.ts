@@ -43,6 +43,12 @@ const GIT_LOG_FORMAT = '%H%x00%aI%x00%an%x00%ae%x00%s%x00%B%x1e';
 
 const EMPTY: HistoryResult = { entries: [], total: 0, hasMore: false };
 
+const FOLDER_ARTIFACT_SUBJECT_RE =
+  /^(template-(create|edit|rename|move|delete)|folder-frontmatter-(edit|delete)|folder-create): /;
+function isFolderArtifactSubject(message: string): boolean {
+  return FOLDER_ARTIFACT_SUBJECT_RE.test(message);
+}
+
 function classifyType(subject: string): EntryType {
   if (subject.startsWith('checkpoint:')) return 'checkpoint';
   if (subject.startsWith('import:') || subject.startsWith('upstream:')) return 'upstream';
@@ -506,6 +512,72 @@ export async function getDocumentHistory(
     return { entries: stripped, total, hasMore: offset + limit < total };
   } catch (e) {
     console.warn('[timeline] getDocumentHistory failed, returning empty result:', e);
+    return EMPTY;
+  }
+}
+
+export async function getFolderTimeline(
+  shadow: ShadowHandle,
+  folderRel: string,
+  contentRoot = '.',
+  options?: { branch?: string; limit?: number; offset?: number },
+): Promise<HistoryResult> {
+  if (!existsSync(shadow.workTree) || !existsSync(shadow.gitDir)) return EMPTY;
+  if (folderRel.includes('..') || folderRel.includes('\0')) return EMPTY;
+
+  const branch = options?.branch ?? 'main';
+  const limit = Math.max(1, options?.limit ?? 50);
+  const offset = Math.max(0, options?.offset ?? 0);
+
+  const normalizedRoot = contentRoot === '.' ? '' : contentRoot.replace(/^\.\//, '');
+  const base = folderRel.replace(/^\.?\/+/, '').replace(/\/+$/, '');
+  const okPath = [normalizedRoot, base, '.ok'].filter(Boolean).join('/');
+
+  const sg = shadowGit(shadow);
+  try {
+    const startRefs: string[] = [];
+    for (const refNs of [`refs/wip/${branch}/`, `refs/checkpoints/${branch}/`]) {
+      try {
+        const refs = (await sg.raw('for-each-ref', '--format=%(refname)', refNs))
+          .trim()
+          .split('\n')
+          .filter(Boolean);
+        startRefs.push(...refs);
+      } catch {}
+    }
+    if (startRefs.length === 0) return EMPTY;
+
+    const raw = await sg.raw(
+      'log',
+      '--full-history',
+      '--author-date-order',
+      `--format=${GIT_LOG_FORMAT}`,
+      ...startRefs,
+      '--',
+      okPath,
+    );
+    const okDocPrefix = base ? `${base}/.ok/` : '.ok/';
+    const seen = new Set<string>();
+    const entries: TimelineEntry[] = [];
+    for (const parsed of parseGitLogOutput(raw)) {
+      if (seen.has(parsed.sha)) continue;
+      if (!isFolderArtifactSubject(parsed.message)) continue;
+      const touchesFolderArtifact = parsed.contributors.some((c) =>
+        c.docs.some((doc) => doc.startsWith(okDocPrefix)),
+      );
+      if (!touchesFolderArtifact) continue;
+      seen.add(parsed.sha);
+      const { rawBody: _rawBody, ...entry } = parsed;
+      entries.push(entry);
+    }
+    const total = entries.length;
+    return {
+      entries: entries.slice(offset, offset + limit),
+      total,
+      hasMore: offset + limit < total,
+    };
+  } catch (e) {
+    console.warn('[timeline] getFolderTimeline failed, returning empty result:', e);
     return EMPTY;
   }
 }

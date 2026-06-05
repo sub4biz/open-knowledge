@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { applyTemplateDelete } from '../../content/templates-write.ts';
 import type { AgentIdentity } from '../agent-identity.ts';
 import { resolvePreviewUrlForTool } from './preview-url.ts';
 import type { ConfigOrResolver, ServerInstance, ServerUrlOrResolver } from './shared.ts';
 import {
   agentIdentityFields,
   HOCUSPOCUS_NOT_RUNNING_ERROR,
+  httpDelete,
   httpPost,
   looseObjectArray,
   normalizeDocName,
@@ -23,7 +23,7 @@ const BASE_DESCRIPTION = [
   '',
   '- `document` — Doc path(s) to delete (a single path or an array). Inbound links become redlinks. Irreversible. [Requires: Hocuspocus server]',
   '- `folder` — Folder path to delete (recursive). [Requires: Hocuspocus server]',
-  '- `template` — `{ path: "<folder>/<name>" }` — a template to delete (fs-direct; auto-cleans empty `.ok/`).',
+  '- `template` — `{ path: "<folder>/<name>" }` — a template to delete (server-routed, attributed; auto-cleans empty `.ok/`). [Requires: Hocuspocus server]',
   '- `asset` — `{ path: "<folder>/<file.ext>" }` — a binary asset to delete. [Requires: Hocuspocus server]',
   '',
   'Call `links({ kind: "backlinks", document })` BEFORE deleting a doc to see what links here.',
@@ -182,13 +182,19 @@ export function register(server: ServerInstance, deps: DeleteDeps): void {
         const resolved = resolveTemplatePath(args.template.path);
         if (!resolved.ok) return textResult(`Error: ${resolved.error}`, true);
         const { folder, name } = resolved;
-        const result = applyTemplateDelete({ projectDir: cwd, folder, name });
-        if (!result.ok) return textResult(`Error: ${result.error.message}`, true);
+        if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
+        const params = new URLSearchParams({ folder, name });
+        for (const [key, value] of Object.entries(agentIdentityFields(deps.identityRef?.current))) {
+          if (typeof value === 'string' && value.length > 0) params.set(key, value);
+        }
+        const result = await httpDelete(url, `/api/template?${params.toString()}`);
+        if (!result.ok) return textResult(`Error: ${result.error}`, true);
+        const existed = result.existed === true;
         return textPlusStructured(
-          result.existed
+          existed
             ? `Deleted template "${name}" from ${folder || '(root)'}.`
             : `Template "${name}" did not exist in ${folder || '(root)'} — nothing to delete.`,
-          { template: { ok: true, existed: result.existed } },
+          { template: { ok: true, existed } },
         );
       }
 

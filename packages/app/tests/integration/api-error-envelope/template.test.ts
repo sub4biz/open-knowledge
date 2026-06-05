@@ -152,10 +152,10 @@ describe('template envelope (RFC 9457)', () => {
     expect(body.existed).toBe(true);
   });
 
-  test('method-not-allowed on PATCH emits problem+json with Allow: GET, PUT, DELETE', async () => {
+  test('method-not-allowed on PATCH emits problem+json with Allow: GET, PUT, POST, DELETE', async () => {
     const res = await fetch(`http://127.0.0.1:${server.port}/api/template`, { method: 'PATCH' });
     expect(res.status).toBe(405);
-    expect(res.headers.get('allow')).toBe('GET, PUT, DELETE');
+    expect(res.headers.get('allow')).toBe('GET, PUT, POST, DELETE');
 
     const body = await res.json();
     const parsed = ProblemDetailsSchema.safeParse(body);

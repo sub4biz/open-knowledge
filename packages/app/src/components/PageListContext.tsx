@@ -263,3 +263,7 @@ export function usePageList(): PageListContextValue {
   }
   return ctx;
 }
+
+export function useOptionalPageList(): PageListContextValue | null {
+  return use(PageListContext);
+}

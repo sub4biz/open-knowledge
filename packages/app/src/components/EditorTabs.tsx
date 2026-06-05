@@ -1,7 +1,6 @@
 // biome-ignore-all lint/plugin/no-raw-html-interactive-element: pre-rule backlog — file uses raw <button>/<input>/<textarea> awaiting shadcn migration; tracked at https://github.com/inkeep/open-knowledge-legacy/blob/main/biome-plugins/README.md#no-raw-html-interactive-elementgrit
 
 import {
-  closestCenter,
   DndContext,
   type DragEndEvent,
   KeyboardSensor,
@@ -16,13 +15,12 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { RenamePathSuccessSchema } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { AlertTriangle, PinIcon, PlusIcon, XIcon } from 'lucide-react';
 import {
-  type CSSProperties,
   type HTMLAttributes,
+  type KeyboardEvent,
   type ReactNode,
   type Ref,
   useEffect,
@@ -66,6 +64,19 @@ import { hashFromDocName } from '@/lib/doc-hash';
 import { emitDocumentsChanged } from '@/lib/documents-events';
 import { parseServerResponse, parseSuccessOrWarn } from '@/lib/parse-server-response';
 import { cn } from '@/lib/utils';
+import {
+  createTabReorderModifier,
+  getSortableTabClassName,
+  getSortableTabKeyDownAction,
+  getSortableTabStyle,
+  getTabCloseButtonClass,
+  getTabCloseButtonTabIndex,
+  measureTabReorderBounds,
+  TAB_KEYBOARD_DRAG_CODES,
+  TAB_REORDER_AUTO_SCROLL,
+  type TabReorderBounds,
+  tabRunCollisionDetection,
+} from './editor-tabs-chrome';
 import { usePageList } from './PageListContext';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
@@ -79,18 +90,7 @@ const TAB_INACTIVE_CLASS = cn(
   'bg-transparent hover:bg-muted focus-visible:bg-muted border-transparent hover:border-border focus-visible:border-border',
 );
 const TAB_BUTTON_CLASS =
-  'flex h-full min-w-0 flex-1 cursor-pointer items-center overflow-hidden px-3 text-left text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
-const TAB_CLOSE_BUTTON_CLASS =
-  'mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground outline-none transition hover:bg-foreground/10 hover:text-foreground hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:opacity-100';
-
-function tabCloseButtonClass(isActive: boolean): string {
-  return cn(
-    TAB_CLOSE_BUTTON_CLASS,
-    isActive
-      ? 'opacity-100'
-      : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-  );
-}
+  'flex h-full min-w-0 flex-1 cursor-pointer items-center overflow-hidden px-3 text-left text-[13px]';
 
 function tabDomIdPart(docName: string): string {
   return docName.replace(/[^A-Za-z0-9_-]/g, '-');
@@ -122,27 +122,32 @@ function stripRenameExtensionSuffix(value: string, docExt: string): string {
 }
 
 function SortableTab({
+  activateFromKeyboard,
+  className,
   tabId,
   disabled,
+  onKeyDown,
   ref: outerRef,
   style: outerStyle,
   ...rest
 }: {
+  activateFromKeyboard?: () => void;
   tabId: string;
   disabled?: boolean;
   ref?: Ref<HTMLDivElement>;
 } & HTMLAttributes<HTMLDivElement>) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: tabId,
-    disabled,
-  });
-  const style: CSSProperties = {
-    ...outerStyle,
-    transform: CSS.Transform.toString(transform),
+  const { attributes, listeners, rect, setNodeRef, transform, transition, isDragging } =
+    useSortable({
+      id: tabId,
+      disabled,
+    });
+  const style = getSortableTabStyle({
+    activeWidth: rect.current?.width,
+    isDragging,
+    outerStyle,
+    transform,
     transition,
-    opacity: isDragging ? 0.5 : outerStyle?.opacity,
-    zIndex: isDragging ? 1 : outerStyle?.zIndex,
-  };
+  });
   function composedRef(node: HTMLDivElement | null) {
     setNodeRef(node);
     if (typeof outerRef === 'function') outerRef(node);
@@ -150,7 +155,35 @@ function SortableTab({
       outerRef.current = node;
     }
   }
-  return <div ref={composedRef} style={style} {...rest} {...attributes} {...listeners} />;
+  const sortableKeyDown = listeners?.onKeyDown;
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    onKeyDown?.(event);
+    const action = getSortableTabKeyDownAction({
+      event,
+      hasKeyboardActivation: Boolean(activateFromKeyboard),
+      isDragging,
+    });
+    if (action === 'ignore') return;
+    if (action === 'activate-tab' && activateFromKeyboard) {
+      event.preventDefault();
+      activateFromKeyboard();
+      return;
+    }
+    sortableKeyDown?.(event);
+  }
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: dnd-kit attributes inject role and tabIndex; this composes the sortable key listener.
+    <div
+      ref={composedRef}
+      data-editor-tab-sortable=""
+      className={getSortableTabClassName({ className, isDragging })}
+      style={style}
+      {...rest}
+      {...attributes}
+      {...listeners}
+      onKeyDown={handleKeyDown}
+    />
+  );
 }
 
 function EditorTabContextMenu({
@@ -228,12 +261,14 @@ function EditorTabContextMenu({
 function TabPinOrCloseButton({
   accessibleLabel,
   closeTab,
+  isActive,
   isPinned,
   tabId,
   unpinTab,
 }: {
   accessibleLabel: string;
   closeTab: (tabId: string) => void;
+  isActive: boolean;
   isPinned: boolean;
   tabId: string;
   unpinTab: (tabId: string) => void;
@@ -265,7 +300,8 @@ function TabPinOrCloseButton({
       size="icon-xs"
       aria-label={t`Close ${accessibleLabel}`}
       data-testid="editor-tab-close-button"
-      className="mr-1.5"
+      className={getTabCloseButtonClass(isActive)}
+      tabIndex={getTabCloseButtonTabIndex(isActive)}
       onClick={(event) => {
         event.stopPropagation();
         closeTab(tabId);
@@ -316,6 +352,7 @@ export function EditorTabs() {
   const { t } = useLingui();
   const { pageMeta } = usePageList();
   const tabListRef = useRef<HTMLDivElement>(null);
+  const [tabReorderBounds, setTabReorderBounds] = useState<TabReorderBounds | null>(null);
   const [renamingTab, setRenamingTab] = useState<{ docName: string; tabId: string } | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -500,6 +537,7 @@ export function EditorTabs() {
 
   const isElectronHost = typeof window !== 'undefined' && window.okDesktop != null;
   const newTabIdSet = new Set(newTabIds);
+  const tabReorderModifiers = [createTabReorderModifier(tabReorderBounds)];
 
   function closeVisibleTabs(tabIds: readonly string[]) {
     const documentTabIds: string[] = [];
@@ -519,10 +557,22 @@ export function EditorTabs() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: TAB_KEYBOARD_DRAG_CODES,
+    }),
   );
 
+  function handleDragStart() {
+    setTabReorderBounds(measureTabReorderBounds(tabListRef.current));
+  }
+
+  function clearTabReorderBounds() {
+    setTabReorderBounds(null);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    clearTabReorderBounds();
     const activeId = String(event.active.id);
     const overId = event.over ? String(event.over.id) : null;
     if (!overId || activeId === overId) return;
@@ -545,8 +595,12 @@ export function EditorTabs() {
       <div className={cn('flex items-end gap-1', isElectronHost && '[-webkit-app-region:no-drag]')}>
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          autoScroll={TAB_REORDER_AUTO_SCROLL}
+          collisionDetection={tabRunCollisionDetection}
+          modifiers={tabReorderModifiers}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={clearTabReorderBounds}
           accessibility={{
             container: typeof document !== 'undefined' ? document.body : undefined,
           }}
@@ -569,6 +623,7 @@ export function EditorTabs() {
                   >
                     <SortableTab
                       tabId={tabId}
+                      activateFromKeyboard={() => activateNewTab(tabId)}
                       aria-current={isActive ? 'page' : undefined}
                       data-active-tab={isActive ? 'true' : undefined}
                       className={cn(
@@ -591,6 +646,7 @@ export function EditorTabs() {
                         data-testid="editor-new-tab-placeholder-button"
                         className={TAB_BUTTON_CLASS}
                         onClick={() => activateNewTab(tabId)}
+                        tabIndex={-1}
                       >
                         <span className="min-w-0 truncate">
                           <Trans>New tab</Trans>
@@ -600,7 +656,8 @@ export function EditorTabs() {
                         type="button"
                         aria-label={t`Close new tab`}
                         data-testid="editor-new-tab-placeholder-close"
-                        className={tabCloseButtonClass(isActive)}
+                        className={getTabCloseButtonClass(isActive)}
+                        tabIndex={getTabCloseButtonTabIndex(isActive)}
                         onClick={(event) => {
                           event.stopPropagation();
                           closeNewTab(tabId);
@@ -632,6 +689,7 @@ export function EditorTabs() {
                   >
                     <SortableTab
                       tabId={tabId}
+                      activateFromKeyboard={() => activateTab(tabId)}
                       aria-current={isActive ? 'page' : undefined}
                       data-active-tab={isActive ? 'true' : undefined}
                       className={cn(
@@ -657,6 +715,7 @@ export function EditorTabs() {
                         onClick={() => {
                           activateTab(tabId);
                         }}
+                        tabIndex={-1}
                       >
                         {prefix && (
                           <span
@@ -681,6 +740,7 @@ export function EditorTabs() {
                       <TabPinOrCloseButton
                         accessibleLabel={accessibleLabel}
                         closeTab={closeTab}
+                        isActive={isActive}
                         isPinned={isPinned}
                         tabId={tabId}
                         unpinTab={unpinTab}
@@ -706,6 +766,7 @@ export function EditorTabs() {
                   >
                     <SortableTab
                       tabId={tabId}
+                      activateFromKeyboard={() => activateTab(tabId)}
                       aria-current={isActive ? 'page' : undefined}
                       data-active-tab={isActive ? 'true' : undefined}
                       className={cn(
@@ -730,6 +791,7 @@ export function EditorTabs() {
                         onClick={() => {
                           activateTab(tabId);
                         }}
+                        tabIndex={-1}
                       >
                         {prefix ? (
                           <span
@@ -753,6 +815,7 @@ export function EditorTabs() {
                       <TabPinOrCloseButton
                         accessibleLabel={accessibleLabel}
                         closeTab={closeTab}
+                        isActive={isActive}
                         isPinned={isPinned}
                         tabId={tabId}
                         unpinTab={unpinTab}
@@ -783,6 +846,7 @@ export function EditorTabs() {
                 >
                   <SortableTab
                     tabId={tabId}
+                    activateFromKeyboard={() => activateTab(tabId)}
                     disabled={isRenaming}
                     aria-current={isActive ? 'page' : undefined}
                     data-active-tab={isActive ? 'true' : undefined}
@@ -865,6 +929,7 @@ export function EditorTabs() {
                             event.stopPropagation();
                             enterRenameMode(tabId, docName);
                           }}
+                          tabIndex={-1}
                         >
                           <TabConflictBadge docName={docName} />
                           <span className="flex min-w-0 flex-1 items-center">
@@ -875,6 +940,7 @@ export function EditorTabs() {
                         <TabPinOrCloseButton
                           accessibleLabel={accessibleLabel}
                           closeTab={closeTab}
+                          isActive={isActive}
                           isPinned={isPinned}
                           tabId={tabId}
                           unpinTab={unpinTab}

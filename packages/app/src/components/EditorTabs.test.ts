@@ -146,9 +146,6 @@ describe('EditorTabs source-level guards — tab context menu', () => {
     expect(SRC).not.toContain('FolderOpen');
     expect(SRC).toMatch(/<Button[\s\S]*?aria-label=\{t`Close \$\{accessibleLabel\}`\}/);
     expect(SRC).toMatch(
-      /aria-label=\{t`Close \$\{accessibleLabel\}`\}[\s\S]*?className=["']mr-1\.5["']/,
-    );
-    expect(SRC).toMatch(
       /<button[\s\S]*?aria-label=\{accessibleLabel\}[\s\S]*?<\/button>\s*<TabPinOrCloseButton/,
     );
   });
@@ -162,11 +159,6 @@ describe('EditorTabs source-level guards — tab context menu', () => {
     expect(SRC).not.toContain('tab-bottom-flares');
     expect(SRC).not.toContain('h-2 w-[calc(100%+16px)]');
     expect(SRC).not.toContain("isActive ? 'font-semibold' : 'font-medium'");
-  });
-
-  test('placeholder close button reveals on hover without stealing clicks while hidden', () => {
-    expect(SRC).toContain('pointer-events-none opacity-0');
-    expect(SRC).toContain('group-hover:pointer-events-auto group-hover:opacity-100');
   });
 
   test('tab context menu exposes close, close-others, and close-all actions', () => {
@@ -221,7 +213,6 @@ describe('EditorTabs source-level guards — tab drag-reorder (US-004)', () => {
   test('reuses the already-eager @dnd-kit packages — no new bundle deps', () => {
     expect(SRC).toContain("from '@dnd-kit/core'");
     expect(SRC).toContain("from '@dnd-kit/sortable'");
-    expect(SRC).toContain("from '@dnd-kit/utilities'");
     expect(SRC).toContain('DndContext');
     expect(SRC).toContain('SortableContext');
     expect(SRC).toContain('useSortable');
@@ -236,9 +227,7 @@ describe('EditorTabs source-level guards — tab drag-reorder (US-004)', () => {
   test('KeyboardSensor with sortableKeyboardCoordinates wires keyboard accessibility (FR1d)', () => {
     expect(SRC).toContain('KeyboardSensor');
     expect(SRC).toContain('sortableKeyboardCoordinates');
-    expect(SRC).toMatch(
-      /useSensor\(\s*KeyboardSensor\s*,\s*\{\s*coordinateGetter:\s*sortableKeyboardCoordinates\s*\}\s*\)/,
-    );
+    expect(SRC).toContain('keyboardCodes: TAB_KEYBOARD_DRAG_CODES');
   });
 
   test('SortableContext uses horizontalListSortingStrategy keyed off visibleTabIds', () => {
@@ -279,11 +268,9 @@ describe('EditorTabs source-level guards — tab drag-reorder (US-004)', () => {
     expect(SRC).toMatch(/typeof\s+document\s*!==\s*['"]undefined['"]\s*\?\s*document\.body/);
   });
 
-  test('SortableTab composes refs and merges sortable transform without dropping inline style', () => {
+  test('SortableTab composes refs for dnd-kit and Radix wrappers', () => {
     expect(SRC).toContain('function composedRef');
     expect(SRC).toContain('setNodeRef(node)');
-    expect(SRC).toContain('CSS.Transform.toString(transform)');
-    expect(SRC).toMatch(/\.\.\.outerStyle/);
   });
 });
 

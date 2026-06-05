@@ -151,6 +151,18 @@ export function applyTemplateDelete(input: DeleteTemplateInput): TemplateDeleteR
     }
   }
 
+  return {
+    ok: true,
+    path: relPathOf(input.projectDir, filePath),
+    existed,
+    cleanedEmpty: cleanEmptyOkDirs(templatesDir, okDir),
+  };
+}
+
+function cleanEmptyOkDirs(
+  templatesDir: string,
+  okDir: string,
+): { templatesDir: boolean; okDir: boolean } {
   let templatesCleaned = false;
   let okCleaned = false;
   if (existsSync(templatesDir) && isEmpty(templatesDir)) {
@@ -165,12 +177,98 @@ export function applyTemplateDelete(input: DeleteTemplateInput): TemplateDeleteR
       okCleaned = true;
     } catch {}
   }
+  return { templatesDir: templatesCleaned, okDir: okCleaned };
+}
+
+interface MoveTemplateInput {
+  projectDir: string;
+  fromFolder: string;
+  fromName: string;
+  toFolder: string;
+  toName: string;
+  relocate: (fromAbs: string, toAbs: string) => Promise<boolean>;
+}
+
+type TemplateMoveResult =
+  | {
+      ok: true;
+      fromPath: string;
+      toPath: string;
+      committed: boolean;
+      cleanedEmpty: { templatesDir: boolean; okDir: boolean };
+    }
+  | {
+      ok: false;
+      error: { code: string; message: string };
+    };
+
+export async function applyTemplateMove(input: MoveTemplateInput): Promise<TemplateMoveResult> {
+  const fromValidation = validateInputs(input.projectDir, input.fromFolder, input.fromName);
+  if (!fromValidation.ok) return { ok: false, error: fromValidation.error };
+  const toValidation = validateInputs(input.projectDir, input.toFolder, input.toName);
+  if (!toValidation.ok) return { ok: false, error: toValidation.error };
+
+  const from = templatePaths(input.projectDir, fromValidation.folderRel, input.fromName);
+  const to = templatePaths(input.projectDir, toValidation.folderRel, input.toName);
+
+  if (from.filePath === to.filePath) {
+    return {
+      ok: false,
+      error: { code: 'NOOP', message: 'Source and destination are the same template.' },
+    };
+  }
+  if (!existsSync(from.filePath)) {
+    return {
+      ok: false,
+      error: {
+        code: 'TEMPLATE_NOT_FOUND',
+        message: `No template at ${relPathOf(input.projectDir, from.filePath)}.`,
+      },
+    };
+  }
+  if (existsSync(to.filePath)) {
+    return {
+      ok: false,
+      error: {
+        code: 'TEMPLATE_EXISTS',
+        message: `A template already exists at ${relPathOf(input.projectDir, to.filePath)}.`,
+      },
+    };
+  }
+
+  try {
+    mkdirSync(to.templatesDir, { recursive: true });
+  } catch (err) {
+    return {
+      ok: false,
+      error: {
+        code: 'WRITE_ERROR',
+        message: `Failed to create destination template directory at ${relPathOf(input.projectDir, to.templatesDir)}: ${(err as Error).message}`,
+      },
+    };
+  }
+
+  let committed: boolean;
+  try {
+    committed = await input.relocate(from.filePath, to.filePath);
+  } catch (err) {
+    return {
+      ok: false,
+      error: {
+        code: 'MOVE_FAILED',
+        message: `Failed to move template: ${(err as Error).message}`,
+      },
+    };
+  }
+
+  const cleanedEmpty = cleanEmptyOkDirs(from.templatesDir, from.okDir);
 
   return {
     ok: true,
-    path: relPathOf(input.projectDir, filePath),
-    existed,
-    cleanedEmpty: { templatesDir: templatesCleaned, okDir: okCleaned },
+    fromPath: relPathOf(input.projectDir, from.filePath),
+    toPath: relPathOf(input.projectDir, to.filePath),
+    committed,
+    cleanedEmpty,
   };
 }
 

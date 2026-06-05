@@ -41,18 +41,6 @@ msgstr ""
 msgid "\"{trimmed}\" already exists here"
 msgstr ""
 
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "\"{trimmed}\" already has a shared value here — pick a different name, or remove the shared value first."
-#~ msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "\"{trimmed}\" is already a blank field here"
-#~ msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "\"{trimmed}\" is already a blank field in this folder"
-#~ msgstr ""
-
 #: src/components/PropertyPanel.tsx
 msgid "\"frontmatter\" is a reserved property name"
 msgstr ""
@@ -119,6 +107,21 @@ msgstr ""
 #. placeholder {2}: shareTargetPath(share.target) ? `— ${shareTargetPath(share.target)}` : ''
 #: src/components/ShareReceiveDialog.tsx
 msgid "{0}/{1} {2}"
+msgstr ""
+
+#. placeholder {0}: Math.floor(diffSec / 86400)
+#: src/components/FolderTimelineCard.tsx
+msgid "{0}d ago"
+msgstr ""
+
+#. placeholder {0}: Math.floor(diffSec / 3600)
+#: src/components/FolderTimelineCard.tsx
+msgid "{0}h ago"
+msgstr ""
+
+#. placeholder {0}: Math.floor(diffSec / 60)
+#: src/components/FolderTimelineCard.tsx
+msgid "{0}m ago"
 msgstr ""
 
 #: src/components/SyncStatusBadge.tsx
@@ -368,16 +371,6 @@ msgstr ""
 msgid "<0>.ok/</0>, <1>.mcp.json</1> (and per-editor variants), project skills, and <2>.claude/launch.json</2>. Switch later in Settings → Config sharing, or from the command line with <3>ok config-sharing share|unshare</3>."
 msgstr ""
 
-#: src/components/ConsentDialogBody.tsx
-#: src/components/CreateProjectDialog.tsx
-#~ msgid "<0>.ok/</0>, <1>.mcp.json</1> (and per-editor variants), project skills, and <2>.claude/launch.json</2>. Switch later in Settings → Sharing, or from the command line with <3>ok config-sharing share|unshare</3>."
-#~ msgstr ""
-
-#: src/components/ConsentDialogBody.tsx
-#: src/components/CreateProjectDialog.tsx
-#~ msgid "<0>.ok/</0>, <1>.mcp.json</1> (and per-editor variants), project skills, and <2>.claude/launch.json</2>. Switch later via Settings → Sharing or <3>ok sharing share|unshare</3>."
-#~ msgstr ""
-
 #: src/components/CreateProjectDialog.tsx
 msgid "<0>{rawName}</0> has characters unsafe for the on-disk identifier, so the project will be created as <1>{sanitized}</1>. Click Browse to pick a safer name."
 msgstr ""
@@ -397,10 +390,6 @@ msgstr ""
 #: src/components/PageHeaderWidgets.tsx
 msgid "📝 or assets/icon.png"
 msgstr ""
-
-#: src/components/FrontmatterRow.tsx
-#~ msgid "A blank field every doc in this folder gets — fill it in to add it to this doc (set in {path})."
-#~ msgstr ""
 
 #: src/components/CreateProjectDialog.tsx
 msgid "A folder named <0>{sanitized}</0> already has files at this location. Pick a different name."
@@ -475,16 +464,16 @@ msgstr ""
 msgid "Active panel content for the selected tab shows here."
 msgstr ""
 
+#: src/components/FolderTimelineCard.tsx
+msgid "Activity"
+msgstr ""
+
 #. Primary button that writes MCP config for the selected AI tools
 #: src/components/FrontmatterRow.tsx
 #: src/components/McpConsentDialogBody.tsx
 #: src/components/PropertyPanel.tsx
 msgid "Add"
 msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "Add a blank field"
-#~ msgstr ""
 
 #: src/components/FolderPropertiesCard.tsx
 msgid "Add a property"
@@ -501,10 +490,6 @@ msgstr ""
 #: src/lib/keyboard-shortcuts.ts
 msgid "Add cursors or select matching occurrences through CodeMirror."
 msgstr ""
-
-#: src/components/FrontmatterRow.tsx
-#~ msgid "Add field"
-#~ msgstr ""
 
 #: src/components/McpConsentDialogBody.tsx
 msgid "Add Open Knowledge to your AI tools"
@@ -630,10 +615,6 @@ msgstr ""
 msgid "Are you sure you want to delete {targetCount} selected items? Folders and all files inside them will be deleted. This action cannot be undone."
 msgstr ""
 
-#: src/components/handoff/OpenInAgentMenu.tsx
-#~ msgid "Ask AI"
-#~ msgstr ""
-
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 #: src/editor/link-path-suggestions.tsx
 msgid "Asset"
@@ -655,6 +636,7 @@ msgstr ""
 msgid "Authorize in browser"
 msgstr ""
 
+#: src/components/FolderTimelineCard.tsx
 #: src/components/TimelinePanel.tsx
 msgid "Auto-save"
 msgstr ""
@@ -695,10 +677,6 @@ msgstr ""
 #: src/components/settings/SharingSection.tsx
 msgid "Available in the Open Knowledge desktop app. From a terminal, use<0> ok config-sharing status</0> / <1>share</1> / <2>unshare</2>."
 msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Available in the Open Knowledge desktop app. From a terminal, use<0> ok sharing status</0> / <1>share</1> / <2>unshare</2>."
-#~ msgstr ""
 
 #: src/components/SeedDialog.tsx
 msgid "Back"
@@ -772,10 +750,6 @@ msgstr ""
 msgid "Branch"
 msgstr ""
 
-#: src/components/ShareReceiveDialog.tsx
-#~ msgid "Branch {0} no longer exists on the remote."
-#~ msgstr ""
-
 #. placeholder {0}: event.branch
 #: src/lib/share/clone-controller.ts
 msgid "Branch {0} no longer exists. Cloned to default branch."
@@ -794,24 +768,12 @@ msgid "Branch switch failed — try opening the {targetNoun} manually."
 msgstr ""
 
 #: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "Branch switch failed — try opening the doc manually."
-#~ msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
 msgid "Branch switch timed out — try opening the {targetNoun} manually."
 msgstr ""
 
 #: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "Branch switch timed out — try opening the doc manually."
-#~ msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
 msgid "Branch switched but the {targetNoun} could not be opened — try navigating to it manually."
 msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "Branch switched but the document could not be opened — try navigating to it manually."
-#~ msgstr ""
 
 #: src/components/ui/breadcrumb.tsx
 msgid "breadcrumb"
@@ -923,72 +885,16 @@ msgstr ""
 msgid "Choose whether to commit <0>.ok/</0>, <1>.mcp.json</1> (and per-editor variants), project skills, and <2>.claude/launch.json</2> alongside content — or keep them on this machine only via <3>.git/info/exclude</3>."
 msgstr ""
 
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome and the page use this to select page content. CodeMirror handles it while source editor focus is inside the page."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome and the page use this to select text or page content. Open Knowledge only handles it when the Files sidebar has focus."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses ⌘E with its find bar on macOS. The editor binding applies while the visual editor is focused."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses Cmd/Ctrl+Shift+I for DevTools. Open Knowledge handles it in editor selection contexts."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses Ctrl/Cmd+N for new browser windows. OK Desktop captures Ctrl/Cmd+N natively; browser mode can use Ctrl/Cmd+Alt+N outside text fields."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses Ctrl+H for History on Windows/Linux and ⌘⌥F for web search on macOS."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses these for browser find. CodeMirror handles them while source editor search is active."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this for browser find. CodeMirror handles it while source editor focus is inside the page."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this for browser find. Open Knowledge overrides it in visual editor mode."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this for profile or user switching. CodeMirror handles it only while source editor focus is inside the page."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this for the browser find bar. Open Knowledge handles it when visual-editor find is open."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this to bookmark the page. CodeMirror handles it only while source editor focus is inside the page."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this to bookmark the page. Open Knowledge only handles it when the Files sidebar has focus."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this to open a local file. The shortcut is owned by the OK Desktop native File menu."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Chrome uses this to search from the page or focus the address bar. Open Knowledge overrides it while the app has focus."
-msgstr ""
-
 #: src/components/settings/SettingsDialogShell.tsx
 msgid "Claude Desktop"
 msgstr ""
 
 #: src/components/PageHeaderWidgets.tsx
 msgid "Clear {keyName}"
+msgstr ""
+
+#: src/components/FolderTimelineCard.tsx
+msgid "cleared folder properties"
 msgstr ""
 
 #: src/components/EditorActivityPool.tsx
@@ -1232,10 +1138,6 @@ msgstr ""
 msgid "Conflict"
 msgstr ""
 
-#: src/components/settings/SettingsDialogBody.tsx
-msgid "Conflict: "
-msgstr ""
-
 #: src/components/settings/AccountSection.tsx
 msgid "Connect a GitHub account to browse and sync your repositories."
 msgstr ""
@@ -1312,6 +1214,10 @@ msgstr ""
 
 #: src/components/ConsentDialogBody.tsx
 msgid "Content directory must be inside the project"
+msgstr ""
+
+#: src/editor/bubble-menu/FootnoteBubbleButton.tsx
+msgid "Convert selection to footnote"
 msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
@@ -1460,10 +1366,6 @@ msgstr ""
 msgid "Could not read branch state for this project. Close this dialog and open the share link again."
 msgstr ""
 
-#: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "Could not read branch state for this project. Open the project window and try again."
-#~ msgstr ""
-
 #: src/components/AutoSyncOnboardingDialog.tsx
 msgid "Could not save sync preference: {detail}"
 msgstr ""
@@ -1471,10 +1373,6 @@ msgstr ""
 #: src/components/FileTree.tsx
 msgid "Could not start creating a new item"
 msgstr ""
-
-#: src/components/ShareReceiveDialog.tsx
-#~ msgid "Could not switch to {0}. Try switching manually."
-#~ msgstr ""
 
 #: src/components/ShareBranchSwitchDialog.tsx
 msgid "Could not switch to {shareBranch}. Try switching manually."
@@ -1650,8 +1548,16 @@ msgstr ""
 msgid "Create your first file"
 msgstr ""
 
+#: src/components/FolderTimelineCard.tsx
+msgid "created folder"
+msgstr ""
+
 #: src/components/SeedDialog.tsx
 msgid "Created if missing; reused if it exists."
+msgstr ""
+
+#: src/components/FolderTimelineCard.tsx
+msgid "created template"
 msgstr ""
 
 #: src/components/CreateProjectDialog.tsx
@@ -1739,14 +1645,14 @@ msgstr ""
 msgid "Delete selected table"
 msgstr ""
 
+#: src/components/FolderTimelineCard.tsx
+msgid "deleted template"
+msgstr ""
+
 #: src/components/DeleteConfirmationDialog.tsx
 #: src/components/TrashFailureModal.tsx
 msgid "Deleting"
 msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "Describes this folder (its title, description, and tags). These are about the folder itself and don't flow into the docs inside it — to give new docs starting properties, add a template."
-#~ msgstr ""
 
 #: src/components/TemplateForm.tsx
 msgid "Description"
@@ -1913,10 +1819,6 @@ msgstr ""
 msgid "e.g. server.ts"
 msgstr ""
 
-#: src/components/FrontmatterRow.tsx
-#~ msgid "Each doc in this folder fills in its own value"
-#~ msgstr ""
-
 #: src/components/CreateProjectDialog.tsx
 msgid "Each selected tool gets an Open Knowledge MCP entry."
 msgstr ""
@@ -1964,6 +1866,10 @@ msgstr ""
 #: src/editor/bubble-menu/EditWithAiBubbleButton.tsx
 #: src/lib/keyboard-shortcuts.ts
 msgid "Edit with AI"
+msgstr ""
+
+#: src/components/FolderTimelineCard.tsx
+msgid "edited template"
 msgstr ""
 
 #: src/presence/PresenceBar.tsx
@@ -2091,10 +1997,6 @@ msgstr ""
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 msgid "External link"
 msgstr ""
-
-#: src/editor/slash-command/component-items.tsx
-#~ msgid "External Link"
-#~ msgstr ""
 
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "External wiki link"
@@ -2294,10 +2196,6 @@ msgstr ""
 msgid "Fetching"
 msgstr ""
 
-#: src/components/FrontmatterRow.tsx
-#~ msgid "Field name"
-#~ msgstr ""
-
 #: src/components/share-metadata-rows.tsx
 #: src/editor/slash-command/component-items.tsx
 msgid "File"
@@ -2318,10 +2216,6 @@ msgstr ""
 #: src/components/TrashFailureModal.tsx
 msgid "File not found"
 msgstr ""
-
-#: src/components/ShareReceiveDialog.tsx
-#~ msgid "File not found on this branch"
-#~ msgstr ""
 
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "File saved & Claude Desktop App opened"
@@ -2431,10 +2325,6 @@ msgstr ""
 #: src/components/FolderPropertiesCard.tsx
 msgid "Folder properties"
 msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "Folder properties are descriptive only — use title, description, or tags. For per-doc starting values, add a template."
-#~ msgstr ""
 
 #: src/components/LinksPanel.tsx
 msgid "Folder target: {linkTitle}. Click to open the overview."
@@ -2554,10 +2444,6 @@ msgstr ""
 #: src/editor/slash-command/embed-starter-items.tsx
 msgid "Hello, world!"
 msgstr ""
-
-#: src/components/empty-state/CreateView.tsx
-#~ msgid "here"
-#~ msgstr ""
 
 #: src/components/FileTree.tsx
 msgid "Hidden “{basename}”"
@@ -2722,6 +2608,10 @@ msgstr ""
 msgid "Inherited from {path}"
 msgstr ""
 
+#: src/components/TemplateForm.tsx
+msgid "Inherited templates can't be renamed here — rename it in the folder that owns it."
+msgstr ""
+
 #: src/components/SeedDialog.tsx
 msgid "Initialize"
 msgstr ""
@@ -2821,10 +2711,6 @@ msgstr ""
 msgid "Installing"
 msgstr ""
 
-#: src/components/handoff/EditWithAiPopover.tsx
-#~ msgid "Instruction for the AI"
-#~ msgstr ""
-
 #: src/components/settings/SettingsDialogBody.tsx
 #: src/components/settings/SettingsDialogShell.tsx
 msgid "Integrations"
@@ -2851,6 +2737,7 @@ msgid "Jump to page {pageNumber}"
 msgstr ""
 
 #: src/components/FolderOverview.tsx
+#: src/components/FolderTimelineCard.tsx
 #: src/components/SyncStatusBadge.tsx
 #: src/components/TimelinePanel.tsx
 msgid "just now"
@@ -2918,20 +2805,8 @@ msgid "Link target"
 msgstr ""
 
 #: src/editor/slash-command/component-items.tsx
-#~ msgid "Link to a page"
-#~ msgstr ""
-
-#: src/editor/slash-command/component-items.tsx
 msgid "Link to a page or external URL."
 msgstr ""
-
-#: src/editor/slash-command/component-items.tsx
-#~ msgid "Link to an external URL."
-#~ msgstr ""
-
-#: src/editor/slash-command/component-items.tsx
-#~ msgid "Link to another page in this project."
-#~ msgstr ""
 
 #: src/editor/bubble-menu/LinkEditPopover.tsx
 msgid "Link URL"
@@ -3228,6 +3103,10 @@ msgstr ""
 msgid "Move up"
 msgstr ""
 
+#: src/components/FolderTimelineCard.tsx
+msgid "moved template"
+msgstr ""
+
 #: src/editor/slash-command/component-items.tsx
 msgid "Multi-page PDF viewer with toolbar controls (thumbnails, page nav, zoom)."
 msgstr ""
@@ -3302,10 +3181,6 @@ msgstr ""
 #: src/editor/tag-suggestion/TagSuggestionMenu.tsx
 msgid "New"
 msgstr ""
-
-#: src/components/FrontmatterRow.tsx
-#~ msgid "New blank field name"
-#~ msgstr ""
 
 #: src/components/CommandPalette.tsx
 #: src/components/empty-state/CreateView.tsx
@@ -3424,10 +3299,6 @@ msgstr ""
 #: src/components/settings/SharingSection.tsx
 msgid "No git repository — config sharing does not apply here."
 msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "No git repository — sharing mode does not apply here."
-#~ msgstr ""
 
 #: src/editor/wiki-link-suggestion/WikiLinkSuggestionMenu.tsx
 msgid "No headings in {pageTarget}"
@@ -3641,22 +3512,6 @@ msgstr ""
 msgid "ok ui responded but server.lock has no port yet"
 msgstr ""
 
-#: src/lib/keyboard-shortcuts.ts
-msgid "On macOS Chrome uses ⌘, for Chrome Settings. In OK Desktop the native app menu captures the shortcut for Open Knowledge settings."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "On macOS Chrome uses ⌘⇧H to open the home page. The editor binding applies while the visual editor is focused."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "On macOS Chrome uses ⌘⌥B for Bookmark Manager. OK Desktop captures this through the native View menu."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-#~ msgid "On macOS Chrome uses ⌘⌥N for split view in the active tab. The shortcut is safest in OK Desktop."
-#~ msgstr ""
-
 #: src/components/ConsentDialogBody.tsx
 msgid "One pattern per line — appended to <0>.okignore</0>."
 msgstr ""
@@ -3714,10 +3569,6 @@ msgstr ""
 #: src/lib/keyboard-shortcuts.ts
 msgid "Open an existing project folder from disk."
 msgstr ""
-
-#: src/components/ShareReceiveDialog.tsx
-#~ msgid "Open at current checkout ({currentLabel})"
-#~ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Open CodeMirror search in source editor mode."
@@ -3808,10 +3659,6 @@ msgstr ""
 msgid "Open in Terminal, No workspace"
 msgstr ""
 
-#: src/components/EmptyEditorState.tsx
-#~ msgid "Open in your favorite AI editor."
-#~ msgstr ""
-
 #: src/components/ConsentDialogBody.tsx
 msgid "Open Knowledge initializes at <0>{projectDir}</0> — the parent of <1>{pickedRelative}</1> because it contains a <2>.git</2> folder (one .ok/ per git repo). <3>Content directory</3> defaults to <4>.</4> (the whole repo); type a sub-folder to narrow it."
 msgstr ""
@@ -3828,10 +3675,6 @@ msgstr ""
 msgid "Open Knowledge manages the <0>open-knowledge</0> MCP server name, the <1>open-knowledge-ui</1> launch config, and <2>ok</2> / <3>open-knowledge</3> on PATH (including OK-owned symlinks). Using a custom wrapper? Register it under a different name."
 msgstr ""
 
-#: src/lib/keyboard-shortcuts.ts
-#~ msgid "Open Knowledge uses this for the command palette when no editor text is selected."
-#~ msgstr ""
-
 #: src/components/CreateProjectDialog.tsx
 msgid "Open Knowledge will be initialized at <0>{gitRoot}</0> — the parent of your new folder, because it contains a <1>.git</1> folder (one project per git repo)."
 msgstr ""
@@ -3842,10 +3685,6 @@ msgstr ""
 
 #: src/components/AutoSyncEnableWarning.tsx
 msgid "Open Knowledge will create commits and push them to your remote automatically. If you do not want automatic commits in your git history, you should not enable auto-sync."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "Open Knowledge's list item extension handles Enter before TipTap's base split-block keymap while the cursor is inside a list item."
 msgstr ""
 
 #: src/components/GraphPanel.tsx
@@ -3881,11 +3720,6 @@ msgstr ""
 msgid "Open shared {targetNoun}"
 msgstr ""
 
-#: src/components/ShareBranchSwitchDialog.tsx
-#: src/components/ShareReceiveDialog.tsx
-#~ msgid "Open shared document"
-#~ msgstr ""
-
 #: src/editor/extensions/JsxComponentView.tsx
 msgid "Open source doc: {mirrorSrc}"
 msgstr ""
@@ -3903,14 +3737,6 @@ msgid "Open that worktree instead"
 msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
-#~ msgid "Open the Ask AI menu for the current editor selection."
-#~ msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-#~ msgid "Open the Ask AI menu for the current selection."
-#~ msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
 msgid "Open the insert menu in an empty or active text position."
 msgstr ""
 
@@ -3921,10 +3747,6 @@ msgstr ""
 #: src/lib/keyboard-shortcuts.ts
 msgid "Open the Project Navigator."
 msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-#~ msgid "Open the selection handoff popover so you can choose an installed AI agent."
-#~ msgstr ""
 
 #: src/components/GraphPanel.tsx
 msgid "Open this document in the editor and collapse the graph."
@@ -4251,10 +4073,6 @@ msgstr ""
 msgid "Project folder created, but git init failed. Try again."
 msgstr ""
 
-#: src/components/FrontmatterRow.tsx
-#~ msgid "project root"
-#~ msgstr ""
-
 #: src/components/SeedDialog.tsx
 msgid "Project root"
 msgstr ""
@@ -4286,18 +4104,6 @@ msgstr ""
 #: src/components/PropertyPanel.tsx
 msgid "Properties"
 msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "Properties every doc in this folder gets. Set a value they all share (like a status or an owner), or add a blank field that each doc fills in on its own. Docs in subfolders get them too."
-#~ msgstr ""
-
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "Properties that describe this folder itself — any properties you like, just like a doc's. They don't flow into the docs inside it; to give new docs starting properties, add a template."
-#~ msgstr ""
-
-#: src/components/FolderPropertiesCard.tsx
-#~ msgid "Properties that describe this folder."
-#~ msgstr ""
 
 #: src/components/PropertyPanel.tsx
 msgid "Property \"{trimmed}\" already exists"
@@ -4366,10 +4172,6 @@ msgstr ""
 #: src/components/AuthModal.tsx
 msgid "Re-authenticate with GitHub"
 msgstr ""
-
-#: src/editor/slash-command/component-items.tsx
-#~ msgid "Read the <0>docs<1> ↗</1></0> for details."
-#~ msgstr ""
 
 #: src/editor/slash-command/component-items.tsx
 msgid "Read-only copy of a MirrorSource block from another doc. Edit at the source — every Mirror reflects the change live."
@@ -4505,6 +4307,10 @@ msgstr ""
 
 #: src/components/EditorTabs.tsx
 msgid "Rename succeeded but the tabstrip may be out of date — refresh to resync"
+msgstr ""
+
+#: src/components/TemplateForm.tsx
+msgid "Renaming changes the file on disk and the id agents use to pick this template."
 msgstr ""
 
 #: src/components/EditorActivityPool.tsx
@@ -4809,10 +4615,6 @@ msgstr ""
 msgid "See the full install guide"
 msgstr ""
 
-#: src/components/EmptyEditorState.tsx
-#~ msgid "Select a file from the sidebar, or pick where to edit alongside your agent."
-#~ msgstr ""
-
 #: src/lib/keyboard-shortcuts.ts
 msgid "Select all files and folders"
 msgstr ""
@@ -4890,10 +4692,6 @@ msgstr ""
 msgid "Session ended — undo unavailable"
 msgstr ""
 
-#: src/components/FolderDefaultsCard.tsx
-#~ msgid "Set a shared value"
-#~ msgstr ""
-
 #: src/components/AuthModal.tsx
 msgid "Set git identity"
 msgstr ""
@@ -4953,49 +4751,9 @@ msgstr ""
 msgid "Share with my team"
 msgstr ""
 
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Shared with team"
-#~ msgstr ""
-
-#: src/components/settings/SettingsDialogShell.tsx
-#~ msgid "Sharing"
-#~ msgstr ""
-
 #: src/components/PublishToGitHubDialog.tsx
 msgid "Sharing a doc needs a GitHub repository. Create one for this project."
 msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing mode"
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing mode set to local-only."
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing mode set to shared. Commit the OK files to share with your team."
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing mode unavailable: {0}."
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing mode unchanged — see details below."
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing mode unchanged — see message below."
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing status read failed"
-#~ msgstr ""
-
-#: src/components/settings/SharingSection.tsx
-#~ msgid "Sharing toggle failed"
-#~ msgstr ""
 
 #: src/components/LinksPanel.tsx
 #: src/components/TimelinePanel.tsx
@@ -5067,10 +4825,6 @@ msgstr ""
 #: src/components/FileTree.tsx
 msgid "Showing first {truncatedShownCount} items — use search to find others"
 msgstr ""
-
-#: src/components/FileTree.tsx
-#~ msgid "Showing first {truncatedShownCount} items (truncated)"
-#~ msgstr ""
 
 #. placeholder {0}: items.length
 #: src/editor/wiki-link-suggestion/WikiLinkSuggestionMenu.tsx
@@ -5338,10 +5092,6 @@ msgstr ""
 msgid "Table"
 msgstr ""
 
-#: src/lib/keyboard-shortcuts.ts
-msgid "Tables also use Tab and Shift+Tab for cell navigation. The list shortcut only handles events while the cursor is inside a list item."
-msgstr ""
-
 #: src/editor/slash-command/component-items.tsx
 msgid "Tag"
 msgstr ""
@@ -5395,6 +5145,10 @@ msgid "Template list"
 msgstr ""
 
 #: src/components/TemplateForm.tsx
+msgid "Template renamed"
+msgstr ""
+
+#: src/components/TemplateForm.tsx
 msgid "Template saved"
 msgstr ""
 
@@ -5430,10 +5184,6 @@ msgstr ""
 msgid "The Claude Desktop App didn't open the file. Is it installed? ({msg})"
 msgstr ""
 
-#: src/lib/keyboard-shortcuts.ts
-msgid "The collaboration extension owns these bindings so undo and redo operate on the shared Yjs-backed editor history."
-msgstr ""
-
 #: src/components/SyncStatusBadge.tsx
 msgid "The default branch is protected — pushes need a pull request."
 msgstr ""
@@ -5441,10 +5191,6 @@ msgstr ""
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "The desktop app isn't responding. Refresh and try again."
 msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "The document could not be opened — try navigating to it manually."
-#~ msgstr ""
 
 #: src/components/FileTree.tsx
 msgid "The file is in your Trash; the file-watcher will reconcile."
@@ -5489,22 +5235,6 @@ msgstr ""
 #: src/components/ShareReceiveDialog.tsx
 msgid "This branch is checked out in:"
 msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "This doc only exists on branch <0>{shareBranch}</0>. You have uncommitted changes that prevent switching. Commit or stash your changes, then open the share link again."
-#~ msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "This doc was shared from branch <0>{shareBranch}</0>. It doesn't exist on your current branch (<1>{currentLabel}</1>)."
-#~ msgstr ""
-
-#: src/components/ShareBranchSwitchDialog.tsx
-#~ msgid "This doc was shared from branch <0>{shareBranch}</0>. You're currently on <1>{currentLabel}</1>."
-#~ msgstr ""
-
-#: src/components/ShareReceiveDialog.tsx
-#~ msgid "This document doesn't exist on your local copy of branch <0>{currentBranchLabel}</0>. Your branch may be behind the remote — pull the latest changes from GitHub, then reopen this link."
-#~ msgstr ""
 
 #: src/components/GraphPanel.tsx
 msgid "This document is already active in the editor. Use Open to collapse the graph."
@@ -5579,14 +5309,6 @@ msgstr ""
 msgid "Timeline"
 msgstr ""
 
-#: src/lib/keyboard-shortcuts.ts
-msgid "TipTap also has a base Mod+Enter exit-code binding. Open Knowledge registers its hard-break extension before the base keymap, so hard break wins in normal visual editing."
-msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
-msgid "TipTap's table extension handles these bindings only when the selected cells cover the whole table."
-msgstr ""
-
 #: src/editor/extensions/CodeBlockView.tsx
 msgid "Title"
 msgstr ""
@@ -5594,14 +5316,6 @@ msgstr ""
 #: src/editor/slash-command/items.tsx
 msgid "To do"
 msgstr ""
-
-#: src/components/FrontmatterRow.tsx
-#~ msgid "to fill in"
-#~ msgstr ""
-
-#: src/components/FrontmatterRow.tsx
-#~ msgid "to fill in · {0}"
-#~ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Toggle a bullet list."
@@ -5697,10 +5411,6 @@ msgstr ""
 msgid "Type to edit; <0>⌘ Enter</0> saves, <1>Esc</1> cancels."
 msgstr ""
 
-#: src/editor/components/CodePreviewEditModal.tsx
-#~ msgid "Type to edit; <0>⌘</0>+<1>Enter</1> saves, <2>Esc</2> cancels."
-#~ msgstr ""
-
 #: src/lib/keyboard-shortcuts.ts
 msgid "Underline"
 msgstr ""
@@ -5761,6 +5471,10 @@ msgstr ""
 msgid "Unified diff"
 msgstr ""
 
+#: src/components/FolderTimelineCard.tsx
+msgid "Unknown"
+msgstr ""
+
 #: src/editor/extensions/JsxComponentView.tsx
 msgid "Unknown component: {componentName} — source editable below"
 msgstr ""
@@ -5796,6 +5510,10 @@ msgstr ""
 
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 msgid "Update the destination and optional section anchor."
+msgstr ""
+
+#: src/components/FolderTimelineCard.tsx
+msgid "updated folder properties"
 msgstr ""
 
 #: src/components/PageHeaderWidgets.tsx
@@ -5892,10 +5610,6 @@ msgid "Visual editor replace input focused"
 msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
-#~ msgid "Visual editor selection"
-#~ msgstr ""
-
-#: src/lib/keyboard-shortcuts.ts
 msgid "Visual editor table"
 msgstr ""
 
@@ -5930,14 +5644,6 @@ msgstr ""
 #: src/components/PublishToGitHubDialog.tsx
 msgid "What is this knowledge base for?"
 msgstr ""
-
-#: src/components/handoff/EditWithAiPopover.tsx
-#~ msgid "What should the AI do? (optional)"
-#~ msgstr ""
-
-#: src/components/FolderPropertiesCard.tsx
-#~ msgid "What this folder is about — give it a title, description, tags, or any properties you like, just like a doc has. This describes the folder itself; it is not copied into the docs inside it. To start new docs in this folder with a ready-made set of properties, add a template instead."
-#~ msgstr ""
 
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "When enabled, the agent opens or refreshes the preview after each edit. Disable if you manage your own preview window (OK Desktop, a browser tab on another display, etc.)."

@@ -79,3 +79,28 @@ export async function deleteTemplate(
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+export async function moveTemplate(input: {
+  fromFolder: string;
+  fromName: string;
+  toFolder: string;
+  toName: string;
+  frontmatter?: TemplateFrontmatterFields;
+  body?: string;
+}): Promise<{ ok: true; committed: boolean } | { ok: false; error: string }> {
+  try {
+    const res = await fetch('/api/template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      return { ok: false, error: await readErrorBody(res) };
+    }
+    const payload = (await res.json().catch(() => null)) as { committed?: boolean } | null;
+    emitTemplatesChanged();
+    return { ok: true, committed: payload?.committed ?? false };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}

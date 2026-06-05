@@ -38,12 +38,13 @@ const HistoryEntryOutputSchema = z.object({
 });
 
 export const DESCRIPTION = [
-  '[Requires: Hocuspocus server] List version history for a document.',
+  '[Requires: Hocuspocus server] List version history for a document, or the activity timeline for a folder.',
   'Returns timeline entries from the shadow repo, sorted by timestamp descending.',
   'Each entry carries a `version` (40-char commit SHA) you pass straight to `restore_version({ document, version })` — same field name on both sides.',
   '',
-  '**Parameters:**',
+  '**Parameters (pass EXACTLY ONE of `document` / `folder`):**',
   '- `document` — Document name to query history for, typically without extension. A trailing `.md` or `.mdx` is stripped automatically.',
+  '- `folder` — Folder path for the FOLDER timeline: attributed activity over the folder\'s `.ok/` artifacts (templates + frontmatter) — who created / edited / renamed / moved / deleted them, when. `""` = project root.',
   '- `branch` (optional) — Branch name (default: current branch)',
   '- `limit` (optional) — Maximum entries to return (default 50, max 200)',
   '- `offset` (optional) — Number of entries to skip for pagination (default 0)',
@@ -64,7 +65,16 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
     {
       description: DESCRIPTION,
       inputSchema: {
-        document: z.string().describe('Document name to query history for'),
+        document: z
+          .string()
+          .optional()
+          .describe('Document name to query history for. Mutually exclusive with `folder`.'),
+        folder: z
+          .string()
+          .optional()
+          .describe(
+            'Folder path to query the FOLDER timeline for — attributed activity over the folder\'s `.ok/` artifacts (templates + frontmatter): created / edited / renamed / moved / deleted, by whom, when. Mutually exclusive with `document`. Use `""` for the project root.',
+          ),
         branch: z.string().optional().describe('Branch name (default: current branch)'),
         limit: z
           .number()
@@ -108,7 +118,8 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
       }),
     },
     async (args: {
-      document: string;
+      document?: string;
+      folder?: string;
       branch?: string;
       limit?: number;
       offset?: number;
@@ -127,11 +138,21 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
       const { cwd, url } = context;
       if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
 
-      const normalized = normalizeDocName(args.document);
-      if (!normalized.ok) return textResult(normalized.error, true);
+      const isFolder = args.folder !== undefined;
+      if (isFolder === (args.document !== undefined)) {
+        return textResult('Error: pass EXACTLY ONE of `document` or `folder`.', true);
+      }
 
       const params = new URLSearchParams();
-      params.set('docName', normalized.docName);
+      let previewDocName: string | null = null;
+      if (isFolder) {
+        params.set('folder', args.folder ?? '');
+      } else {
+        const normalized = normalizeDocName(args.document as string);
+        if (!normalized.ok) return textResult(normalized.error, true);
+        params.set('docName', normalized.docName);
+        previewDocName = normalized.docName;
+      }
       if (args.branch) params.set('branch', args.branch);
       if (args.limit != null) params.set('limit', String(args.limit));
       if (args.offset != null) params.set('offset', String(args.offset));
@@ -162,14 +183,13 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
       const total = (data as { total?: unknown }).total;
       const hasMore = (data as { hasMore?: unknown }).hasMore;
 
-      const preview = await resolvePreviewUrlForTool(
-        normalized.docName,
-        {
-          config: deps.config,
-          resolveCwd: deps.resolveCwd,
-        },
-        cwd,
-      );
+      const preview = previewDocName
+        ? await resolvePreviewUrlForTool(
+            previewDocName,
+            { config: deps.config, resolveCwd: deps.resolveCwd },
+            cwd,
+          )
+        : null;
       const projected = {
         entries,
         ...(typeof total === 'number' ? { total } : {}),

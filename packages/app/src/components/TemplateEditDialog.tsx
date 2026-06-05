@@ -119,6 +119,7 @@ function TemplateEditForm({
   const form = useTemplateForm({
     mode: 'edit',
     folderPath: detail.folder,
+    scope: detail.scope,
     initial: {
       name: detail.name,
       title: typeof fm.title === 'string' ? fm.title : '',

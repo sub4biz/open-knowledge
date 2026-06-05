@@ -338,7 +338,8 @@ export async function httpGet(
   return normalizeResponse(res, body);
 }
 
-export async function httpPost(
+async function httpSend(
+  method: 'POST' | 'PUT' | 'DELETE',
   baseUrl: string,
   path: string,
   body?: Record<string, unknown>,
@@ -357,8 +358,8 @@ export async function httpPost(
   let res: Response;
   try {
     res = await fetch(`${baseUrl}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method,
+      headers: serializedBody !== undefined ? { 'Content-Type': 'application/json' } : undefined,
       body: serializedBody,
       signal: AbortSignal.timeout(30_000),
     });
@@ -382,6 +383,29 @@ export async function httpPost(
     };
   }
   return normalizeResponse(res, parsed);
+}
+
+export function httpPost(
+  baseUrl: string,
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<{ ok: boolean; [key: string]: unknown }> {
+  return httpSend('POST', baseUrl, path, body);
+}
+
+export function httpPut(
+  baseUrl: string,
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<{ ok: boolean; [key: string]: unknown }> {
+  return httpSend('PUT', baseUrl, path, body);
+}
+
+export function httpDelete(
+  baseUrl: string,
+  path: string,
+): Promise<{ ok: boolean; [key: string]: unknown }> {
+  return httpSend('DELETE', baseUrl, path);
 }
 
 export interface RenameCollisionPair {

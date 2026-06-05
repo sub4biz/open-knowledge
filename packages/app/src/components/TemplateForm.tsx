@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { saveTemplate } from '@/lib/folder-config-api';
+import { moveTemplate, saveTemplate } from '@/lib/folder-config-api';
 
 const NAME_RE = /^[A-Za-z0-9_-]+$/;
 
@@ -40,6 +40,7 @@ interface TemplateFormInitial {
 interface UseTemplateFormArgs {
   mode: 'create' | 'edit';
   folderPath: string;
+  scope?: 'local' | 'inherited';
   initial: TemplateFormInitial;
   existingNames?: ReadonlySet<string>;
   onCommitted: () => void;
@@ -64,12 +65,14 @@ export interface TemplateFormState {
   slugShadows: boolean;
   trimmedSlug: string;
   fixedName: string;
+  canRename: boolean;
   submit: () => Promise<void>;
 }
 
 export function useTemplateForm({
   mode,
   folderPath,
+  scope = 'local',
   initial,
   existingNames,
   onCommitted,
@@ -94,10 +97,13 @@ export function useTemplateForm({
     setSlugManuallyEdited(true);
   }
 
+  const canRename = mode === 'edit' && scope === 'local';
+  const slugEditable = mode === 'create' || canRename;
+
   const trimmedTitle = title.trim();
   const trimmedSlug = slug.trim();
   const titleInvalid = trimmedTitle === '';
-  const slugInvalid = mode === 'create' && (trimmedSlug === '' || !NAME_RE.test(trimmedSlug));
+  const slugInvalid = slugEditable && (trimmedSlug === '' || !NAME_RE.test(trimmedSlug));
   const slugShadows =
     mode === 'create' && !slugInvalid && (existingNames?.has(trimmedSlug) ?? false);
   const canSubmit = !saving && !titleInvalid && !slugInvalid;
@@ -108,12 +114,23 @@ export function useTemplateForm({
       return;
     }
     setSaving(true);
-    const result = await saveTemplate({
-      folder: folderPath,
-      name: mode === 'create' ? trimmedSlug : initial.name,
-      frontmatter: buildTemplateFrontmatter({ title, description }),
-      body,
-    });
+    const frontmatter = buildTemplateFrontmatter({ title, description });
+    const renaming = canRename && trimmedSlug !== initial.name;
+    const result = renaming
+      ? await moveTemplate({
+          fromFolder: folderPath,
+          fromName: initial.name,
+          toFolder: folderPath,
+          toName: trimmedSlug,
+          frontmatter,
+          body,
+        })
+      : await saveTemplate({
+          folder: folderPath,
+          name: mode === 'create' ? trimmedSlug : initial.name,
+          frontmatter,
+          body,
+        });
     setSaving(false);
     if (!result.ok) {
       const { error } = result;
@@ -124,7 +141,9 @@ export function useTemplateForm({
       );
       return;
     }
-    if (result.warnings.length > 0) {
+    if (renaming) {
+      toast.success(t`Template renamed`);
+    } else if ('warnings' in result && result.warnings.length > 0) {
       toast.warning(result.warnings.join(' '));
     } else if (mode === 'create') {
       toast.success(t`Template "${trimmedTitle}" created`);
@@ -153,6 +172,7 @@ export function useTemplateForm({
     slugShadows,
     trimmedSlug,
     fixedName: initial.name,
+    canRename,
     submit,
   };
 }
@@ -195,12 +215,21 @@ export function TemplateFormFields({
       </Field>
       {form.mode === 'create' ? (
         <DerivedFilename form={form} />
+      ) : form.canRename ? (
+        <EditFilename form={form} />
       ) : (
-        <p className="text-xs text-muted-foreground">
-          <Trans>
-            File: <code className="font-mono">{fixedName}.md</code>
-          </Trans>
-        </p>
+        <>
+          <p className="text-xs text-muted-foreground">
+            <Trans>
+              File: <code className="font-mono">{fixedName}.md</code>
+            </Trans>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <Trans>
+              Inherited templates can't be renamed here — rename it in the folder that owns it.
+            </Trans>
+          </p>
+        </>
       )}
       <Field>
         <FieldLabel htmlFor={descriptionId}>
@@ -286,6 +315,44 @@ function DerivedFilename({ form }: { form: TemplateFormState }) {
       ) : (
         <FieldDescription>
           <Trans>The file on disk, and the id agents use. It can't be changed later.</Trans>
+        </FieldDescription>
+      )}
+    </Field>
+  );
+}
+
+function EditFilename({ form }: { form: TemplateFormState }) {
+  const { t } = useLingui();
+  const slugId = useId();
+  return (
+    <Field>
+      <FieldLabel htmlFor={slugId}>
+        <Trans>Filename</Trans>
+      </FieldLabel>
+      <Input
+        id={slugId}
+        value={form.slug}
+        onChange={(e) => form.setSlug(e.target.value)}
+        placeholder={t`blog-post`}
+        disabled={form.isSaving}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        aria-invalid={form.slugInvalid}
+        className="font-mono"
+      />
+      {form.slugInvalid ? (
+        <FieldError>
+          <Trans>
+            Use letters, digits, <code className="font-mono">-</code> or{' '}
+            <code className="font-mono">_</code> only.
+          </Trans>
+        </FieldError>
+      ) : (
+        <FieldDescription>
+          <Trans>
+            Renaming changes the file on disk and the id agents use to pick this template.
+          </Trans>
         </FieldDescription>
       )}
     </Field>

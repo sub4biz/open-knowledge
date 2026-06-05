@@ -1,5 +1,6 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { z } from 'zod';
+import { agentIdentityFields, summaryField } from './_shared.ts';
 
 export const TagSummaryEntrySchema = z
   .object({
@@ -107,6 +108,8 @@ export const TemplatePutRequestSchema = z
     name: z.string(),
     body: z.string().optional(),
     frontmatter: TemplateFrontmatterSchema.optional(),
+    ...agentIdentityFields,
+    summary: summaryField,
   })
   .strict() satisfies StandardSchemaV1;
 export type TemplatePutRequest = z.infer<typeof TemplatePutRequestSchema>;
@@ -127,6 +130,29 @@ export const TemplateDeleteSuccessSchema = z
   })
   .strict() satisfies StandardSchemaV1;
 export type TemplateDeleteSuccess = z.infer<typeof TemplateDeleteSuccessSchema>;
+
+export const TemplateMoveRequestSchema = z
+  .object({
+    fromFolder: z.string(),
+    fromName: z.string(),
+    toFolder: z.string(),
+    toName: z.string(),
+    body: z.string().optional(),
+    frontmatter: TemplateFrontmatterSchema.optional(),
+    ...agentIdentityFields,
+    summary: summaryField,
+  })
+  .strict() satisfies StandardSchemaV1;
+export type TemplateMoveRequest = z.infer<typeof TemplateMoveRequestSchema>;
+
+export const TemplateMoveSuccessSchema = z
+  .object({
+    from: z.string().min(1),
+    to: z.string().min(1),
+    committed: z.boolean(),
+  })
+  .strict() satisfies StandardSchemaV1;
+export type TemplateMoveSuccess = z.infer<typeof TemplateMoveSuccessSchema>;
 
 export const SearchRequestSchema = z
   .object({

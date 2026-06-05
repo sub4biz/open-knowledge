@@ -23,6 +23,7 @@ import {
   textPlusStructured,
   textResult,
 } from './shared.ts';
+import { resolveTemplatePath } from './verb-schemas.ts';
 
 export const DESCRIPTION = [
   '[Requires: Hocuspocus server] Move or rename a document, folder, or asset through the managed flow at `POST /api/rename-path`. Works for all three — the tool probes the content directory to decide. Inbound wiki-links plus supported inline Markdown links are rewritten across affected docs; renamed assets are reported.',
@@ -30,6 +31,7 @@ export const DESCRIPTION = [
   '**Parameters:**',
   '- `from` — Current path. Doc: docName (trailing `.md`/`.mdx` stripped). Folder: relative path, no leading/trailing slash. Asset: the file path incl. extension.',
   '- `to` — New path. Same shape as `from`.',
+  '- `template` — Move/rename a TEMPLATE instead of a doc/folder/asset: `{ from: "<folder>/<name>", to: "<folder>/<name>" }` (nested — a flat path cannot disambiguate a template under `.ok/templates/` from a same-named doc). Mutually exclusive with flat `from`/`to`. Inherited templates are not moved (move the local copy / the owning folder); templates carry no inbound links, so nothing is rewritten.',
   '- `summary` — Optional one-line user-outcome (≤80 chars). If omitted, defaults to "Renamed X → Y". Avoid secrets or PII — persisted to git history.',
   '',
   '**Errors:** 400 — invalid path / excluded by `.gitignore`/`.okignore`; 404 — source does not exist; 409 — destination already exists (`colliding[]` returned).',
@@ -56,8 +58,9 @@ export interface MoveDeps {
 }
 
 interface MoveArgs {
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
+  template?: { from: string; to: string };
   summary?: string;
   cwd?: string;
 }
@@ -132,10 +135,20 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
     {
       description: DESCRIPTION,
       inputSchema: {
-        from: z.string().describe('Current path of a document, folder, or asset.'),
+        from: z
+          .string()
+          .optional()
+          .describe('Current path of a document, folder, or asset (auto-detected).'),
         to: z
           .string()
+          .optional()
           .describe('New path. All inbound wiki-links + inline links are rewritten automatically.'),
+        template: z
+          .object({ from: z.string(), to: z.string() })
+          .optional()
+          .describe(
+            'Move/rename a TEMPLATE instead: `{ from: "<folder>/<name>", to: "<folder>/<name>" }`. Nested because a flat path cannot disambiguate a template under `.ok/templates/` from a same-named doc. Mutually exclusive with flat `from`/`to`.',
+          ),
         summary: summaryArgSchema.describe(
           'Optional one-line user-outcome (≤80 chars). Defaults to "Renamed X → Y". Persisted to git history.',
         ),
@@ -144,9 +157,17 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
       outputSchema: outputSchemaWithText({
         ok: z.boolean().describe('Whether the move succeeded.'),
         kind: z
-          .enum(['file', 'folder', 'asset'])
+          .enum(['file', 'folder', 'asset', 'template'])
           .optional()
-          .describe('What was moved, as auto-detected from `from`.'),
+          .describe(
+            'What was moved (`file`/`folder`/`asset` auto-detected from `from`; `template` when the `template` target was used).',
+          ),
+        committed: z
+          .boolean()
+          .optional()
+          .describe(
+            'Template move only: `true` = tracked `git mv` (history preserved), `false` = plain disk rename (untracked / local-only `.ok/`).',
+          ),
         renamed: z
           .array(z.object({ fromDocName: z.string(), toDocName: z.string() }))
           .optional()
@@ -181,9 +202,62 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
       const { cwd, config, url } = context;
       if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
 
+      if (args.template !== undefined) {
+        if (args.from !== undefined || args.to !== undefined) {
+          return textResult(
+            'Error: pass EITHER flat `from`/`to` (document/folder/asset) OR `template: { from, to }` — not both.',
+            true,
+          );
+        }
+        const rf = resolveTemplatePath(args.template.from);
+        if (!rf.ok) return textResult(`Error: ${rf.error}`, true);
+        const rt = resolveTemplatePath(args.template.to);
+        if (!rt.ok) return textResult(`Error: ${rt.error}`, true);
+        const result = await httpPost(url, '/api/template', {
+          fromFolder: rf.folder,
+          fromName: rf.name,
+          toFolder: rt.folder,
+          toName: rt.name,
+          ...(args.summary !== undefined ? { summary: args.summary } : {}),
+          ...agentIdentityFields(deps.identityRef?.current),
+        });
+        if (!result.ok) {
+          const error = typeof result.error === 'string' ? result.error : 'Template move failed';
+          return textPlusStructured(
+            `Error: ${error}`,
+            { ok: false, kind: 'template', error },
+            true,
+          );
+        }
+        const committed = result.committed === true;
+        const fromLabel = typeof result.from === 'string' ? result.from : args.template.from;
+        const toLabel = typeof result.to === 'string' ? result.to : args.template.to;
+        return textPlusStructured(
+          `${committed ? 'Renamed' : 'Moved'} template ${fromLabel} → ${toLabel}.${committed ? '' : ' (Untracked `.ok/` — moved on disk without git history.)'}`,
+          { ok: true, kind: 'template', committed },
+        );
+      }
+
+      if (args.from === undefined || args.to === undefined) {
+        return textResult(
+          'Error: provide both `from` and `to` (or use `template: { from, to }` to move a template).',
+          true,
+        );
+      }
+
       const contentDir = join(cwd, config.content.dir);
       const kind = resolveMoveKind(contentDir, args.from);
       if (kind === null) {
+        const split = resolveTemplatePath(args.from);
+        if (
+          split.ok &&
+          existsSync(join(contentDir, split.folder, '.ok', 'templates', `${split.name}.md`))
+        ) {
+          return textResult(
+            `Error: \`${args.from}\` is a template, not a doc/folder/asset. Move it with \`move({ template: { from: "${args.from}", to: "<folder>/<newName>" } })\`.`,
+            true,
+          );
+        }
         return textResult(
           `Error: \`${args.from}\` does not exist as a doc, folder, or asset under the content directory.`,
           true,

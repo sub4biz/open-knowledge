@@ -18,6 +18,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { ColorPickerInput } from '@/editor/components/ColorPickerInput.tsx';
 import { IconPickerInput } from '@/editor/components/IconPickerInput.tsx';
+import { SrcAutocomplete } from '@/editor/components/SrcAutocomplete.tsx';
 import { uploadFile } from '@/editor/image-upload/upload-file.ts';
 import type { JsxComponentDescriptor } from '@/editor/registry/types.ts';
 import { getAutoFocusedPropName, humanizePropName } from '@/editor/utils/editor-strings.ts';
@@ -310,25 +311,46 @@ function PropControl({
             {humanizePropName(propDef.name)}
           </label>
           <div className="flex gap-1">
-            <Input
-              id={stringId}
-              type="text"
-              value={currentStringValue}
-              placeholder={mediaPlaceholder}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === '' && treatEmptyAsUndefined) {
-                  onChange(undefined);
-                  return;
-                }
-                onChange(raw);
-              }}
-              autoFocus={isAutoFocused}
-              data-prop-autofocus={isAutoFocused ? '' : undefined}
-              aria-invalid={mediaErrorMessage !== null ? true : undefined}
-              aria-describedby={mediaErrorMessage !== null ? `${stringId}-error` : undefined}
-              className="h-7 text-sm"
-            />
+            {accept !== undefined ? (
+              <SrcAutocomplete
+                id={stringId}
+                value={currentStringValue}
+                onChange={(raw) => {
+                  if (raw === '' && treatEmptyAsUndefined) {
+                    onChange(undefined);
+                    return;
+                  }
+                  onChange(raw);
+                }}
+                accept={accept}
+                placeholder={mediaPlaceholder}
+                autoFocus={isAutoFocused}
+                dataPropAutofocus={isAutoFocused ? '' : undefined}
+                ariaInvalid={mediaErrorMessage !== null ? true : undefined}
+                ariaDescribedBy={mediaErrorMessage !== null ? `${stringId}-error` : undefined}
+                className="h-7 text-sm"
+              />
+            ) : (
+              <Input
+                id={stringId}
+                type="text"
+                value={currentStringValue}
+                placeholder={mediaPlaceholder}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '' && treatEmptyAsUndefined) {
+                    onChange(undefined);
+                    return;
+                  }
+                  onChange(raw);
+                }}
+                autoFocus={isAutoFocused}
+                data-prop-autofocus={isAutoFocused ? '' : undefined}
+                aria-invalid={mediaErrorMessage !== null ? true : undefined}
+                aria-describedby={mediaErrorMessage !== null ? `${stringId}-error` : undefined}
+                className="h-7 text-sm"
+              />
+            )}
             {showUpload && <PropUploadButton accept={accept} onUploaded={(url) => onChange(url)} />}
           </div>
           {mediaErrorMessage !== null && (

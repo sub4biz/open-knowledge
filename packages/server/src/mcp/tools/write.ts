@@ -8,12 +8,10 @@ import {
 import { stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import { resolveContentDir, resolveLockDir } from '../../config/paths.ts';
-import { applyFolderFrontmatterPatch } from '../../content/folder-frontmatter-write.ts';
 import { dropEmpties } from '../../content/frontmatter-merge.ts';
 import { parentFolderOf } from '../../content/nested-folder-rules.ts';
 import { applySubstitution, todayIsoUtc } from '../../content/substitution.ts';
 import { resolveTemplatesAvailable } from '../../content/templates-resolver.ts';
-import { applyTemplateWrite } from '../../content/templates-write.ts';
 import { SUPPORTED_DOC_EXTENSIONS } from '../../doc-extensions.ts';
 import type { AgentIdentity } from '../agent-identity.ts';
 import {
@@ -29,6 +27,7 @@ import {
   documentResultBaseShape,
   HOCUSPOCUS_NOT_RUNNING_ERROR,
   httpPost,
+  httpPut,
   looseObjectArray,
   nestDocResult,
   normalizeDocName,
@@ -59,7 +58,7 @@ const BASE_DESCRIPTION = [
   '',
   '- `document` — Create or overwrite a doc via the CRDT layer [Requires: Hocuspocus server]. `{ path, content }`, or `{ path, template }` to instantiate from a folder template (mutually exclusive with `content`). Optional `frontmatter` (its own YAML) and `position` (`replace` default for a new doc; required for an existing one) — note supplying `frontmatter` alongside literal `content` forces `position: replace` (the only position that persists a YAML block), overriding an explicit `append`/`prepend`. Example: `{ document: { path: "meetings/standup", content: "# Standup\\n..." } }`.',
   '- `folder` — Create a NEW folder (optionally with its own properties) [Requires: Hocuspocus server]. `{ path, frontmatter? }`. To change an EXISTING folder use `edit`. Example: `{ folder: { path: "ideas" } }`.',
-  '- `template` — Create a reusable starting shape for new docs in a folder (fs-direct). `{ path: "<folder>/<name>", content, frontmatter: { title, description?, tags? } }`.',
+  '- `template` — Create a reusable starting shape for new docs in a folder. `{ path: "<folder>/<name>", content, frontmatter: { title, description?, tags? } }`.',
   '- `asset` — Upload a binary (image/file) via the media route [Requires: Hocuspocus server]. `{ path: "<folder>/<file.ext>", content(base64) | source(local path) }`.',
   '- `documents` — Batch: `[{ path, content?|template?, frontmatter?, position?, summary? }, ...]` written in order; the response reports each.',
   '- `summary` — Optional one-line user-outcome (≤80 chars) for the timeline, for a single `document`/`folder`/`template`/`asset` write. For a `documents` batch, give each entry its own `summary` instead (a top-level `summary` is ignored on the batch path). Avoid secrets or PII — persisted to git history.',
@@ -281,7 +280,6 @@ async function writeOneDoc(
 async function handleFolder(
   folder: { path: string; frontmatter?: FrontmatterPatch },
   summary: string | undefined,
-  contentDir: string,
   url: string | undefined,
   deps: WriteDeps,
 ) {
@@ -303,35 +301,38 @@ async function handleFolder(
 
   const lines = [`Created folder ${folder.path}.`];
   if (folder.frontmatter !== undefined && Object.keys(folder.frontmatter).length > 0) {
-    const fm = applyFolderFrontmatterPatch({
-      anchorDir: contentDir,
-      folderRel: folder.path,
-      patch: folder.frontmatter as Record<string, unknown>,
+    const fm = await httpPut(url, '/api/folder-config', {
+      path: folder.path,
+      frontmatter: folder.frontmatter,
+      ...(summary !== undefined ? { summary } : {}),
+      ...agentIdentityFields(identity),
     });
     if (!fm.ok) {
       return textPlusStructured(
-        `Created folder ${folder.path}, but writing its properties failed: ${fm.error.message}. Use edit({ folder: { path: "${folder.path}", frontmatter } }) to retry the properties.`,
-        { folder: { ok: true, path: folder.path, frontmatterError: fm.error.message } },
+        `Created folder ${folder.path}, but writing its properties failed: ${fm.error}. Use edit({ folder: { path: "${folder.path}", frontmatter } }) to retry the properties.`,
+        { folder: { ok: true, path: folder.path, frontmatterError: String(fm.error) } },
       );
     }
-    if (fm.action === 'written') lines.push(`Set folder properties (${fm.path}).`);
+    lines.push(`Set folder properties (${folder.path}/.ok/frontmatter.yml).`);
   }
   return textPlusStructured(lines.join('\n'), { folder: { ok: true, path: folder.path } });
 }
 
-function handleTemplate(
+async function handleTemplate(
   template: {
     path: string;
     content: string;
     frontmatter: { title: string } & Record<string, unknown>;
   },
-  cwd: string,
+  summary: string | undefined,
+  url: string | undefined,
+  deps: WriteDeps,
 ) {
   const resolved = resolveTemplatePath(template.path);
   if (!resolved.ok) return textResult(`Error: ${resolved.error}`, true);
   const { folder, name } = resolved;
-  const result = applyTemplateWrite({
-    projectDir: cwd,
+  if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
+  const result = await httpPut(url, '/api/template', {
     folder,
     name,
     body: template.content,
@@ -344,13 +345,17 @@ function handleTemplate(
         ? { tags: template.frontmatter.tags as string[] }
         : {}),
     },
+    ...(summary !== undefined ? { summary } : {}),
+    ...agentIdentityFields(deps.identityRef?.current),
   });
   if (!result.ok) {
-    return textResult(`Error: ${result.error.message}`, true);
+    return textResult(`Error: ${result.error}`, true);
   }
+  const created = result.created === true;
+  const path = typeof result.path === 'string' ? result.path : undefined;
   return textPlusStructured(
-    `${result.created ? 'Created' : 'Updated'} template "${name}" in ${folder || '(root)'} (${result.path}).`,
-    { template: { ok: true, path: result.path, created: result.created } },
+    `${created ? 'Created' : 'Updated'} template "${name}" in ${folder || '(root)'}${path ? ` (${path})` : ''}.`,
+    { template: { ok: true, path, created } },
   );
 }
 
@@ -764,9 +769,9 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
           autoOpen,
         );
       }
-      if (args.folder !== undefined)
-        return handleFolder(args.folder, args.summary, contentDir, url, deps);
-      if (args.template !== undefined) return handleTemplate(args.template, cwd);
+      if (args.folder !== undefined) return handleFolder(args.folder, args.summary, url, deps);
+      if (args.template !== undefined)
+        return handleTemplate(args.template, args.summary, url, deps);
       return handleAsset(args.asset as NonNullable<typeof args.asset>, cwd, url, deps);
     },
   );

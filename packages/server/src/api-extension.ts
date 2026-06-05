@@ -154,6 +154,8 @@ import {
   TagsListSuccessSchema,
   TemplateDeleteSuccessSchema,
   TemplateGetSuccessSchema,
+  TemplateMoveRequestSchema,
+  TemplateMoveSuccessSchema,
   TemplatePutRequestSchema,
   TemplatePutSuccessSchema,
   TemplatesListSuccessSchema,
@@ -207,6 +209,7 @@ import {
 } from './content/templates-resolver.ts';
 import {
   applyTemplateDelete,
+  applyTemplateMove,
   applyTemplateWrite,
   type TemplateFrontmatter,
 } from './content/templates-write.ts';
@@ -434,7 +437,7 @@ import { SuggestLinksTargetNotFoundError, suggestLinks } from './suggest-links.t
 import type { SyncEngine } from './sync-engine.ts';
 import type { TagIndex } from './tag-index.ts';
 import { getMeter, getTracer, withSpan, withSpanSync } from './telemetry.ts';
-import { getDocumentHistory } from './timeline-query.ts';
+import { getDocumentHistory, getFolderTimeline } from './timeline-query.ts';
 
 let _httpDurationHist: ReturnType<ReturnType<typeof getMeter>['createHistogram']> | null = null;
 function httpDurationHist(): ReturnType<ReturnType<typeof getMeter>['createHistogram']> {
@@ -2983,6 +2986,50 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     }
   }
 
+  function okArtifactKey(
+    kind: 'template' | 'folder-frontmatter' | 'folder',
+    folder: string,
+    name?: string,
+  ): string {
+    const base = folder.replace(/\/$/, '');
+    const prefix = base === '' ? '' : `${base}/`;
+    if (kind === 'template') return `${prefix}.ok/templates/${name}`;
+    if (kind === 'folder-frontmatter') return `${prefix}.ok/frontmatter`;
+    return base === '' ? '.' : base;
+  }
+
+  function attributeOkArtifactWrite(
+    actor: ReturnType<typeof extractActorIdentity>,
+    artifactKey: string,
+    subject: string,
+    previousPaths?: Array<{ from: string; to: string }>,
+  ): void {
+    if (actor.kind !== 'agent' && actor.kind !== 'principal') return;
+    const summaryFields = summaryResponseFields(actor.summary);
+    recordContributor(
+      artifactKey,
+      actor.writerId,
+      actor.displayName,
+      actor.colorSeed,
+      subject,
+      actor.actor,
+      summaryFields.stored,
+      previousPaths,
+    );
+  }
+
+  async function commitOkArtifactWrite(context: string): Promise<void> {
+    if (!flushContributors) return;
+    try {
+      await flushContributors();
+    } catch (flushErr) {
+      console.warn(
+        `[${context}] flushContributors failed; attribution stays queued for the next flush:`,
+        flushErr,
+      );
+    }
+  }
+
   const handleAgentWrite = withValidation(
     AgentWriteRequestSchema,
     async (_req, res, body) => {
@@ -5121,13 +5168,14 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
 
       const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
       const docName = url.searchParams.get('docName') ?? '';
+      const folderParam = url.searchParams.get('folder');
       const branch = url.searchParams.get('branch') ?? getCurrentBranch?.() ?? 'main';
-      if (!docName) {
+      if (!docName && folderParam === null) {
         errorResponse(
           res,
           400,
           'urn:ok:error:invalid-request',
-          'docName query parameter is required.',
+          'A docName or folder query parameter is required.',
           { handler: 'history' },
         );
         return;
@@ -5137,6 +5185,22 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
         errorResponse(res, 400, 'urn:ok:error:invalid-request', 'Invalid branch name.', {
           handler: 'history',
         });
+        return;
+      }
+
+      if (folderParam !== null && !docName) {
+        const validated = validateFolderRel(folderParam, res, 'folder', 'history');
+        if (!validated) return;
+        const rawFolderLimit = Number(url.searchParams.get('limit') ?? '50');
+        const folderLimit = Math.min(200, Number.isFinite(rawFolderLimit) ? rawFolderLimit : 50);
+        const rawFolderOffset = Number(url.searchParams.get('offset') ?? '0');
+        const folderOffset = Math.max(0, Number.isFinite(rawFolderOffset) ? rawFolderOffset : 0);
+        const result = await getFolderTimeline(shadow, validated.folderRel, contentRoot ?? '.', {
+          branch,
+          limit: folderLimit,
+          offset: folderOffset,
+        });
+        successResponse(res, 200, HistorySuccessSchema, { ...result }, { handler: 'history' });
         return;
       }
 
@@ -9478,6 +9542,34 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     return true;
   }
 
+  function findTemplateLeafToRoot(
+    resolvedContentDir: string,
+    folderRel: string,
+    name: string,
+  ): { abs: string; folder: string; scope: 'local' | 'inherited' } | null {
+    const segments = folderRel === '' ? [] : folderRel.split('/');
+    for (let depth = segments.length; depth >= 0; depth--) {
+      const ancestorFolder = depth === 0 ? '' : segments.slice(0, depth).join('/');
+      const ancestorAbs =
+        ancestorFolder === '' ? resolvedContentDir : resolve(resolvedContentDir, ancestorFolder);
+      if (
+        ancestorAbs !== resolvedContentDir &&
+        !ancestorAbs.startsWith(`${resolvedContentDir}${sep}`)
+      ) {
+        continue;
+      }
+      const candidate = resolve(ancestorAbs, '.ok', 'templates', `${name}.md`);
+      if (existsSync(candidate)) {
+        return {
+          abs: candidate,
+          folder: ancestorFolder,
+          scope: depth === segments.length ? 'local' : 'inherited',
+        };
+      }
+    }
+    return null;
+  }
+
   function pickFrontmatterFields(raw: unknown): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
@@ -9562,6 +9654,16 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     FolderConfigPutRequestSchema,
     async (_req, res, body) => {
       try {
+        const actor = extractActorIdentity(
+          body as unknown as Record<string, unknown>,
+          getPrincipal,
+        );
+        if (actor.kind === 'invalid-summary') {
+          errorResponse(res, 400, 'urn:ok:error:invalid-request', 'Summary must be a string.', {
+            handler: 'folder-config-put',
+          });
+          return;
+        }
         const validated = validateFolderRel(body.path, res, 'path', 'folder-config-put');
         if (!validated) return;
 
@@ -9587,6 +9689,14 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
             return;
           }
           allApplied.push({ path: result.path, action: result.action });
+          if (result.action !== 'noop') {
+            attributeOkArtifactWrite(
+              actor,
+              okArtifactKey('folder-frontmatter', validated.folderRel),
+              `folder-frontmatter-${result.action === 'deleted' ? 'delete' : 'edit'}: ${result.path}`,
+            );
+            await commitOkArtifactWrite('folder-config-put');
+          }
         }
 
         successResponse(
@@ -9612,7 +9722,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
   function checkTemplateConflictGate(
     folder: string,
     name: string,
-    handler: 'template-put' | 'template-delete',
+    handler: 'template-put' | 'template-delete' | 'template-move',
     res: ServerResponse,
   ): boolean {
     if (!name) return false;
@@ -9662,12 +9772,15 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     if (req.method === 'PUT') {
       return handleTemplatePut(req, res);
     }
+    if (req.method === 'POST') {
+      return handleTemplateMove(req, res);
+    }
     if (req.method === 'DELETE') {
       return handleTemplateDelete(req, res);
     }
     errorResponse(res, 405, 'urn:ok:error:method-not-allowed', 'Method not allowed.', {
       handler: 'template',
-      extraHeaders: { Allow: 'GET, PUT, DELETE' },
+      extraHeaders: { Allow: 'GET, PUT, POST, DELETE' },
     });
   }
 
@@ -9707,39 +9820,15 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
         if (!validated) return;
         const { folderRel, resolvedContentDir } = validated;
 
-        const segments = folderRel === '' ? [] : folderRel.split('/');
-        let foundAbs: string | null = null;
-        let foundFolder: string | null = null;
-        let foundScope: 'local' | 'inherited' | null = null;
-
-        for (let depth = segments.length; depth >= 0; depth--) {
-          const ancestorFolder = depth === 0 ? '' : segments.slice(0, depth).join('/');
-          const ancestorAbs =
-            ancestorFolder === ''
-              ? resolvedContentDir
-              : resolve(resolvedContentDir, ancestorFolder);
-          if (
-            ancestorAbs !== resolvedContentDir &&
-            !ancestorAbs.startsWith(`${resolvedContentDir}${sep}`)
-          ) {
-            continue;
-          }
-          const candidate = resolve(ancestorAbs, '.ok', 'templates', `${name}.md`);
-          if (existsSync(candidate)) {
-            foundAbs = candidate;
-            foundFolder = ancestorFolder;
-            foundScope = depth === segments.length ? 'local' : 'inherited';
-            break;
-          }
-        }
-
-        if (!foundAbs || foundFolder === null || foundScope === null) {
+        const found = findTemplateLeafToRoot(resolvedContentDir, folderRel, name);
+        if (!found) {
           errorResponse(res, 404, 'urn:ok:error:template-not-found', 'Template not found.', {
             handler: 'template-get',
             detail: `Template "${name}" not found for folder "${folderRel || '.'}". Walked leaf → root.`,
           });
           return;
         }
+        const { abs: foundAbs, folder: foundFolder, scope: foundScope } = found;
 
         const raw = await readFile(foundAbs, 'utf-8');
         const { frontmatter, body } = parseTemplateFile(raw);
@@ -9779,6 +9868,16 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     TemplatePutRequestSchema,
     async (_req, res, body) => {
       try {
+        const actor = extractActorIdentity(
+          body as unknown as Record<string, unknown>,
+          getPrincipal,
+        );
+        if (actor.kind === 'invalid-summary') {
+          errorResponse(res, 400, 'urn:ok:error:invalid-request', 'Summary must be a string.', {
+            handler: 'template-put',
+          });
+          return;
+        }
         const name = body.name;
         if (!validateTemplateName(name, res, 'template-put')) return;
         const validated = validateFolderRel(body.folder, res, 'folder', 'template-put');
@@ -9809,6 +9908,12 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
           });
           return;
         }
+        attributeOkArtifactWrite(
+          actor,
+          okArtifactKey('template', validated.folderRel, name),
+          `${result.created ? 'template-create' : 'template-edit'}: ${result.path}`,
+        );
+        await commitOkArtifactWrite('template-put');
         successResponse(
           res,
           200,
@@ -9845,6 +9950,26 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
         );
         if (!validated) return;
 
+        const sp = url.searchParams;
+        const actor = extractActorIdentity(
+          {
+            agentId: sp.get('agentId') ?? undefined,
+            agentName: sp.get('agentName') ?? undefined,
+            colorSeed: sp.get('colorSeed') ?? undefined,
+            clientName: sp.get('clientName') ?? undefined,
+            clientVersion: sp.get('clientVersion') ?? undefined,
+            label: sp.get('label') ?? undefined,
+            summary: sp.get('summary') ?? undefined,
+          },
+          getPrincipal,
+        );
+        if (actor.kind === 'invalid-summary') {
+          errorResponse(res, 400, 'urn:ok:error:invalid-request', 'Summary must be a string.', {
+            handler: 'template-delete',
+          });
+          return;
+        }
+
         if (checkTemplateConflictGate(validated.folderRel, name, 'template-delete', res)) return;
 
         const deleteInput: Parameters<typeof applyTemplateDelete>[0] = {
@@ -9870,6 +9995,14 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
           });
           return;
         }
+        if (result.existed) {
+          attributeOkArtifactWrite(
+            actor,
+            okArtifactKey('template', validated.folderRel, name),
+            `template-delete: ${result.path}`,
+          );
+          await commitOkArtifactWrite('template-delete');
+        }
         successResponse(
           res,
           200,
@@ -9888,6 +10021,166 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
       }
     },
     { handler: 'template-delete', method: 'DELETE', skipBodyParse: true },
+  );
+
+  const handleTemplateMove = withValidation(
+    TemplateMoveRequestSchema,
+    async (_req, res, body) => {
+      try {
+        const actor = extractActorIdentity(
+          body as unknown as Record<string, unknown>,
+          getPrincipal,
+        );
+        if (actor.kind === 'invalid-summary') {
+          errorResponse(res, 400, 'urn:ok:error:invalid-request', 'Summary must be a string.', {
+            handler: 'template-move',
+          });
+          return;
+        }
+        if (!validateTemplateName(body.fromName, res, 'template-move')) return;
+        if (!validateTemplateName(body.toName, res, 'template-move')) return;
+        const fromValidated = validateFolderRel(body.fromFolder, res, 'folder', 'template-move');
+        if (!fromValidated) return;
+        const toValidated = validateFolderRel(body.toFolder, res, 'folder', 'template-move');
+        if (!toValidated) return;
+
+        if (
+          checkTemplateConflictGate(fromValidated.folderRel, body.fromName, 'template-move', res)
+        ) {
+          return;
+        }
+
+        const result = await applyTemplateMove({
+          projectDir: fromValidated.resolvedContentDir,
+          fromFolder: fromValidated.folderRel,
+          fromName: body.fromName,
+          toFolder: toValidated.folderRel,
+          toName: body.toName,
+          relocate: async (fromAbs, toAbs) => {
+            const movedWithGit = await renameTrackedPathInGit(projectDir, fromAbs, toAbs);
+            if (!movedWithGit) renamePathOnDisk(fromAbs, toAbs);
+            return movedWithGit;
+          },
+        });
+
+        if (!result.ok) {
+          if (result.error.code === 'TEMPLATE_NOT_FOUND') {
+            const found = findTemplateLeafToRoot(
+              fromValidated.resolvedContentDir,
+              fromValidated.folderRel,
+              body.fromName,
+            );
+            if (found?.scope === 'inherited') {
+              errorResponse(
+                res,
+                400,
+                'urn:ok:error:invalid-request',
+                `Template "${body.fromName}" is inherited from "${found.folder || '(root)'}", not local to "${fromValidated.folderRel || '(root)'}". Move it from the folder that owns it, or create a local copy here first (then move that).`,
+                { handler: 'template-move', detail: 'TEMPLATE_INHERITED' },
+              );
+              return;
+            }
+            errorResponse(res, 404, 'urn:ok:error:template-not-found', 'Template not found.', {
+              handler: 'template-move',
+              detail: result.error.message,
+            });
+            return;
+          }
+          if (result.error.code === 'TEMPLATE_EXISTS') {
+            errorResponse(res, 409, 'urn:ok:error:doc-already-exists', result.error.message, {
+              handler: 'template-move',
+              detail: result.error.code,
+            });
+            return;
+          }
+          const status =
+            result.error.code === 'WRITE_ERROR' || result.error.code === 'MOVE_FAILED' ? 500 : 400;
+          errorResponse(
+            res,
+            status,
+            status === 500 ? 'urn:ok:error:internal-server-error' : 'urn:ok:error:invalid-request',
+            status === 500 ? 'Failed to move template.' : 'Invalid template move request.',
+            {
+              handler: 'template-move',
+              detail: result.error.code,
+              cause: new Error(result.error.message),
+            },
+          );
+          return;
+        }
+
+        let contentEditError: { code: string; message: string } | null = null;
+        if (body.body !== undefined || body.frontmatter !== undefined) {
+          let writeBody: string | null;
+          if (typeof body.body === 'string') {
+            writeBody = body.body;
+          } else {
+            try {
+              writeBody = parseTemplateFile(
+                readFileSync(resolve(toValidated.resolvedContentDir, result.toPath), 'utf-8'),
+              ).body;
+            } catch {
+              writeBody = null;
+            }
+          }
+          if (writeBody === null) {
+            contentEditError = {
+              code: 'READ_FAILED',
+              message:
+                'could not read the moved template to apply the metadata change; the move succeeded with the original content intact — retry the edit',
+            };
+          } else {
+            const writeResult = applyTemplateWrite({
+              projectDir: toValidated.resolvedContentDir,
+              folder: toValidated.folderRel,
+              name: body.toName,
+              body: writeBody,
+              frontmatter: pickFrontmatterFields(body.frontmatter) satisfies TemplateFrontmatter,
+            });
+            if (!writeResult.ok) contentEditError = writeResult.error;
+          }
+        }
+
+        attributeOkArtifactWrite(
+          actor,
+          okArtifactKey('template', toValidated.folderRel, body.toName),
+          `template-rename: ${result.fromPath} -> ${result.toPath}`,
+          [{ from: result.fromPath, to: result.toPath }],
+        );
+        await commitOkArtifactWrite('template-move');
+        signalChannel?.('files');
+
+        if (contentEditError) {
+          const isServerError =
+            contentEditError.code === 'WRITE_ERROR' || contentEditError.code === 'READ_FAILED';
+          errorResponse(
+            res,
+            isServerError ? 500 : 400,
+            isServerError ? 'urn:ok:error:internal-server-error' : 'urn:ok:error:invalid-request',
+            `Template moved to "${result.toPath}", but updating its content failed.`,
+            {
+              handler: 'template-move',
+              detail: contentEditError.code,
+              cause: new Error(contentEditError.message),
+            },
+          );
+          return;
+        }
+        successResponse(
+          res,
+          200,
+          TemplateMoveSuccessSchema,
+          { from: result.fromPath, to: result.toPath, committed: result.committed },
+          { handler: 'template-move' },
+        );
+      } catch (e) {
+        errorResponse(res, 500, 'urn:ok:error:internal-server-error', 'Failed to move template.', {
+          handler: 'template-move',
+          cause: e,
+        });
+      }
+    },
+    { handler: 'template-move', method: 'POST' },
   );
 
   function deriveFolderSearchDocuments(

@@ -3,6 +3,7 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { ArrowDown, ArrowUp, ArrowUpDown, File, Folder, FolderOpen, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { FolderPropertiesCard } from '@/components/FolderPropertiesCard';
+import { FolderTimelineCard } from '@/components/FolderTimelineCard';
 import {
   buildFolderOverviewData,
   type FolderOverviewEntry,
@@ -186,6 +187,7 @@ export function FolderOverview({ folderPath }: { folderPath: string }) {
             onChange={refreshFolderConfig}
             folderConfigHandle={folderConfigHandle}
           />
+          <FolderTimelineCard folderPath={folderPath} />
           <div className="rounded-lg border">
             <Table>
               <TableHeader>

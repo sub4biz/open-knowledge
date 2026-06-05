@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyTemplateDelete, applyTemplateWrite } from './templates-write.ts';
+import { applyTemplateDelete, applyTemplateMove, applyTemplateWrite } from './templates-write.ts';
 
 describe('applyTemplateWrite', () => {
   let projectDir: string;
@@ -279,5 +279,142 @@ describe('applyTemplateDelete', () => {
   test('plants directories so we can verify cleanup edges', () => {
     mkdirSync(join(projectDir, 'sentinel'), { recursive: true });
     expect(existsSync(join(projectDir, 'sentinel'))).toBe(true);
+  });
+});
+
+describe('applyTemplateMove', () => {
+  let projectDir: string;
+
+  beforeEach(async () => {
+    projectDir = await mkdtemp(join(tmpdir(), 'tpl-move-'));
+  });
+
+  afterEach(async () => {
+    await rm(projectDir, { recursive: true, force: true });
+  });
+
+  const fsRelocate = async (from: string, to: string) => {
+    renameSync(from, to);
+    return false;
+  };
+
+  function seed(folder: string, name: string, body = '# T') {
+    applyTemplateWrite({ projectDir, folder, name, body, frontmatter: { title: 'T' } });
+  }
+  const tplPath = (folder: string, name: string) =>
+    join(projectDir, folder, '.ok', 'templates', `${name}.md`);
+
+  test('renames within the same folder', async () => {
+    seed('research', 'a', '# A');
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research',
+      fromName: 'a',
+      toFolder: 'research',
+      toName: 'b',
+      relocate: fsRelocate,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.committed).toBe(false);
+    expect(existsSync(tplPath('research', 'a'))).toBe(false);
+    expect(existsSync(tplPath('research', 'b'))).toBe(true);
+    expect(readFileSync(tplPath('research', 'b'), 'utf-8')).toContain('# A');
+  });
+
+  test('moves across folders and auto-cleans the emptied source .ok/', async () => {
+    seed('research', 'scorecard');
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research',
+      fromName: 'scorecard',
+      toFolder: 'projects',
+      toName: 'scorecard',
+      relocate: fsRelocate,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(existsSync(tplPath('projects', 'scorecard'))).toBe(true);
+    expect(result.cleanedEmpty.templatesDir).toBe(true);
+    expect(result.cleanedEmpty.okDir).toBe(true);
+    expect(existsSync(join(projectDir, 'research', '.ok'))).toBe(false);
+  });
+
+  test('propagates committed=true from a git-mv relocator', async () => {
+    seed('research', 'a');
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research',
+      fromName: 'a',
+      toFolder: 'research',
+      toName: 'b',
+      relocate: async (from, to) => {
+        renameSync(from, to);
+        return true;
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.committed).toBe(true);
+  });
+
+  test('404s when the source is absent (exact folder; inherited not resolved here)', async () => {
+    seed('research', 'a'); // ancestor copy only
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research/sub',
+      fromName: 'a',
+      toFolder: 'research/sub',
+      toName: 'b',
+      relocate: fsRelocate,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('TEMPLATE_NOT_FOUND');
+  });
+
+  test('409s when the destination already exists', async () => {
+    seed('research', 'a');
+    seed('research', 'b');
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research',
+      fromName: 'a',
+      toFolder: 'research',
+      toName: 'b',
+      relocate: fsRelocate,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('TEMPLATE_EXISTS');
+  });
+
+  test('rejects a no-op move (same path)', async () => {
+    seed('research', 'a');
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research',
+      fromName: 'a',
+      toFolder: 'research',
+      toName: 'a',
+      relocate: fsRelocate,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('NOOP');
+  });
+
+  test('rejects a traversal-escaping name', async () => {
+    const result = await applyTemplateMove({
+      projectDir,
+      fromFolder: 'research',
+      fromName: '../escape',
+      toFolder: 'research',
+      toName: 'b',
+      relocate: fsRelocate,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('BAD_NAME');
   });
 });

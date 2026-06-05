@@ -227,6 +227,13 @@ export {
 export { CodeBlockFidelity } from './extensions/code-block-fidelity.ts';
 export { EmphasisFidelity, StrongFidelity } from './extensions/emphasis-fidelity.ts';
 export { EscapeMark } from './extensions/escape-mark.ts';
+export { FootnoteDefinition } from './extensions/footnote-definition.ts';
+export {
+  collectFootnoteIdentifiers,
+  FootnoteReference,
+  findFootnoteDefinitionInsertPos,
+  nextFootnoteIdentifier,
+} from './extensions/footnote-reference.ts';
 export {
   FRONTMATTER_RE,
   prependFrontmatter,
@@ -745,6 +752,10 @@ export {
   TemplateFrontmatterSchema,
   type TemplateGetSuccess,
   TemplateGetSuccessSchema,
+  type TemplateMoveRequest,
+  TemplateMoveRequestSchema,
+  type TemplateMoveSuccess,
+  TemplateMoveSuccessSchema,
   type TemplatePayload,
   TemplatePayloadSchema,
   type TemplatePutRequest,

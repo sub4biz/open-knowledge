@@ -3,7 +3,6 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYaml } from 'yaml';
 import { type Config, ConfigSchema } from '../../config/schema.ts';
 import { register as registerDelete } from './delete.ts';
 import { register as registerEdit } from './edit.ts';
@@ -96,87 +95,38 @@ describe('delete — exactly-one-target teaching error', () => {
   });
 });
 
-describe('edit({ folder }) — fs-direct round-trip to <folder>/.ok/frontmatter.yml', () => {
-  test('sets, then merge-patches, then clears the folder frontmatter file', async () => {
-    const cwd = newProject();
-    const edit = capture(registerEdit, cwd);
-    const fmPath = join(cwd, 'meetings', '.ok', 'frontmatter.yml');
-
-    let r = await edit({
+describe('edit({ folder }) frontmatter — server-routed for attribution (PRD-6933 P2)', () => {
+  test('requires a running server (attribution lives server-side)', async () => {
+    const edit = capture(registerEdit, newProject());
+    const r = await edit({
       folder: { path: 'meetings', frontmatter: { title: 'Meetings', tags: ['m'] } },
     });
-    expect(r.isError).toBeUndefined();
-    expect(existsSync(fmPath)).toBe(true);
-    expect(parseYaml(readFileSync(fmPath, 'utf-8'))).toEqual({ title: 'Meetings', tags: ['m'] });
-
-    r = await edit({ folder: { path: 'meetings', frontmatter: { description: 'All-hands' } } });
-    expect(r.isError).toBeUndefined();
-    expect(parseYaml(readFileSync(fmPath, 'utf-8'))).toEqual({
-      title: 'Meetings',
-      tags: ['m'],
-      description: 'All-hands',
-    });
-
-    r = await edit({ folder: { path: 'meetings', frontmatter: { tags: null } } });
-    expect(r.isError).toBeUndefined();
-    expect(parseYaml(readFileSync(fmPath, 'utf-8'))).toEqual({
-      title: 'Meetings',
-      description: 'All-hands',
-    });
-
-    r = await edit({ folder: { path: 'meetings', frontmatter: {} } });
-    expect(r.isError).toBeUndefined();
-    expect(existsSync(fmPath)).toBe(false);
-  });
-
-  test('the on-disk shape has no glob/match key (the fossil is gone)', async () => {
-    const cwd = newProject();
-    const edit = capture(registerEdit, cwd);
-    await edit({ folder: { path: 'specs', frontmatter: { title: 'Specs' } } });
-    const parsed = parseYaml(readFileSync(join(cwd, 'specs', '.ok', 'frontmatter.yml'), 'utf-8'));
-    expect(parsed).not.toHaveProperty('match');
-    expect(parsed).not.toHaveProperty('rules');
+    expect(r.isError).toBe(true);
+    expect(textOf(r)).toContain('Hocuspocus server is not running');
   });
 });
 
-describe('write/edit/delete({ template }) — fs-direct round-trip', () => {
-  test('create → body edit → frontmatter patch → delete', async () => {
+describe('write/edit/delete({ template }) — server-routed for attribution (PRD-6933 P2)', () => {
+  test('mutations require a running server (attribution lives server-side)', async () => {
     const cwd = newProject();
     const write = capture(registerWrite, cwd);
     const edit = capture(registerEdit, cwd);
     const del = capture(registerDelete, cwd);
-    const tplPath = join(cwd, 'fishing-log', '.ok', 'templates', 'trip-log.md');
-
-    let r = await write({
-      template: {
-        path: 'fishing-log/trip-log',
-        content: '# {{date}}\n\nCatch: \n',
-        frontmatter: { title: 'Trip Log' },
-      },
-    });
-    expect(r.isError).toBeUndefined();
-    expect(existsSync(tplPath)).toBe(true);
-    expect(readFileSync(tplPath, 'utf-8')).toContain('Catch:');
-
-    r = await edit({
-      template: { path: 'fishing-log/trip-log', find: 'Catch:', replace: 'Total catch:' },
-    });
-    expect(r.isError).toBeUndefined();
-    expect(readFileSync(tplPath, 'utf-8')).toContain('Total catch:');
-    expect(readFileSync(tplPath, 'utf-8')).toContain('Trip Log');
-
-    r = await edit({
-      template: {
-        path: 'fishing-log/trip-log',
-        frontmatter: { description: 'one per trip' },
-      },
-    });
-    expect(r.isError).toBeUndefined();
-    expect(readFileSync(tplPath, 'utf-8')).toContain('description: one per trip');
-
-    r = await del({ template: { path: 'fishing-log/trip-log' } });
-    expect(r.isError).toBeUndefined();
-    expect(existsSync(tplPath)).toBe(false);
+    const results = [
+      await write({
+        template: {
+          path: 'fishing-log/trip-log',
+          content: '# x',
+          frontmatter: { title: 'Trip Log' },
+        },
+      }),
+      await edit({ template: { path: 'fishing-log/trip-log', find: 'x', replace: 'y' } }),
+      await del({ template: { path: 'fishing-log/trip-log' } }),
+    ];
+    for (const r of results) {
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toContain('Hocuspocus server is not running');
+    }
   });
 
   test('invalid template name is rejected by the name grammar', async () => {
