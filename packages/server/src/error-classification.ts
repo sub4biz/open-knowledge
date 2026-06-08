@@ -1,6 +1,4 @@
-
 import type { SyncErrorCode } from '@inkeep/open-knowledge-core';
-
 
 type NetworkSubclass = 'dns' | 'timeout' | '5xx' | '429' | 'connection-refused' | 'unknown-network';
 type AuthSubclass = '401' | '403' | 'expired-token' | 'scope-mismatch' | 'unknown-auth';
@@ -72,7 +70,6 @@ export function deriveUserFacingCode(
   return null;
 }
 
-
 function extractStderr(error: Error): string {
   const raw = (error as unknown as Record<string, unknown>).git?.toString() ?? error.message ?? '';
   return raw;
@@ -81,7 +78,6 @@ function extractStderr(error: Error): string {
 function matchesAny(haystack: string, patterns: RegExp[]): boolean {
   return patterns.some((re) => re.test(haystack));
 }
-
 
 const AUTH_PATTERNS: RegExp[] = [
   /\b(401|403)\b/,
@@ -102,7 +98,6 @@ const SCOPE_MISMATCH_PATTERNS: RegExp[] = [
   /missing.*scope/i,
   /required scope/i,
 ];
-
 
 const NON_FAST_FORWARD_PATTERNS: RegExp[] = [
   /non-fast-forward/i,
@@ -135,7 +130,6 @@ const MERGE_CONFLICT_PATTERNS: RegExp[] = [
   /(?:^|\n)CONFLICTS:\s/i,
 ];
 
-
 const LFS_PATTERNS: RegExp[] = [/lfs.*quota/i, /exceeded.*bandwidth/i, /lfs storage/i];
 
 const LARGE_FILE_PATTERNS: RegExp[] = [
@@ -158,7 +152,6 @@ const SECRET_DETECTED_PATTERNS: RegExp[] = [
   /token.*detected/i,
 ];
 
-
 const INDEX_LOCK_PATTERNS: RegExp[] = [
   /\.git\/index\.lock/i,
   /another git process/i,
@@ -178,7 +171,6 @@ const DIRTY_TREE_PATTERNS: RegExp[] = [
 ];
 
 const DISK_FULL_PATTERNS: RegExp[] = [/no space left on device/i, /disk quota exceeded/i, /ENOSPC/];
-
 
 const NETWORK_PATTERNS: RegExp[] = [
   /could not resolve host/i,
@@ -209,7 +201,6 @@ const HTTP_429_PATTERNS: RegExp[] = [
   /rate.?limit/i,
   /too many requests/i,
 ];
-
 
 type ClassifiedErrorBase = Omit<ClassifiedError, 'userFacingCode'>;
 

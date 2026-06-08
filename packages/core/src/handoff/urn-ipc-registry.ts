@@ -1,4 +1,3 @@
-
 import type { ProblemType } from '../schemas/api/_envelope.ts';
 import { ProblemTypeSchema } from '../schemas/api/_envelope.ts';
 
@@ -78,6 +77,7 @@ export const URN_HTTP_ONLY: ReadonlySet<ProblemType> = new Set<ProblemType>([
   'urn:ok:error:template-not-found',
   'urn:ok:error:unsupported-asset-type',
   'urn:ok:error:asset-not-found',
+  'urn:ok:error:single-file-mode',
   'urn:ok:error:collab-server-not-running',
   'urn:ok:error:gateway-timeout',
   'urn:ok:error:handoff-target-not-installed',

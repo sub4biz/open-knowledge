@@ -203,6 +203,7 @@ export interface PersistenceOptions {
   configHomedirOverride?: string;
   onConfigRejected?: (docName: string, error: ConfigValidationError) => void;
   mdManager?: MarkdownManager;
+  ephemeral?: boolean;
 }
 
 export function captureDocSnapshotForPersistence(document: Y.Doc): {
@@ -281,13 +282,11 @@ function toStoreFailure(err: unknown): StoreFailure {
   try {
     const c = (err as NodeJS.ErrnoException | null)?.code;
     if (typeof c === 'string') code = c;
-  } catch {
-  }
+  } catch {}
   let message = 'unknown store error';
   try {
     message = err instanceof Error ? err.message : String(err);
-  } catch {
-  }
+  } catch {}
   return { code, message };
 }
 
@@ -319,6 +318,7 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
   const onAgentCommit = options?.onAgentCommit;
   const onDiskFlush = options?.onDiskFlush;
   const mgr = options?.mdManager ?? mdManager;
+  const ephemeral = options?.ephemeral ?? false;
 
   const configLkgCache = new Map<string, string>();
   const configPersistenceCtx: ConfigPersistenceCtx = {
@@ -327,6 +327,7 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
     lkgCache: configLkgCache,
     homedirOverride: options?.configHomedirOverride,
     onConfigRejected: options?.onConfigRejected,
+    ephemeral,
   };
 
   const tripwireResetFailedDocs = new Set<string>();
@@ -342,12 +343,10 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
 
   const agentWriteStores = new Set<string>();
 
-
   const gitEnabled = options?.gitEnabled ?? true;
   const commitDebounceMs = options?.commitDebounceMs ?? 15_000;
   const wipRef = options?.wipRef ?? 'refs/wip/main';
   const getCurrentBranch = options?.getCurrentBranch;
-
 
   let gitCommitTimer: ReturnType<typeof setTimeout> | null = null;
   let consecutiveGitFailures = 0;
@@ -578,8 +577,7 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
     } finally {
       try {
         tracedUnlinkSync(tmpIndex);
-      } catch {
-      }
+      } catch {}
     }
   }
 
@@ -630,6 +628,28 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
 
   async function _awaitPendingCommit(): Promise<void> {
     if (commitInFlight) await commitInFlight;
+  }
+
+  function canonicalizeForEphemeralBaseline(rawBytes: string, documentName: string): string | null {
+    try {
+      const { frontmatter, body } = stripFrontmatter(rawBytes);
+      const parseOpts = options?.resolveEmbed
+        ? {
+            resolveEmbed: options.resolveEmbed,
+            resolveSize: options?.resolveSize,
+            sourcePath: documentName,
+          }
+        : undefined;
+      const json = mgr.parseWithFallback(body, parseOpts);
+      const canonicalBody = mgr.serialize(json);
+      return normalizeBridge(prependFrontmatter(frontmatter, canonicalBody));
+    } catch (err) {
+      log.debug(
+        { err, documentName },
+        '[g8] ephemeral canonical baseline failed; falling through to write',
+      );
+      return null;
+    }
   }
 
   function reconcileFragmentNow(document: Y.Doc, body: string, documentName: string): void {
@@ -773,8 +793,15 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
         }
 
         const currentBase = getReconciledBase(documentName);
-        const markdownSemanticallyUnchanged =
-          currentBase !== undefined && normalizeBridge(markdown) === normalizeBridge(currentBase);
+        const normalizedMarkdown = normalizeBridge(markdown);
+        let markdownSemanticallyUnchanged =
+          currentBase !== undefined && normalizedMarkdown === normalizeBridge(currentBase);
+        if (!markdownSemanticallyUnchanged && ephemeral && currentBase !== undefined) {
+          const canonicalBase = canonicalizeForEphemeralBaseline(currentBase, documentName);
+          if (canonicalBase !== null && normalizedMarkdown === canonicalBase) {
+            markdownSemanticallyUnchanged = true;
+          }
+        }
         if (markdownSemanticallyUnchanged) {
           if (contributorCount() > 0) scheduleGitCommit();
           persistenceDeferCounts.delete(documentName);
@@ -992,8 +1019,7 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
         } catch (e) {
           try {
             tracedUnlinkSync(tmpPath);
-          } catch {
-          }
+          } catch {}
           persistenceDeferCounts.delete(documentName);
           storeFailures.set(documentName, toStoreFailure(e));
           log.error({ err: e, documentName }, `[persistence] Failed to save ${documentName}`);

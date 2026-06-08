@@ -1,4 +1,3 @@
-
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { z } from 'zod';
 
@@ -31,10 +30,10 @@ export const ApiConfigSuccessSchema = z
     previewUrl: z.string().nullable(),
     port: z.number(),
     paneTarget: z.string().nullable(),
+    singleFile: z.boolean().default(false),
   })
   .loose() satisfies StandardSchemaV1;
 export type ApiConfigSuccess = z.infer<typeof ApiConfigSuccessSchema>;
-
 
 export const ProblemTypeSchema = z.enum([
   'urn:ok:error:malformed-upload',
@@ -90,6 +89,7 @@ export const ProblemTypeSchema = z.enum([
   'urn:ok:error:template-not-found',
   'urn:ok:error:unsupported-asset-type',
   'urn:ok:error:asset-not-found',
+  'urn:ok:error:single-file-mode',
   'urn:ok:error:collab-server-not-running',
   'urn:ok:error:gateway-timeout',
   'urn:ok:error:cursor-not-installed',
@@ -115,7 +115,6 @@ export const ProblemDetailsSchema = z
   })
   .loose() satisfies StandardSchemaV1;
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>;
-
 
 export const UploadRequestSchema = z
   .object({

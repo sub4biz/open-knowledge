@@ -380,6 +380,25 @@ describe('editor tab state', () => {
     ).toEqual(['docs/a', 'Untitled']);
   });
 
+  test('filterOpenTabsForKnownTargets keeps the hash doc even when absent from pages', () => {
+    expect(
+      filterOpenTabsForKnownTargets(['event_watcher'], {
+        pages: new Set(),
+        folderPaths: new Set(),
+        assetPaths: new Set(),
+        keepHashDocName: 'event_watcher',
+      }),
+    ).toEqual(['event_watcher']);
+    expect(
+      filterOpenTabsForKnownTargets(['event_watcher', 'old-doc'], {
+        pages: new Set(),
+        folderPaths: new Set(),
+        assetPaths: new Set(),
+        keepHashDocName: 'event_watcher',
+      }),
+    ).toEqual(['event_watcher']);
+  });
+
   test('filterOpenTabsForKnownTargets drops stale asset tabs', () => {
     expect(
       filterOpenTabsForKnownTargets(
@@ -791,7 +810,6 @@ describe('applyDragPinMutation — drag-mutable pin state', () => {
 });
 
 describe('tabParts — non-`.md` call-site shapes (folder + asset)', () => {
-
   test('folder shape: docExt `/` produces baseName-with-trailing-slash label', () => {
     expect(tabParts('docs/guides', '/')).toEqual({
       baseName: 'guides',

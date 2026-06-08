@@ -113,6 +113,8 @@ export interface OkDesktopConfig {
   readonly projectPath: string;
   readonly projectName: string;
   readonly mode: OkDesktopMode;
+  readonly singleFile: boolean;
+  readonly initialDoc: string | null;
 }
 
 type OkMenuAction =
@@ -360,9 +362,7 @@ export type OkLocalOpAuthReposResponse =
   | { ok: true; host: string; repos: OkLocalOpRepoEntry[] }
   | { ok: false; error: string };
 
-export type OkLocalOpAuthSignoutResponse =
-  | { ok: true }
-  | { ok: false; error?: string };
+export type OkLocalOpAuthSignoutResponse = { ok: true } | { ok: false; error?: string };
 
 type OkEditorActiveTargetSnapshot =
   | { readonly kind: 'doc'; readonly identifier: string }

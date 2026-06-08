@@ -1224,11 +1224,14 @@ export function DocumentProvider({ children }: { children: ReactNode }) {
     },
     syncOpenTabsWithKnownTargets: ({ pages, folderPaths, assetPaths }) => {
       const keepMissingDocName = activeTarget?.kind === 'missing' ? activeTarget.target : null;
+      const keepHashDocName =
+        typeof window !== 'undefined' ? docNameFromHash(window.location.hash) : null;
       const nextOpenTabs = filterOpenTabsForKnownTargets(openTabs, {
         pages,
         folderPaths,
         assetPaths,
         keepMissingDocName,
+        keepHashDocName,
       });
       if (nextOpenTabs.length === openTabs.length) return;
 
@@ -1453,8 +1456,7 @@ if (import.meta.hot) {
         delete (window as { __test_rejectSyncPromise?: unknown }).__test_rejectSyncPromise;
         delete (window as { __test_armPendingRejection?: unknown }).__test_armPendingRejection;
         delete (window as { __test_closeActiveWebSocket?: unknown }).__test_closeActiveWebSocket;
-      } catch {
-      }
+      } catch {}
     }
   });
 }

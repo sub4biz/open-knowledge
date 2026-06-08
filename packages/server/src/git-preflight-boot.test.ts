@@ -99,7 +99,7 @@ describe('bootServer git-preflight', () => {
         contentDir: projectDir,
         port: 0,
         quiet: true,
-        gitEnabled: false,
+        gitEnabled: true,
         idleShutdownMs: null,
         attachUiSibling: false,
         log: logger,
@@ -150,7 +150,7 @@ describe('bootServer git-preflight', () => {
         contentDir: projectDir,
         port: 0,
         quiet: true,
-        gitEnabled: false,
+        gitEnabled: true,
         idleShutdownMs: null,
         attachUiSibling: false,
         log: logger,
@@ -202,7 +202,7 @@ describe('bootServer git-preflight', () => {
         contentDir: projectDir,
         port: 0,
         quiet: true,
-        gitEnabled: false,
+        gitEnabled: true,
         idleShutdownMs: null,
         attachUiSibling: false,
         log: logger,
@@ -247,7 +247,7 @@ describe('bootServer git-preflight', () => {
         contentDir: projectDir,
         port: 0,
         quiet: true,
-        gitEnabled: false,
+        gitEnabled: true,
         idleShutdownMs: null,
         attachUiSibling: false,
         log: logger,
@@ -263,6 +263,47 @@ describe('bootServer git-preflight', () => {
     const e = caught as Error & { name?: string };
     expect(e.name).not.toBe('GitNotAvailableError');
     expect(e.name).not.toBe('GitTooOldError');
+    expect(capturedStderr).toBe('');
+    expect(entries).toHaveLength(0);
+  });
+
+  test('gitEnabled:false skips the preflight entirely (no-project ephemeral single-file shape)', async () => {
+    const projectDir = await mkdtemp(resolve(tmpDir, 'state-'));
+    seedOkScaffold(projectDir);
+
+    const { entries, logger } = createCaptureLogger();
+
+    let capturedStderr = '';
+    const originalStderrWrite = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: unknown) => {
+      capturedStderr += String(chunk);
+      return true;
+    }) as never;
+
+    let preflightCalled = false;
+    let booted: Awaited<ReturnType<typeof bootServer>> | null = null;
+    try {
+      booted = await bootServer({
+        config: TEST_CONFIG,
+        contentDir: projectDir,
+        port: 0,
+        quiet: true,
+        gitEnabled: false,
+        idleShutdownMs: null,
+        attachUiSibling: false,
+        log: logger,
+        gitPreflight: () => {
+          preflightCalled = true;
+          throw new GitNotAvailableError('linux', makeGuidance());
+        },
+      });
+      expect(booted.port).toBeGreaterThan(0);
+    } finally {
+      process.stderr.write = originalStderrWrite;
+      if (booted) await booted.destroy();
+    }
+
+    expect(preflightCalled).toBe(false);
     expect(capturedStderr).toBe('');
     expect(entries).toHaveLength(0);
   });
@@ -310,7 +351,7 @@ describe('bootServer git-preflight OTEL emission', () => {
           contentDir: projectDir,
           port: 0,
           quiet: true,
-          gitEnabled: false,
+          gitEnabled: true,
           idleShutdownMs: null,
           attachUiSibling: false,
           log: logger,
@@ -318,8 +359,7 @@ describe('bootServer git-preflight OTEL emission', () => {
             throw new GitNotAvailableError('linux', makeGuidance());
           },
         });
-      } catch {
-      }
+      } catch {}
     } finally {
       process.stderr.write = originalStderrWrite;
     }
@@ -347,7 +387,7 @@ describe('bootServer git-preflight OTEL emission', () => {
           contentDir: projectDir,
           port: 0,
           quiet: true,
-          gitEnabled: false,
+          gitEnabled: true,
           idleShutdownMs: null,
           attachUiSibling: false,
           log: logger,
@@ -355,8 +395,7 @@ describe('bootServer git-preflight OTEL emission', () => {
             throw new GitTooOldError('linux', '2.20.0', '2.31.0', '/usr/bin/git', makeGuidance());
           },
         });
-      } catch {
-      }
+      } catch {}
     } finally {
       process.stderr.write = originalStderrWrite;
     }
@@ -390,14 +429,13 @@ describe('bootServer git-preflight OTEL emission', () => {
           contentDir: projectDir,
           port: 0,
           quiet: true,
-          gitEnabled: false,
+          gitEnabled: true,
           idleShutdownMs: null,
           attachUiSibling: false,
           log: logger,
           gitPreflight: () => ok,
         });
-      } catch {
-      }
+      } catch {}
     } finally {
       process.stderr.write = originalStderrWrite;
     }

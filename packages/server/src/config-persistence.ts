@@ -1,4 +1,3 @@
-
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import {
@@ -70,6 +69,7 @@ export interface ConfigPersistenceCtx {
   lkgCache: Map<string, string>;
   homedirOverride?: string;
   onConfigRejected?: (docName: string, error: ConfigValidationError) => void;
+  ephemeral?: boolean;
 }
 
 export function configDocAbsPath(documentName: string, ctx: ConfigPersistenceCtx): string {
@@ -215,8 +215,7 @@ async function atomicWriteConfig(absPath: string, content: string): Promise<void
   } catch (e) {
     try {
       tracedUnlinkSync(tmpPath);
-    } catch {
-    }
+    } catch {}
     throw e;
   }
 }
@@ -252,6 +251,7 @@ async function storeConfigDocInner(
   lastTransactionOrigin: unknown,
   ctx: ConfigPersistenceCtx,
 ): Promise<StoreConfigDocOutcome> {
+  if (ctx.ephemeral && documentName === CONFIG_DOC_NAME_OKIGNORE) return 'no-op';
   if (lastTransactionOrigin === CONFIG_VALIDATION_REVERT_ORIGIN) return 'no-op';
 
   const ytext = document.getText('source');
