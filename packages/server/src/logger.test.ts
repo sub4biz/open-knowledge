@@ -213,6 +213,50 @@ describe('Logger', () => {
       expect(secondPrev.msg).toBe('second-large-record');
     });
 
+    it('configure(pinoConfig) reconfigures already-cached loggers in place (captured refs gain the sink)', async () => {
+      const captured = loggerFactory.getLogger('captured-early');
+      captured.info({}, 'before-configure');
+      await captured.flushFileSink();
+      expect(existsSync(logsCurrentPath(tmp))).toBe(false);
+
+      loggerFactory.configure({
+        pinoConfig: {
+          options: { level: 'info' },
+          fileSink: { projectDir: tmp, maxBytes: 1_000_000 },
+        },
+      });
+
+      expect(loggerFactory.getLogger('captured-early')).toBe(captured);
+      captured.info({}, 'after-configure');
+      await captured.flushFileSink();
+
+      const records = await readLogLinesWhen(logsCurrentPath(tmp), 1);
+      expect(records.map((r) => r.msg)).toEqual(['after-configure']);
+    });
+
+    it('OK_CONSOLE_LEVEL raises the stdout stream without flooring the file sink', async () => {
+      const prev = process.env.OK_CONSOLE_LEVEL;
+      process.env.OK_CONSOLE_LEVEL = 'warn';
+      try {
+        const logger = new PinoLogger('test', {
+          options: { level: 'info' },
+          fileSink: { projectDir: tmp, maxBytes: 1_000_000 },
+        });
+        expect(logger.getPinoInstance().level).toBe('info');
+
+        logger.info({}, 'info-to-disk');
+        logger.warn({}, 'warn-to-disk');
+        await logger.flushFileSink();
+
+        const records = await readLogLinesWhen(logsCurrentPath(tmp), 2);
+        expect(records.map((r) => r.msg)).toEqual(['info-to-disk', 'warn-to-disk']);
+        expect(records[0]?.level).toBe(30);
+      } finally {
+        if (prev === undefined) delete process.env.OK_CONSOLE_LEVEL;
+        else process.env.OK_CONSOLE_LEVEL = prev;
+      }
+    });
+
     it('omits file destination when fileSink config is absent (no .ok/local/logs created)', async () => {
       const logger = new PinoLogger('test', {
         options: { level: 'info' },

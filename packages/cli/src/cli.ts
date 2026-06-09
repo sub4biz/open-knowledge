@@ -67,7 +67,11 @@ program
   .usage('[options] [file | command]')
   .version(buildVersionNotice(PACKAGE_VERSION))
   .option('--cwd <path>', 'Working directory')
-  .option('--log-level <level>', 'Log level', 'info')
+  .option(
+    '--log-level <level>',
+    'Log level: silent, error, warn, info (default), debug, trace',
+    'info',
+  )
   .option('--no-color', 'Disable color output')
   .option('--color', 'Force color output')
   .hook('preAction', (thisCommand) => {
@@ -76,6 +80,13 @@ program
     if (cwd !== undefined) {
       process.chdir(cwd);
     }
+
+    if (program.getOptionValueSource('logLevel') === 'cli') {
+      const level = String(program.opts().logLevel);
+      process.env.LOG_LEVEL = level;
+      process.env.OK_CONSOLE_LEVEL = level;
+    }
+
     const { config } = loadConfig(cwd);
     resolvedConfig = config;
 

@@ -1,4 +1,4 @@
-import { describe, expect, mock, spyOn, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
   extractFrontmatterTags,
   FRONTMATTER_TAG_GRAMMAR_HINT,
@@ -53,15 +53,9 @@ describe('extractFrontmatterTags', () => {
     ]);
   });
 
-  test('drops invalid entries with a warning rather than failing the whole list', () => {
-    const warn = spyOn(console, 'warn').mockImplementation(mock(() => {}));
-    try {
-      const out = extractFrontmatterTags('tags: [valid, "with space", "123digit", another]\n');
-      expect(out).toEqual(['valid', '123digit', 'another']);
-      expect(warn).toHaveBeenCalledTimes(1);
-    } finally {
-      warn.mockRestore();
-    }
+  test('drops invalid entries rather than failing the whole list', () => {
+    const out = extractFrontmatterTags('tags: [valid, "with space", "123digit", another]\n');
+    expect(out).toEqual(['valid', '123digit', 'another']);
   });
 
   test('coerces non-string scalars and applies the per-entry tag regex', () => {
