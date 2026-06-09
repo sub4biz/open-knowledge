@@ -933,9 +933,9 @@ async function startParcelWatcher(
   try {
     parcel = await import('@parcel/watcher');
   } catch (err) {
-    console.warn(
-      '[file-watcher] @parcel/watcher import failed:',
-      err instanceof Error ? err.message : err,
+    getLogger('file-watcher').debug(
+      { err: err instanceof Error ? err.message : String(err) },
+      '[file-watcher] @parcel/watcher import failed; falling back to chokidar',
     );
     return null;
   }
@@ -985,7 +985,6 @@ async function startChokidarWatcher(
   aliasMap: Map<string, string>,
 ): Promise<AsyncSubscription> {
   const { watch } = await import('chokidar');
-  console.warn('[file-watcher] @parcel/watcher unavailable, using chokidar fallback');
 
   const watcher = watch(contentDir, {
     ignoreInitial: true,

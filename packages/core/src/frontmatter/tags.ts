@@ -31,8 +31,6 @@ export function extractFrontmatterTags(yaml: string): string[] {
     const stripped = stripLeadingHash(candidate);
     if (FRONTMATTER_TAG_VALUE_RE.test(stripped)) {
       out.push(stripped);
-    } else {
-      console.warn(`[frontmatter-tags] dropping invalid tag entry: ${JSON.stringify(candidate)}`);
     }
   }
   return out;

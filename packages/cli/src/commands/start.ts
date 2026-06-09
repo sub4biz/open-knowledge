@@ -289,11 +289,20 @@ interface BootStartServerOptions {
   idleThresholdMs?: number;
   uiBindTimeoutMs?: number;
   log?: PinoLogger;
-  repairMcpConfigsFn?: (opts: { projectDir: string; reclaimDisableEnv: string | null }) => unknown;
-  repairLaunchJsonFn?: (opts: { projectDir: string; reclaimDisableEnv: string | null }) => unknown;
+  repairMcpConfigsFn?: (opts: {
+    projectDir: string;
+    reclaimDisableEnv: string | null;
+    logger?: (event: { event: string }) => void;
+  }) => unknown;
+  repairLaunchJsonFn?: (opts: {
+    projectDir: string;
+    reclaimDisableEnv: string | null;
+    logger?: (event: { event: string }) => void;
+  }) => unknown;
   repairSkillsFn?: (opts: {
     projectDir: string;
     reclaimDisableEnv: string | null;
+    logger?: (event: { event: string }) => void;
   }) => Promise<unknown> | unknown;
   serveContentAssets?: boolean;
   reactShellDistDir?: string;
@@ -342,10 +351,17 @@ export async function bootStartServer(opts: BootStartServerOptions): Promise<Boo
 
     const reclaimDisableEnv = process.env.OK_RECLAIM_DISABLE ?? null;
 
+    const reclaimEventLogger = (event: { event: string }) => {
+      const name = typeof event.event === 'string' ? event.event : '';
+      if (name.endsWith('-failed') || name.endsWith('-error') || name.endsWith('-missing')) {
+        log.warn({ event }, '[start] reclaim sweep reported a problem');
+      }
+    };
+
     try {
       const repair =
         opts.repairMcpConfigsFn ?? (await import('./repair-mcp-configs.ts')).repairMcpConfigs;
-      repair({ projectDir: cwd, reclaimDisableEnv });
+      repair({ projectDir: cwd, reclaimDisableEnv, logger: reclaimEventLogger });
     } catch (err) {
       log.warn({ err }, '[start] mcp-config repair sweep failed; continuing');
     }
@@ -353,14 +369,14 @@ export async function bootStartServer(opts: BootStartServerOptions): Promise<Boo
     try {
       const repair =
         opts.repairLaunchJsonFn ?? (await import('./repair-launch-json.ts')).repairLaunchJson;
-      repair({ projectDir: cwd, reclaimDisableEnv });
+      repair({ projectDir: cwd, reclaimDisableEnv, logger: reclaimEventLogger });
     } catch (err) {
       log.warn({ err }, '[start] launch.json repair sweep failed; continuing');
     }
 
     try {
       const repair = opts.repairSkillsFn ?? (await import('./repair-skills.ts')).repairSkills;
-      await repair({ projectDir: cwd, reclaimDisableEnv });
+      await repair({ projectDir: cwd, reclaimDisableEnv, logger: reclaimEventLogger });
     } catch (err) {
       log.warn({ err }, '[start] skill repair sweep failed; continuing');
     }
@@ -524,9 +540,31 @@ function parseUiPort(value: string): number {
   return port;
 }
 
+export function resolveStartConsoleLevel(env: {
+  OK_CONSOLE_LEVEL?: string | undefined;
+  LOG_LEVEL?: string | undefined;
+}): string | null {
+  if (env.OK_CONSOLE_LEVEL !== undefined || env.LOG_LEVEL !== undefined) return null;
+  return 'warn';
+}
+
+export function formatShutdownNotice(signal: NodeJS.Signals): string[] {
+  const lines = [
+    'Stopping Open Knowledge…',
+    'Saving pending changes and releasing the server lock — this can take a few seconds.',
+  ];
+  if (signal === 'SIGINT') {
+    lines.push('Press Ctrl+C again to force quit.');
+  }
+  return lines;
+}
+
 export async function runStartCommand(config: Config, opts: StartCommandOptions): Promise<void> {
+  const startConsoleLevel = resolveStartConsoleLevel(process.env);
+  if (startConsoleLevel !== null) process.env.OK_CONSOLE_LEVEL = startConsoleLevel;
+
   const { renderBanner } = await import('../ui/banner.ts');
-  const { dim, error, warning } = await import('../ui/colors.ts');
+  const { accent, dim, error, warning } = await import('../ui/colors.ts');
 
   const cwd = process.cwd();
   const activeConfig = config;
@@ -605,7 +643,11 @@ export async function runStartCommand(config: Config, opts: StartCommandOptions)
   const shutdown = async (signal: NodeJS.Signals) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(dim(`\nShutting down (${signal})`));
+    const [headline, ...details] = formatShutdownNotice(signal);
+    console.log(accent(`\n${headline}`));
+    for (const line of details) {
+      console.log(dim(`  ${line}`));
+    }
     try {
       await booted.destroy();
     } catch (err) {
@@ -637,6 +679,7 @@ export async function runStartCommand(config: Config, opts: StartCommandOptions)
       localUrl,
       apiUrl: localUrl !== apiUrl ? apiUrl : undefined,
       networkUrl,
+      nextSteps: ['Open the Editor URL in your browser to start editing.'],
     }),
   );
   const DEGRADED_IMPACTS: Record<string, string> = {
