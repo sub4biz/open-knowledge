@@ -95,8 +95,6 @@ import {
   type LocalOpAuthHostRequest,
   LocalOpAuthHostRequestSchema,
   LocalOpAuthIdentitySuccessSchema,
-  LocalOpAuthPatRequestSchema,
-  LocalOpAuthPatSuccessSchema,
   LocalOpAuthSetIdentityRequestSchema,
   LocalOpAuthStatusSuccessSchema,
   type LocalOpCloneRequest,
@@ -8349,7 +8347,6 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
   const LOCAL_OP_AUTH_STATUS_KEY = '/api/local-op/auth/status';
   const LOCAL_OP_AUTH_REPOS_KEY = '/api/local-op/auth/repos';
   const LOCAL_OP_AUTH_SIGNOUT_KEY = '/api/local-op/auth/signout';
-  const LOCAL_OP_AUTH_PAT_KEY = '/api/local-op/auth/pat';
 
   let authLoginInFlight: ReturnType<typeof runDeviceFlowSubprocess> | null = null;
 
@@ -8730,98 +8727,6 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
       method: 'POST',
       preBodyGate: (req, res) =>
         checkLocalOpSecurity(req, res, { handler: HANDLE_LOCAL_OP_AUTH_SIGNOUT }),
-    },
-  );
-
-  const HANDLE_LOCAL_OP_AUTH_PAT = 'local-op-auth-pat';
-  const handleLocalOpAuthPat = withValidation(
-    LocalOpAuthPatRequestSchema,
-    async (_req, res, body) => {
-      const { pat, host: hostInput } = body;
-      const host = hostInput ?? 'github.com';
-
-      if (!localOpGuard.tryAcquire(LOCAL_OP_AUTH_PAT_KEY)) {
-        errorResponse(
-          res,
-          429,
-          'urn:ok:error:concurrent-operation',
-          'An auth pat operation is already in progress.',
-          { handler: HANDLE_LOCAL_OP_AUTH_PAT, extraHeaders: { 'Retry-After': '5' } },
-        );
-        return;
-      }
-
-      try {
-        const [cmd, ...baseArgs] = localOpCliArgs;
-        const spawnArgs = [...baseArgs, 'auth', 'pat', '--json', '--host', host];
-
-        const output = await new Promise<string>((resolve, reject) => {
-          const child = spawn(cmd, spawnArgs, {
-            stdio: ['pipe', 'pipe', 'pipe'],
-            env: { ...process.env },
-          });
-          const killTimer = setTimeout(() => {
-            child.kill('SIGTERM');
-          }, 30_000);
-          child.stdin.write(`${pat}\n`);
-          child.stdin.end();
-
-          const chunks: Buffer[] = [];
-          child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
-          child.on('close', (code) => {
-            clearTimeout(killTimer);
-            if (code !== 0) {
-              reject(new Error(`auth pat exited with code ${code}`));
-            } else {
-              resolve(Buffer.concat(chunks).toString('utf-8'));
-            }
-          });
-          child.on('error', (err) => {
-            clearTimeout(killTimer);
-            reject(err);
-          });
-        });
-
-        const lines = output
-          .split('\n')
-          .map((l) => l.trim())
-          .filter(Boolean);
-        let parsed: unknown = null;
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            parsed = JSON.parse(lines[i] as string);
-            break;
-          } catch {}
-        }
-        if (parsed !== null) {
-          successResponse(res, 200, LocalOpAuthPatSuccessSchema, parsed, {
-            handler: HANDLE_LOCAL_OP_AUTH_PAT,
-          });
-        } else {
-          successResponse(
-            res,
-            200,
-            LocalOpAuthPatSuccessSchema,
-            {},
-            {
-              handler: HANDLE_LOCAL_OP_AUTH_PAT,
-            },
-          );
-        }
-      } catch (err) {
-        errorResponse(res, 500, 'urn:ok:error:auth-failed', 'Auth pat failed.', {
-          handler: HANDLE_LOCAL_OP_AUTH_PAT,
-          cause: err,
-        });
-      } finally {
-        localOpGuard.release(LOCAL_OP_AUTH_PAT_KEY);
-      }
-    },
-    {
-      handler: HANDLE_LOCAL_OP_AUTH_PAT,
-      method: 'POST',
-      preBodyGate: (req, res) =>
-        checkLocalOpSecurity(req, res, { handler: HANDLE_LOCAL_OP_AUTH_PAT }),
     },
   );
 
@@ -11379,7 +11284,6 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     '/api/local-op/auth/status': handleLocalOpAuthStatus,
     '/api/local-op/auth/repos': handleLocalOpAuthRepos,
     '/api/local-op/auth/signout': handleLocalOpAuthSignout,
-    '/api/local-op/auth/pat': handleLocalOpAuthPat,
     '/api/local-op/auth/identity': handleLocalOpAuthIdentity,
     '/api/local-op/auth/set-identity': handleLocalOpAuthSetIdentity,
     '/api/local-op/embeddings/set-key': handleLocalOpEmbeddingsSetKey,

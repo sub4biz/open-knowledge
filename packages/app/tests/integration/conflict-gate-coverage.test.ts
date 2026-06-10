@@ -71,7 +71,6 @@ const EXEMPT_HANDLERS = new Set([
   'handleLocalOpAuthStatus',
   'handleLocalOpAuthRepos',
   'handleLocalOpAuthSignout',
-  'handleLocalOpAuthPat',
   'handleLocalOpAuthIdentity',
   'handleLocalOpAuthSetIdentity',
   'handleLocalOpEmbeddingsSetKey',

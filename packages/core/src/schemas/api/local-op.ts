@@ -53,14 +53,6 @@ export const LocalOpAuthHostRequestSchema = z
   .loose() satisfies StandardSchemaV1;
 export type LocalOpAuthHostRequest = z.infer<typeof LocalOpAuthHostRequestSchema>;
 
-export const LocalOpAuthPatRequestSchema = z
-  .object({
-    pat: z.string().min(1),
-    host: z.string().min(1).optional(),
-  })
-  .loose() satisfies StandardSchemaV1;
-export type LocalOpAuthPatRequest = z.infer<typeof LocalOpAuthPatRequestSchema>;
-
 export const LocalOpEmbeddingsSetKeyRequestSchema = z
   .object({
     key: z.string().min(1),
@@ -107,14 +99,6 @@ export const LocalOpAuthStatusSuccessSchema = z
   })
   .loose() satisfies StandardSchemaV1;
 export type LocalOpAuthStatusSuccess = z.infer<typeof LocalOpAuthStatusSuccessSchema>;
-
-export const LocalOpAuthPatSuccessSchema = z
-  .object({
-    type: z.literal('complete').optional(),
-    login: z.string().min(1).optional(),
-  })
-  .loose() satisfies StandardSchemaV1;
-export type LocalOpAuthPatSuccess = z.infer<typeof LocalOpAuthPatSuccessSchema>;
 
 export const LocalOpAuthEmptySuccessSchema = z.object({}).loose() satisfies StandardSchemaV1;
 export type LocalOpAuthEmptySuccess = z.infer<typeof LocalOpAuthEmptySuccessSchema>;

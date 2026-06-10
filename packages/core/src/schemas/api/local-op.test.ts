@@ -4,8 +4,6 @@ import {
   LocalOpAuthHostRequestSchema,
   LocalOpAuthIdentitySchema,
   LocalOpAuthIdentitySuccessSchema,
-  LocalOpAuthPatRequestSchema,
-  LocalOpAuthPatSuccessSchema,
   LocalOpAuthSetIdentityRequestSchema,
   LocalOpAuthStatusSuccessSchema,
   LocalOpOpenRequestSchema,
@@ -75,23 +73,6 @@ describe('LocalOpAuthHostRequestSchema', () => {
   });
   test('rejects empty host', () => {
     expect(LocalOpAuthHostRequestSchema.safeParse({ host: '' }).success).toBe(false);
-  });
-});
-
-describe('LocalOpAuthPatRequestSchema', () => {
-  test('parses pat-only', () => {
-    expect(LocalOpAuthPatRequestSchema.safeParse({ pat: 'ghp_abc123' }).success).toBe(true);
-  });
-  test('parses pat with host', () => {
-    expect(
-      LocalOpAuthPatRequestSchema.safeParse({ pat: 'ghp_abc123', host: 'github.com' }).success,
-    ).toBe(true);
-  });
-  test('rejects missing pat', () => {
-    expect(LocalOpAuthPatRequestSchema.safeParse({ host: 'github.com' }).success).toBe(false);
-  });
-  test('rejects empty pat', () => {
-    expect(LocalOpAuthPatRequestSchema.safeParse({ pat: '' }).success).toBe(false);
   });
 });
 
@@ -173,21 +154,6 @@ describe('LocalOpAuthStatusSuccessSchema', () => {
   });
   test('rejects missing authenticated field', () => {
     expect(LocalOpAuthStatusSuccessSchema.safeParse({ login: 'alice' }).success).toBe(false);
-  });
-});
-
-describe('LocalOpAuthPatSuccessSchema', () => {
-  test('parses CLI complete event with login', () => {
-    expect(
-      LocalOpAuthPatSuccessSchema.safeParse({
-        type: 'complete',
-        login: 'alice',
-        name: 'Alice',
-      }).success,
-    ).toBe(true);
-  });
-  test('parses bare empty object (fallback shape)', () => {
-    expect(LocalOpAuthPatSuccessSchema.safeParse({}).success).toBe(true);
   });
 });
 
