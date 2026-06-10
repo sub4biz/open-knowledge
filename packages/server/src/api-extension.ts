@@ -1547,7 +1547,7 @@ export interface ApiExtensionOptions {
   getFolderIndex?: () => ReadonlyMap<string, FolderIndexEntry>;
   onReferencedAssetsCacheInvalidator?: (invalidate: () => void) => void;
   getAliasMap?: () => ReadonlyMap<string, string>;
-  rescanFiles?: () => void;
+  rescanFiles?: () => void | Promise<void>;
   enableTestRoutes?: boolean;
   shadowRef?: ShadowRef;
   flushGitCommit?: () => Promise<void>;
@@ -5057,7 +5057,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
           );
           return;
         }
-        rescanFiles();
+        await rescanFiles();
         signalChannel?.('files');
         successResponse(
           res,

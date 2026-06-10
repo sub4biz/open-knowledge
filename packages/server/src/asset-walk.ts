@@ -1,5 +1,6 @@
-import type { Dirent } from 'node:fs';
-import { lstatSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import type { Dirent, Stats } from 'node:fs';
+import { readdirSync } from 'node:fs';
+import { lstat, readdir, realpath, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
   ASSET_EXTENSIONS,
@@ -53,14 +54,14 @@ export function seedSingleDirBasenameIndex(opts: {
   }
 }
 
-export function seedBasenameIndex(opts: SeedOptions): void {
+export async function seedBasenameIndex(opts: SeedOptions): Promise<void> {
   const root = opts.contentDir;
   const visited = new Set<number>();
 
-  function walk(dir: string): void {
+  async function walk(dir: string): Promise<void> {
     let entries: Dirent[];
     try {
-      entries = readdirSync(dir, { withFileTypes: true }) as Dirent[];
+      entries = (await readdir(dir, { withFileTypes: true })) as Dirent[];
     } catch (err) {
       const code = errnoCode(err);
       if (code !== 'ENOENT') opts.onSkip?.('read-failed', code, dir);
@@ -72,19 +73,19 @@ export function seedBasenameIndex(opts: SeedOptions): void {
       if (rel.startsWith('..')) continue;
       if (opts.contentFilter?.isDirExcluded(rel) && entry.isDirectory()) continue;
 
-      let stat: ReturnType<typeof statSync>;
+      let entryStat: Stats;
       try {
-        stat = lstatSync(full);
+        entryStat = await lstat(full);
       } catch (err) {
         const code = errnoCode(err);
         if (code !== 'ENOENT') opts.onSkip?.('lstat-failed', code, full);
         continue;
       }
 
-      if (stat.isSymbolicLink()) {
+      if (entryStat.isSymbolicLink()) {
         let canonical: string;
         try {
-          canonical = realpathSync(full);
+          canonical = await realpath(full);
         } catch (err) {
           const code = errnoCode(err);
           if (code !== 'ENOENT') opts.onSkip?.('realpath-failed', code, full);
@@ -94,9 +95,9 @@ export function seedBasenameIndex(opts: SeedOptions): void {
           opts.onSkip?.('symlink-escape', undefined, full);
           continue;
         }
-        let realStat: ReturnType<typeof statSync>;
+        let realStat: Stats;
         try {
-          realStat = statSync(canonical);
+          realStat = await stat(canonical);
         } catch (err) {
           const code = errnoCode(err);
           if (code !== 'ENOENT') opts.onSkip?.('symlink-stat-failed', code, canonical);
@@ -104,7 +105,7 @@ export function seedBasenameIndex(opts: SeedOptions): void {
         }
         if (visited.has(realStat.ino)) continue;
         visited.add(realStat.ino);
-        if (realStat.isDirectory()) walk(canonical);
+        if (realStat.isDirectory()) await walk(canonical);
         else if (
           realStat.isFile() &&
           isSupportedAssetFile(full, LINKABLE_ASSET_EXTENSIONS) &&
@@ -115,14 +116,14 @@ export function seedBasenameIndex(opts: SeedOptions): void {
         continue;
       }
 
-      if (stat.isDirectory()) {
-        if (visited.has(stat.ino)) continue;
-        visited.add(stat.ino);
-        walk(full);
+      if (entryStat.isDirectory()) {
+        if (visited.has(entryStat.ino)) continue;
+        visited.add(entryStat.ino);
+        await walk(full);
         continue;
       }
       if (
-        stat.isFile() &&
+        entryStat.isFile() &&
         isSupportedAssetFile(full, LINKABLE_ASSET_EXTENSIONS) &&
         !opts.contentFilter?.isExcluded(rel)
       ) {
@@ -131,5 +132,5 @@ export function seedBasenameIndex(opts: SeedOptions): void {
     }
   }
 
-  walk(root);
+  await walk(root);
 }

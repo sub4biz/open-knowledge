@@ -121,7 +121,7 @@ export function createFileLogger(opts: FileLoggerOptions): PinoLoggerInstance {
   const scheduleTimer = opts._setTimeout ?? setTimeout;
   scheduleTimer(() => pruneLogsDir(OK_LOGS_DIR), 5000).unref();
 
-  const dest = pino.destination({ dest: filePath, append: true, sync: false });
+  const dest = pino.destination({ dest: filePath, append: true, sync: true });
 
   const level = resolveLogLevel();
 

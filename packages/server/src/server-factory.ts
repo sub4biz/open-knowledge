@@ -401,43 +401,43 @@ export function createServer(options: ServerOptions): ServerInstance {
             '[content-filter] backlink-index rebuild failed after onAfterRebuild',
           );
         });
-        try {
-          tagIndex.init();
-        } catch (err) {
+        void tagIndex.init().catch((err) => {
           getLogger('server-factory').warn(
             { err },
             '[content-filter] tag-index rebuild failed after onAfterRebuild',
           );
-        }
-        try {
-          const { prunedFiles, prunedFolders } = reconcileFileIndexAfterFilterRebuild(watcher);
-          const pruned = prunedFiles + prunedFolders;
-          if (pruned > 0) {
-            getLogger('server-factory').info(
-              { pruned, prunedFiles, prunedFolders },
-              '[content-filter] reconciled file indexes after onAfterRebuild',
+        });
+        void reconcileFileIndexAfterFilterRebuild(watcher)
+          .then(({ prunedFiles, prunedFolders }) => {
+            const pruned = prunedFiles + prunedFolders;
+            if (pruned > 0) {
+              getLogger('server-factory').info(
+                { pruned, prunedFiles, prunedFolders },
+                '[content-filter] reconciled file indexes after onAfterRebuild',
+              );
+            } else {
+              getLogger('server-factory').debug(
+                { prunedFiles, prunedFolders },
+                '[content-filter] file index reconcile completed after onAfterRebuild (no entries pruned; rescan may have added entries)',
+              );
+            }
+          })
+          .catch((err) => {
+            getLogger('server-factory').warn(
+              { err },
+              '[content-filter] file index reconcile failed after onAfterRebuild',
             );
-          } else {
-            getLogger('server-factory').debug(
-              { prunedFiles, prunedFolders },
-              '[content-filter] file index reconcile completed after onAfterRebuild (no entries pruned; rescan may have added entries)',
-            );
-          }
-        } catch (err) {
-          getLogger('server-factory').warn(
-            { err },
-            '[content-filter] file index reconcile failed after onAfterRebuild',
-          );
-        }
+          });
       },
     });
     backlinkIndex = new BacklinkIndex({ projectDir, contentDir, contentFilter });
     tagIndex = new TagIndex({ contentDir, contentFilter });
-    try {
-      tagIndex.init();
-    } catch (err) {
-      console.warn('[server-factory] tag-index init failed; continuing with empty index:', err);
-    }
+    void tagIndex.init().catch((err) => {
+      getLogger('server-factory').warn(
+        { err },
+        '[server-factory] tag-index init failed; continuing with empty index',
+      );
+    });
 
     shadowRef = { current: shadowRepo };
 
@@ -1828,7 +1828,15 @@ export function createServer(options: ServerOptions): ServerInstance {
         }
       }
       watcher = await startWatcher(contentDir, onDiskEvent, contentFilter);
-      tagIndex.init();
+      try {
+        await tagIndex.init();
+      } catch (err) {
+        log.error(
+          { err },
+          '[tag-index] startup re-init failed; tag index updates incrementally via watcher events',
+        );
+        degraded.push('tag-index');
+      }
       let seedSkipCount = 0;
       try {
         if (singleDocRelPath !== undefined) {
@@ -1844,7 +1852,7 @@ export function createServer(options: ServerOptions): ServerInstance {
             },
           });
         } else {
-          seedBasenameIndex({
+          await seedBasenameIndex({
             contentDir,
             contentFilter,
             basenameIndex,
@@ -1964,7 +1972,7 @@ export function createServer(options: ServerOptions): ServerInstance {
             try {
               let reseedSkipCount = 0;
               basenameIndex.clear();
-              seedBasenameIndex({
+              await seedBasenameIndex({
                 contentDir,
                 contentFilter,
                 basenameIndex,
@@ -2066,7 +2074,7 @@ export function createServer(options: ServerOptions): ServerInstance {
                 '[backlinks] branch-switch rebuild failed; backlinks may be stale',
               );
             }
-            tagIndex.init();
+            await tagIndex.init();
 
             if (shadowRef.current && info.batchKind === 'cross-branch') {
               let restoredCount = 0;

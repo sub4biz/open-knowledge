@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { type Dirent, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { type Dirent, lstatSync, readdirSync, realpathSync, type Stats, statSync } from 'node:fs';
+import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, extname, join, relative } from 'node:path';
 import { LINKABLE_ASSET_EXTENSIONS } from '@inkeep/open-knowledge-core';
 import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
@@ -74,7 +74,7 @@ export interface WatcherHandle {
   getAliasMap: () => ReadonlyMap<string, string>;
   pruneFileIndexNowExcluded: () => number;
   pruneFolderIndexNowExcluded: () => number;
-  rescanFromDisk: () => void;
+  rescanFromDisk: () => Promise<void>;
 }
 
 export const writeTracker = new Map<string, Array<{ hash: string; timestamp: number }>>();
@@ -401,7 +401,7 @@ export function isSelfWrite(filePath: string, hash: string): boolean {
   return true;
 }
 
-function seedLastKnownHashes(
+async function seedLastKnownHashes(
   dir: string,
   contentDir: string,
   contentFilter: ContentFilter | undefined,
@@ -409,15 +409,15 @@ function seedLastKnownHashes(
   folderIndex: Map<string, FolderIndexEntry>,
   aliasMap: Map<string, string>,
   visitedInodes?: Set<number>,
-): void {
+): Promise<void> {
   const visited = visitedInodes ?? new Set<number>();
   try {
-    const entries = readdirSync(dir, { withFileTypes: true });
+    const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
-      let lst: ReturnType<typeof lstatSync>;
+      let lst: Stats;
       try {
-        lst = lstatSync(fullPath);
+        lst = await lstat(fullPath);
       } catch (e) {
         const code = (e as NodeJS.ErrnoException).code;
         if (code !== 'ENOENT') {
@@ -429,7 +429,7 @@ function seedLastKnownHashes(
       if (lst.isSymbolicLink()) {
         let canonical: string;
         try {
-          canonical = realpathSync(fullPath);
+          canonical = await realpath(fullPath);
         } catch (e) {
           const code = (e as NodeJS.ErrnoException).code;
           if (code === 'ENOENT' || code === 'ELOOP') {
@@ -446,7 +446,7 @@ function seedLastKnownHashes(
         }
 
         try {
-          const canonStat = statSync(canonical);
+          const canonStat = await stat(canonical);
           if (visited.has(canonStat.ino)) {
             if (canonStat.isFile() && isSupportedDocFile(entry.name)) {
               const aliasDocName = pathToDocName(fullPath, contentDir);
@@ -467,7 +467,7 @@ function seedLastKnownHashes(
               if (!relPath || contentFilter.isDirExcluded(relPath)) continue;
             }
             upsertFolderIndexEntry(folderIndex, contentDir, fullPath, canonStat, canonical);
-            seedLastKnownHashes(
+            await seedLastKnownHashes(
               canonical,
               contentDir,
               contentFilter,
@@ -486,7 +486,7 @@ function seedLastKnownHashes(
             aliasMap.set(aliasDocName, canonicalDocName);
 
             try {
-              const content = readFileSync(canonical, 'utf-8');
+              const content = await readFile(canonical, 'utf-8');
               const hash = contentHash(content);
               lastKnownHash.set(canonical, hash);
               const ext = extractDocExtension(canonical);
@@ -522,7 +522,7 @@ function seedLastKnownHashes(
           if (!relPath || contentFilter.isDirExcluded(relPath)) continue;
         }
         upsertFolderIndexEntry(folderIndex, contentDir, fullPath, lst);
-        seedLastKnownHashes(
+        await seedLastKnownHashes(
           fullPath,
           contentDir,
           contentFilter,
@@ -540,7 +540,7 @@ function seedLastKnownHashes(
           if (contentFilter.isExcluded(relPath)) continue;
         }
         try {
-          const content = readFileSync(fullPath, 'utf-8');
+          const content = await readFile(fullPath, 'utf-8');
           lastKnownHash.set(fullPath, contentHash(content));
 
           const docName = pathToDocName(fullPath, contentDir);
@@ -1059,7 +1059,14 @@ export async function startWatcher(
   const folderIndex = new Map<string, FolderIndexEntry>();
   const aliasMap = new Map<string, string>();
 
-  seedLastKnownHashes(contentDir, contentDir, contentFilter, fileIndex, folderIndex, aliasMap);
+  await seedLastKnownHashes(
+    contentDir,
+    contentDir,
+    contentFilter,
+    fileIndex,
+    folderIndex,
+    aliasMap,
+  );
 
   const evictionInterval = setInterval(evictStaleTrackerEntries, WRITE_TRACKER_TTL_MS);
 
@@ -1137,18 +1144,27 @@ export async function startWatcher(
       return pruned;
     },
     rescanFromDisk() {
-      seedLastKnownHashes(contentDir, contentDir, contentFilter, fileIndex, folderIndex, aliasMap);
+      return seedLastKnownHashes(
+        contentDir,
+        contentDir,
+        contentFilter,
+        fileIndex,
+        folderIndex,
+        aliasMap,
+      );
     },
   };
 }
 
-export function reconcileFileIndexAfterFilterRebuild(watcher: WatcherHandle | null | undefined): {
+export async function reconcileFileIndexAfterFilterRebuild(
+  watcher: WatcherHandle | null | undefined,
+): Promise<{
   prunedFiles: number;
   prunedFolders: number;
-} {
+}> {
   if (!watcher) return { prunedFiles: 0, prunedFolders: 0 };
   const prunedFiles = watcher.pruneFileIndexNowExcluded();
   const prunedFolders = watcher.pruneFolderIndexNowExcluded();
-  watcher.rescanFromDisk();
+  await watcher.rescanFromDisk();
   return { prunedFiles, prunedFolders };
 }

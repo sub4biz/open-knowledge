@@ -719,7 +719,7 @@ describe('reconcileFileIndexAfterFilterRebuild', () => {
       const result = await filter.rebuildIgnorePatterns();
       expect(result.ok).toBe(true);
 
-      const { prunedFiles, prunedFolders } = reconcileFileIndexAfterFilterRebuild(handle);
+      const { prunedFiles, prunedFolders } = await reconcileFileIndexAfterFilterRebuild(handle);
       expect(prunedFiles).toBe(0);
       expect(prunedFolders).toBe(0);
       expect(handle.getFileIndex().has('hide-me')).toBe(true);
@@ -744,7 +744,7 @@ describe('reconcileFileIndexAfterFilterRebuild', () => {
       const result = await filter.rebuildIgnorePatterns();
       expect(result.ok).toBe(true);
 
-      const { prunedFiles, prunedFolders } = reconcileFileIndexAfterFilterRebuild(handle);
+      const { prunedFiles, prunedFolders } = await reconcileFileIndexAfterFilterRebuild(handle);
       expect(prunedFiles).toBe(1);
       expect(prunedFolders).toBe(0);
       expect(handle.getFileIndex().has('will-hide')).toBe(false);
@@ -772,7 +772,7 @@ describe('reconcileFileIndexAfterFilterRebuild', () => {
       const result = await filter.rebuildIgnorePatterns();
       expect(result.ok).toBe(true);
 
-      reconcileFileIndexAfterFilterRebuild(handle);
+      await reconcileFileIndexAfterFilterRebuild(handle);
       expect(handle.getFolderIndex().has('archive')).toBe(true);
       expect(handle.getFolderIndex().has('archive/sub')).toBe(true);
       expect(handle.getFileIndex().has('archive/sub/old')).toBe(true);
@@ -790,7 +790,7 @@ describe('reconcileFileIndexAfterFilterRebuild', () => {
     try {
       writeFileSync(resolve(tmpDir, '.okignore'), 'unrelated.md\n');
       await filter.rebuildIgnorePatterns();
-      const { prunedFiles, prunedFolders } = reconcileFileIndexAfterFilterRebuild(handle);
+      const { prunedFiles, prunedFolders } = await reconcileFileIndexAfterFilterRebuild(handle);
       expect(prunedFiles).toBe(0);
       expect(prunedFolders).toBe(0);
       expect(handle.getFileIndex().has('keep')).toBe(true);
@@ -814,7 +814,7 @@ describe('reconcileFileIndexAfterFilterRebuild', () => {
       const result = await filter.rebuildIgnorePatterns();
       expect(result.ok).toBe(true);
 
-      const { prunedFiles } = reconcileFileIndexAfterFilterRebuild(handle);
+      const { prunedFiles } = await reconcileFileIndexAfterFilterRebuild(handle);
       expect(prunedFiles).toBe(1);
       expect(handle.getFileIndex().has('will-hide')).toBe(false);
       expect(handle.getFileIndex().has('was-hidden')).toBe(true);
@@ -823,8 +823,8 @@ describe('reconcileFileIndexAfterFilterRebuild', () => {
     }
   });
 
-  test('returns zero counts when watcher is undefined (defensive guard)', () => {
-    const { prunedFiles, prunedFolders } = reconcileFileIndexAfterFilterRebuild(undefined);
+  test('returns zero counts when watcher is undefined (defensive guard)', async () => {
+    const { prunedFiles, prunedFolders } = await reconcileFileIndexAfterFilterRebuild(undefined);
     expect(prunedFiles).toBe(0);
     expect(prunedFolders).toBe(0);
   });

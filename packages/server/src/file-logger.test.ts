@@ -76,6 +76,18 @@ describe('file logger', () => {
     expect(files).toContain('big.log.1');
   });
 
+  test('opens the destination synchronously so same-tick process.exit cannot race the open', () => {
+    mkdirSync(TEST_DIR, { recursive: true });
+    const filePath = join(TEST_DIR, 'sync-open.log');
+    const { createFileLogger } = require('./file-logger.ts');
+    const logger = createFileLogger({ name: 'sync-open', filePath });
+    const stream = (logger as unknown as Record<symbol, { fd: number; flushSync: () => void }>)[
+      pino.symbols.streamSym
+    ];
+    expect(stream.fd).toBeGreaterThanOrEqual(0);
+    expect(() => stream.flushSync()).not.toThrow();
+  });
+
   test('createFileLogger unrefs the deferred prune timer so it never blocks process exit', () => {
     mkdirSync(TEST_DIR, { recursive: true });
     const { createFileLogger } = require('./file-logger.ts');

@@ -1,4 +1,5 @@
-import { type Dirent, existsSync, readdirSync, readFileSync } from 'node:fs';
+import { type Dirent, existsSync } from 'node:fs';
+import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import {
   createTagInTextRegex,
@@ -87,6 +88,7 @@ export class TagIndex {
   private readonly contentDir: string;
   private readonly contentFilter?: ContentFilter;
   private state: TagIndexState = createEmptyState();
+  private initChain: Promise<void> = Promise.resolve();
 
   constructor(options: TagIndexOptions) {
     this.contentDir = options.contentDir;
@@ -180,16 +182,38 @@ export class TagIndex {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  init(): void {
+  init(): Promise<void> {
+    const run = this.initChain.then(() => this.initOnce());
+    this.initChain = run.catch((err) => {
+      console.warn('[tag-index] init failed (chain cleared for next init):', err);
+    });
+    return run;
+  }
+
+  private async initOnce(): Promise<void> {
     this.state = createEmptyState();
     if (!existsSync(this.contentDir)) return;
-    const entries = this.listDocsWithPaths();
-    for (const { docName, filePath } of entries) {
-      try {
-        const markdown = readFileSync(filePath, 'utf-8');
-        this.updateDocumentFromMarkdown(docName, markdown);
-      } catch (err) {
-        console.warn(`[tag-index] Failed to read ${docName} during init:`, err);
+    const entries = await this.listDocsWithPaths();
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async ({ docName, filePath }) => {
+          try {
+            return { docName, markdown: await readFile(filePath, 'utf-8') };
+          } catch (err) {
+            console.warn(`[tag-index] Failed to read ${docName} during init:`, err);
+            return null;
+          }
+        }),
+      );
+      for (const result of results) {
+        if (!result) continue;
+        try {
+          this.updateDocumentFromMarkdown(result.docName, result.markdown);
+        } catch (err) {
+          console.warn(`[tag-index] Failed to index ${result.docName} during init:`, err);
+        }
       }
     }
   }
@@ -227,9 +251,9 @@ export class TagIndex {
     }
   }
 
-  private listDocsWithPaths(): Array<{ docName: string; filePath: string }> {
+  private async listDocsWithPaths(): Promise<Array<{ docName: string; filePath: string }>> {
     const out: Array<{ docName: string; filePath: string }> = [];
-    this.walkContentDir(this.contentDir, out);
+    await this.walkContentDir(this.contentDir, out);
     out.sort((a, b) => {
       if (a.docName !== b.docName) return a.docName.localeCompare(b.docName);
       return b.filePath.localeCompare(a.filePath);
@@ -242,10 +266,13 @@ export class TagIndex {
     });
   }
 
-  private walkContentDir(dir: string, out: Array<{ docName: string; filePath: string }>): void {
+  private async walkContentDir(
+    dir: string,
+    out: Array<{ docName: string; filePath: string }>,
+  ): Promise<void> {
     let entries: Dirent[];
     try {
-      entries = readdirSync(dir, { withFileTypes: true });
+      entries = await readdir(dir, { withFileTypes: true });
     } catch (err) {
       console.warn(`[tag-index] Failed to read directory ${dir}:`, err);
       return;
@@ -255,7 +282,7 @@ export class TagIndex {
       if (entry.isDirectory()) {
         const relDir = relative(this.contentDir, fullPath);
         if (this.contentFilter && relDir && this.contentFilter.isDirExcluded(relDir)) continue;
-        this.walkContentDir(fullPath, out);
+        await this.walkContentDir(fullPath, out);
         continue;
       }
       if (!entry.isFile() || !isSupportedDocFile(entry.name)) continue;
