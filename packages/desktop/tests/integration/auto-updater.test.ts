@@ -6,6 +6,7 @@ import {
   type DispatchKind,
   type IpcMainLike,
   isClassifiedUpdaterError,
+  RELAUNCH_WATCHDOG_MS,
   releaseUrlFor,
   STUCK_HINT_DOWNLOAD_URL,
   STUCK_HINT_THRESHOLD_MS,
@@ -1070,6 +1071,12 @@ describe('ok:update:relaunch-now IPC handler (AC18)', () => {
       const reArm = win.filter((c) => c.channel === 'ok:update:downloaded');
       expect(reArm).toHaveLength(1);
       expect(reArm[0]?.payload).toEqual({ version: '0.3.2' });
+      const failed = win.filter((c) => c.channel === 'ok:update:relaunch-failed');
+      expect(failed).toHaveLength(1);
+      expect(failed[0]?.payload).toEqual({
+        version: '0.3.2',
+        message: 'SQRLInstallerErrorDomain Code=-9',
+      });
     }
     expect(rig.dispatches).toContain('relaunch-failed-rearm' as DispatchKind);
     rig.updater.quitAndInstall = mock(() => {});
@@ -1179,6 +1186,171 @@ describe('ok:update:relaunch-now IPC handler (AC18)', () => {
     expect(prepareForRelaunch).toHaveBeenCalledTimes(1);
     expect(rig.updater.quitAndInstall).toHaveBeenCalledTimes(1);
     expect(rig.logger.warn).toHaveBeenCalled();
+  });
+});
+
+describe('async relaunch failure — error event + no-quit watchdog', () => {
+  test('clean quitAndInstall return arms the watchdog at RELAUNCH_WATCHDOG_MS (packaged)', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rig.clock.lastMs).toBe(UPDATE_CHECK_INTERVAL_MS);
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    expect(rig.clock.lastMs).toBe(RELAUNCH_WATCHDOG_MS);
+    expect(rig.clock.lastCallback).not.toBeNull();
+  });
+
+  test('watchdog fire → state restored + every window re-armed + relaunch-failed broadcast', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2', extraWindowCount: 1 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rig.clock.lastMs).toBe(UPDATE_CHECK_INTERVAL_MS);
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    expect(rig.state.versionPendingInstall).toBeNull();
+    rig.clock.lastCallback?.();
+    expect(rig.state.versionPendingInstall).toBe('0.3.2');
+    for (const win of rig.windows) {
+      expect(win.filter((c) => c.channel === 'ok:update:downloaded')).toHaveLength(1);
+      const failed = win.filter((c) => c.channel === 'ok:update:relaunch-failed');
+      expect(failed).toHaveLength(1);
+      expect(failed[0]?.payload).toEqual({
+        version: '0.3.2',
+        message: 'the update timed out',
+      });
+    }
+    expect(rig.dispatches.filter((d) => d === 'relaunch-watchdog-fired')).toHaveLength(1);
+  });
+
+  test('updater error while in flight → fast fail with the error detail, watchdog cleared', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2', extraWindowCount: 1 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rig.clock.lastMs).toBe(UPDATE_CHECK_INTERVAL_MS);
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    rig.updater.emit('error', new Error('ShipIt swap failed'));
+    expect(rig.state.versionPendingInstall).toBe('0.3.2');
+    for (const win of rig.windows) {
+      const failed = win.filter((c) => c.channel === 'ok:update:relaunch-failed');
+      expect(failed).toHaveLength(1);
+      expect(failed[0]?.payload).toEqual({ version: '0.3.2', message: 'ShipIt swap failed' });
+    }
+    expect(rig.dispatches.filter((d) => d === 'relaunch-error-event')).toHaveLength(1);
+    expect(rig.dispatches.filter((d) => d === 'error-unclassified')).toHaveLength(1);
+    expect(rig.clock.lastCallback).toBeNull();
+    expect(rig.dispatches).not.toContain('relaunch-watchdog-fired' as DispatchKind);
+  });
+
+  test('CLASSIFIED error while in flight → additive error-classified + relaunch-error-event', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2' });
+    await Promise.resolve();
+    await Promise.resolve();
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    rig.updater.emit('error', Object.assign(new Error('HTTP 500'), { code: 'HTTP_ERROR_500' }));
+    expect(rig.dispatches).toContain('error-classified' as DispatchKind);
+    expect(rig.dispatches.filter((d) => d === 'relaunch-error-event')).toHaveLength(1);
+    expect(rig.captured.filter((c) => c.channel === 'ok:update:relaunch-failed')).toHaveLength(1);
+  });
+
+  test('in-flight error with EMPTY message → fallback detail on the failure notice', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2' });
+    await Promise.resolve();
+    await Promise.resolve();
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    rig.updater.emit('error', new Error(''));
+    const failed = rig.captured.filter((c) => c.channel === 'ok:update:relaunch-failed');
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.payload).toEqual({
+      version: '0.3.2',
+      message: 'update error during relaunch',
+    });
+  });
+
+  test('updater error AFTER the watchdog already fired → no second relaunch-failed broadcast', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2', extraWindowCount: 1 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rig.clock.lastMs).toBe(UPDATE_CHECK_INTERVAL_MS);
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    rig.clock.lastCallback?.();
+    rig.updater.emit('error', new Error('ShipIt swap failed (late)'));
+    expect(rig.state.versionPendingInstall).toBe('0.3.2');
+    for (const win of rig.windows) {
+      const failed = win.filter((c) => c.channel === 'ok:update:relaunch-failed');
+      expect(failed).toHaveLength(1);
+      expect(failed[0]?.payload).toEqual({
+        version: '0.3.2',
+        message: 'the update timed out',
+      });
+      expect(win.filter((c) => c.channel === 'ok:update:downloaded')).toHaveLength(1);
+    }
+    expect(rig.dispatches.filter((d) => d === 'relaunch-watchdog-fired')).toHaveLength(1);
+    expect(rig.dispatches).not.toContain('relaunch-error-event' as DispatchKind);
+  });
+
+  test('restore-persist failure inside failRelaunch → relaunch-failed still broadcasts, re-arm skipped', async () => {
+    const captured: CapturedSend[] = [];
+    const win = makeFakeWindow(captured);
+    const clock = makeFakeClock();
+    let state: AppState = { ...emptyState(), versionPendingInstall: '0.3.2' };
+    let failWrites = false;
+    const ipc = makeFakeIpc();
+    startAutoUpdater({
+      updater: new FakeUpdater(),
+      ipcMain: ipc,
+      readState: () => state,
+      writeState: (next) => {
+        if (failWrites) throw new Error('disk full');
+        state = next;
+      },
+      getPrimaryWindow: () => win,
+      getAllWindows: () => [win],
+      getAppVersion: () => '0.3.1',
+      isPackaged: true,
+      clock,
+      now: () => new Date(),
+      logger: {
+        info: mock(() => {}),
+        warn: mock(() => {}),
+        error: mock(() => {}),
+        debug: mock(() => {}),
+      },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await ipc.invoke('ok:update:relaunch-now');
+    failWrites = true;
+    clock.lastCallback?.();
+    expect(state.versionPendingInstall).toBeNull();
+    expect(captured.filter((c) => c.channel === 'ok:update:downloaded')).toHaveLength(0);
+    const failed = captured.filter((c) => c.channel === 'ok:update:relaunch-failed');
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.payload).toEqual({ version: '0.3.2', message: 'the update timed out' });
+  });
+
+  test('updater error with NO relaunch in flight → no relaunch-failed broadcast (normal error path)', () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2' });
+    rig.updater.emit('error', new Error('routine check failure'));
+    expect(rig.captured.filter((c) => c.channel === 'ok:update:relaunch-failed')).toHaveLength(0);
+    expect(rig.state.versionPendingInstall).toBe('0.3.2');
+  });
+
+  test('watchdog NOT armed when isPackaged=false (dev quitAndInstall no-op is not a failure)', async () => {
+    const { rig } = makeRig({ versionPendingInstall: '0.3.2', isPackaged: false });
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    expect(rig.clock.lastCallback).toBeNull();
+    rig.updater.emit('error', new Error('dev error'));
+    expect(rig.captured.filter((c) => c.channel === 'ok:update:relaunch-failed')).toHaveLength(0);
+  });
+
+  test('destroy() clears the armed watchdog', async () => {
+    const { rig, handle } = makeRig({ versionPendingInstall: '0.3.2' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rig.clock.lastMs).toBe(UPDATE_CHECK_INTERVAL_MS);
+    await rig.ipc.invoke('ok:update:relaunch-now');
+    expect(rig.clock.lastCallback).not.toBeNull();
+    handle.destroy();
+    expect(rig.clock.lastCallback).toBeNull();
   });
 });
 

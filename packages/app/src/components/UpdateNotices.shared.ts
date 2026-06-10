@@ -116,6 +116,17 @@ export function attachUpdateSubscribers(
   );
 
   unsubscribers.push(
+    bridge.onUpdateRelaunchFailed(({ version, message }) => {
+      addNotice({
+        id: `relaunch-error-${version}`,
+        body: message ? `${TOAST_A_ERROR_BODY}: ${message}` : TOAST_A_ERROR_BODY,
+        variant: 'error',
+        priority: PRIORITY_RELAUNCH_ERROR,
+      });
+    }),
+  );
+
+  unsubscribers.push(
     bridge.onWhatsNew(({ version, releaseUrl }) => {
       const noticeId = `whats-new-${version}`;
       addNotice({

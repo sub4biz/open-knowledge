@@ -16,6 +16,7 @@ export interface EventChannels {
   'ok:menu-action': { payload: OkMenuAction };
   'ok:update:downloaded': { payload: { version: string } };
   'ok:update:relaunching': { payload: { version: string } };
+  'ok:update:relaunch-failed': { payload: { version: string; message?: string } };
   'ok:update:whats-new': { payload: { version: string; releaseUrl: string } };
   'ok:update:whats-new-dismissed': { payload: { version: string } };
   'ok:update:stuck-hint': { payload: { downloadUrl: string } };

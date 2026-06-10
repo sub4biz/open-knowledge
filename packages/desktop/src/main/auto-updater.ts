@@ -47,6 +47,8 @@ export type DispatchKind =
   | 'relaunch-now'
   | 'relaunching-broadcast'
   | 'relaunch-failed-rearm'
+  | 'relaunch-error-event'
+  | 'relaunch-watchdog-fired'
   | 'skipped-dev-mode'
   | 'stale-pending-cleared'
   | 'cross-channel-blocked';
@@ -107,6 +109,8 @@ const DEFAULT_LOGGER: Logger = {
 export const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 export const UPDATE_CHECK_JITTER_MS = 30 * 1000;
+
+export const RELAUNCH_WATCHDOG_MS = 15_000;
 
 export const STUCK_HINT_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -290,6 +294,39 @@ export function startAutoUpdater(opts: StartAutoUpdaterOpts): StartAutoUpdaterHa
 
   let menuCheckPending = false;
 
+  let relaunchInFlight: {
+    version: string;
+    watchdog: ReturnType<typeof setTimeout>;
+  } | null = null;
+
+  const failRelaunch = (
+    version: string,
+    message: string | undefined,
+    kind: DispatchKind,
+    /** Original error context (error-event trigger only) — correlates this
+     * recovery log line with the classified/unclassified onError entry. */
+    cause?: { code?: string; stack?: string },
+  ): void => {
+    if (relaunchInFlight) {
+      clock.clearTimeout(relaunchInFlight.watchdog);
+      relaunchInFlight = null;
+    }
+    if (
+      persistSafely({ ...readState(), versionPendingInstall: version }, 'relaunch-failed-restore')
+    ) {
+      broadcastToAllWindows('ok:update:downloaded', { version });
+    }
+    broadcastToAllWindows('ok:update:relaunch-failed', { version, message });
+    logger.warn('relaunch failed — restored pending install and re-armed windows', {
+      version,
+      kind,
+      message,
+      causeCode: cause?.code,
+      causeStack: cause?.stack,
+    });
+    onDispatch?.(kind);
+  };
+
   let activeWhatsNew: { version: string; releaseUrl: string; firedAt: number } | null = null;
 
   const runMenuDrivenCheck = (): Promise<unknown> => {
@@ -434,6 +471,14 @@ export function startAutoUpdater(opts: StartAutoUpdaterOpts): StartAutoUpdaterHa
       });
       onDispatch?.('error-unclassified');
     }
+    if (relaunchInFlight) {
+      failRelaunch(
+        relaunchInFlight.version,
+        err.message || 'update error during relaunch',
+        'relaunch-error-event',
+        { code: err.code, stack: err.stack },
+      );
+    }
     if (menuCheckPending) {
       menuCheckPending = false;
       showCheckNowResult?.(buildCheckNowResultFromError(err, getAppVersion()));
@@ -475,17 +520,18 @@ export function startAutoUpdater(opts: StartAutoUpdaterOpts): StartAutoUpdaterHa
     try {
       updater.quitAndInstall();
     } catch (err) {
-      if (
-        persistSafely({ ...readState(), versionPendingInstall: pending }, 'relaunch-failed-restore')
-      ) {
-        broadcastToAllWindows('ok:update:downloaded', { version: pending });
-      }
-      logger.warn('quitAndInstall threw — restored pending install and re-armed windows', {
+      failRelaunch(
         pending,
-        message: err instanceof Error ? err.message : String(err),
-      });
-      onDispatch?.('relaunch-failed-rearm');
+        err instanceof Error ? err.message : String(err),
+        'relaunch-failed-rearm',
+      );
       throw err;
+    }
+    if (isPackaged) {
+      const watchdog = clock.setTimeout(() => {
+        failRelaunch(pending, 'the update timed out', 'relaunch-watchdog-fired');
+      }, RELAUNCH_WATCHDOG_MS);
+      relaunchInFlight = { version: pending, watchdog };
     }
     return undefined;
   });
@@ -610,6 +656,10 @@ export function startAutoUpdater(opts: StartAutoUpdaterOpts): StartAutoUpdaterHa
       if (timerHandle) {
         clock.clearTimeout(timerHandle);
         timerHandle = null;
+      }
+      if (relaunchInFlight) {
+        clock.clearTimeout(relaunchInFlight.watchdog);
+        relaunchInFlight = null;
       }
       const detach = (event: string, handler: (...args: unknown[]) => void): void => {
         try {

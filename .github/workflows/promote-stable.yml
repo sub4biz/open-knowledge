@@ -1,6 +1,6 @@
 name: Promote stable
 
-# On-demand stable promotion on inkeep/open-knowledge-legacy.
+# On-demand stable promotion on inkeep/open-knowledge.
 #
 # Engineer triggers via the GitHub Actions UI with a beta_tag input
 # (e.g., v0.4.0-beta.3). The workflow:

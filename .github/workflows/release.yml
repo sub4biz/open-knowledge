@@ -1,6 +1,6 @@
 name: Release
 
-# Release workflow on inkeep/open-knowledge-legacy. Single npm publisher
+# Release workflow on inkeep/open-knowledge. Single npm publisher
 # for BOTH auto-cadence beta releases AND on-demand stable promotions.
 #
 # Beta path: event-driven on `push` to legacy/main with a paths filter on
@@ -26,7 +26,7 @@ name: Release
 #    Workflow:
 #      - Runs `compute-next-beta.mjs` to read `.changeset/*.md` + `pre.json`,
 #        recover the previous beta's consumed-set marker from
-#        `gh release view inkeep/open-knowledge-legacy`, compute the delta,
+#        `gh release view inkeep/open-knowledge`, compute the delta,
 #        and emit { baseVersion, maxBumpType, releaseNotes }. Empty delta
 #        (e.g., Copybara import that only touched non-changeset files
 #        matching the paths filter) → skip cleanly.
@@ -105,7 +105,7 @@ permissions:
   #   Trusted Publishing — the OIDC token's repo + workflow claims
   #   authenticate the publish without an NPM_TOKEN secret. The trusted-
   #   publisher entry is configured on npmjs.com against
-  #   inkeep/open-knowledge-legacy + this workflow filename. Only ONE
+  #   inkeep/open-knowledge + this workflow filename. Only ONE
   #   entry per package; both beta-cut and promote-stable route through
   #   here to share this entry.
   # No packages: write — npm publishes go to npmjs.org, not GitHub
@@ -444,7 +444,7 @@ jobs:
           # OIDC token for a short-lived npm token automatically — no
           # NPM_TOKEN secret, no ~/.npmrc auth write. The trusted-
           # publisher entry on npmjs.com matches the OIDC token's repo
-          # (inkeep/open-knowledge-legacy) + workflow filename
+          # (inkeep/open-knowledge) + workflow filename
           # (release.yml) claims. Provenance attestation also uses OIDC
           # (NPM_CONFIG_PROVENANCE). See
           # https://docs.npmjs.com/trusted-publishers.

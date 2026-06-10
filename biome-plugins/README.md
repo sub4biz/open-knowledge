@@ -153,7 +153,7 @@ language js
 `some-pattern($args)` as $node where {
     register_diagnostic(
         span = $node,
-        message = "<problem>. <fix-noun naming the action>. See https://github.com/inkeep/open-knowledge-legacy/blob/main/biome-plugins/README.md#<rule-name>grit"
+        message = "<problem>. <fix-noun naming the action>. See https://github.com/inkeep/open-knowledge/blob/main/biome-plugins/README.md#<rule-name>grit"
     )
 }
 ```

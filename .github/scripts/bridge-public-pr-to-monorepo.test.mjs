@@ -106,7 +106,7 @@ describe("checkOrgMembership", () => {
 describe("createClaGateGh", () => {
   const deps = {
     publicToken: "public-token",
-    publicRepo: "inkeep/open-knowledge-legacy",
+    publicRepo: "inkeep/open-knowledge",
     internalToken: "internal-token",
     internalRepo: "inkeep/agents-private",
   };
@@ -120,7 +120,7 @@ describe("createClaGateGh", () => {
     expect(state).toBe("pending");
     expect(calls[0].token).toBe("public-token");
     expect(calls[0].path).toBe(
-      "/repos/inkeep/open-knowledge-legacy/commits/public-head/status?per_page=100",
+      "/repos/inkeep/open-knowledge/commits/public-head/status?per_page=100",
     );
   });
 

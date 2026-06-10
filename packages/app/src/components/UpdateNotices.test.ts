@@ -22,6 +22,7 @@ import {
 
 type UpdateDownloadedCb = (info: { version: string }) => void;
 type RelaunchingCb = (info: { version: string }) => void;
+type RelaunchFailedCb = (info: { version: string; message?: string }) => void;
 type WhatsNewCb = (info: { version: string; releaseUrl: string }) => void;
 type WhatsNewDismissedCb = (info: { version: string }) => void;
 type StuckHintCb = (info: { downloadUrl: string }) => void;
@@ -29,6 +30,7 @@ type StuckHintCb = (info: { downloadUrl: string }) => void;
 interface FakeBridge {
   onUpdateDownloaded: ReturnType<typeof mock>;
   onUpdateRelaunching: ReturnType<typeof mock>;
+  onUpdateRelaunchFailed: ReturnType<typeof mock>;
   onWhatsNew: ReturnType<typeof mock>;
   onWhatsNewDismissed: ReturnType<typeof mock>;
   onUpdateStuckHint: ReturnType<typeof mock>;
@@ -43,11 +45,13 @@ interface FakeBridge {
   shell: { openExternal: ReturnType<typeof mock> };
   _downloaded?: UpdateDownloadedCb;
   _relaunching?: RelaunchingCb;
+  _relaunchFailed?: RelaunchFailedCb;
   _whatsNew?: WhatsNewCb;
   _whatsNewDismissed?: WhatsNewDismissedCb;
   _stuckHint?: StuckHintCb;
   _downloadedUnsub: ReturnType<typeof mock>;
   _relaunchingUnsub: ReturnType<typeof mock>;
+  _relaunchFailedUnsub: ReturnType<typeof mock>;
   _whatsNewUnsub: ReturnType<typeof mock>;
   _whatsNewDismissedUnsub: ReturnType<typeof mock>;
   _stuckHintUnsub: ReturnType<typeof mock>;
@@ -57,11 +61,13 @@ function makeFakeBridge(): FakeBridge {
   const b: FakeBridge = {
     _downloadedUnsub: mock(() => {}),
     _relaunchingUnsub: mock(() => {}),
+    _relaunchFailedUnsub: mock(() => {}),
     _whatsNewUnsub: mock(() => {}),
     _whatsNewDismissedUnsub: mock(() => {}),
     _stuckHintUnsub: mock(() => {}),
     onUpdateDownloaded: mock(() => {}),
     onUpdateRelaunching: mock(() => {}),
+    onUpdateRelaunchFailed: mock(() => {}),
     onWhatsNew: mock(() => {}),
     onWhatsNewDismissed: mock(() => {}),
     onUpdateStuckHint: mock(() => {}),
@@ -82,6 +88,10 @@ function makeFakeBridge(): FakeBridge {
   b.onUpdateRelaunching = mock((cb: RelaunchingCb) => {
     b._relaunching = cb;
     return b._relaunchingUnsub;
+  });
+  b.onUpdateRelaunchFailed = mock((cb: RelaunchFailedCb) => {
+    b._relaunchFailed = cb;
+    return b._relaunchFailedUnsub;
   });
   b.onWhatsNew = mock((cb: WhatsNewCb) => {
     b._whatsNew = cb;
@@ -165,24 +175,26 @@ describe('appendErrorDetail', () => {
 });
 
 describe('attachUpdateSubscribers — registration', () => {
-  test('subscribes to all five update channels on the bridge', () => {
+  test('subscribes to all six update channels on the bridge', () => {
     const bridge = makeFakeBridge();
     const addNotice = mock<(notice: UpdateNotice) => void>(() => {});
     attachUpdateSubscribers(castBridge(bridge), addNotice);
     expect(bridge.onUpdateDownloaded).toHaveBeenCalledTimes(1);
     expect(bridge.onUpdateRelaunching).toHaveBeenCalledTimes(1);
+    expect(bridge.onUpdateRelaunchFailed).toHaveBeenCalledTimes(1);
     expect(bridge.onWhatsNew).toHaveBeenCalledTimes(1);
     expect(bridge.onWhatsNewDismissed).toHaveBeenCalledTimes(1);
     expect(bridge.onUpdateStuckHint).toHaveBeenCalledTimes(1);
   });
 
-  test('returns a single unsubscribe closure that detaches ALL five listeners', () => {
+  test('returns a single unsubscribe closure that detaches ALL six listeners', () => {
     const bridge = makeFakeBridge();
     const addNotice = mock<(notice: UpdateNotice) => void>(() => {});
     const unsubscribe = attachUpdateSubscribers(castBridge(bridge), addNotice);
     unsubscribe();
     expect(bridge._downloadedUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._relaunchingUnsub).toHaveBeenCalledTimes(1);
+    expect(bridge._relaunchFailedUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._whatsNewUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._whatsNewDismissedUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._stuckHintUnsub).toHaveBeenCalledTimes(1);
@@ -211,6 +223,28 @@ describe('Notice A cross-window relaunch — ok:update:relaunching', () => {
     attachUpdateSubscribers(castBridge(bridge), addNotice);
     bridge._relaunching?.({ version: '0.1.1' });
     expect(bridge.update.relaunchNow).not.toHaveBeenCalled();
+  });
+
+  test('onUpdateRelaunchFailed → error notice with detail, same id as the rejection path', () => {
+    const bridge = makeFakeBridge();
+    const addNotice = mock<(notice: UpdateNotice) => void>(() => {});
+    attachUpdateSubscribers(castBridge(bridge), addNotice);
+    bridge._relaunchFailed?.({ version: '0.1.1', message: 'App Still Running Error' });
+    const errorNotice = addNotice.mock.calls.at(-1)?.[0] as UpdateNotice;
+    expect(errorNotice.id).toBe('relaunch-error-0.1.1');
+    expect(errorNotice.body).toBe(`${TOAST_A_ERROR_BODY}: App Still Running Error`);
+    expect(errorNotice.variant).toBe('error');
+    expect(errorNotice.priority).toBe(1);
+    expect(errorNotice.action).toBeUndefined();
+  });
+
+  test('onUpdateRelaunchFailed without message → canonical body, no trailing colon', () => {
+    const bridge = makeFakeBridge();
+    const addNotice = mock<(notice: UpdateNotice) => void>(() => {});
+    attachUpdateSubscribers(castBridge(bridge), addNotice);
+    bridge._relaunchFailed?.({ version: '0.1.1' });
+    const errorNotice = addNotice.mock.calls.at(-1)?.[0] as UpdateNotice;
+    expect(errorNotice.body).toBe(TOAST_A_ERROR_BODY);
   });
 
   test('a downloaded re-broadcast after a failed relaunch replaces the stuck in-progress card in place', () => {
@@ -615,13 +649,14 @@ describe('pickActiveNotice', () => {
 });
 
 describe('unsubscribe semantics', () => {
-  test('after unsubscribe, all five per-channel unsub closures fire', () => {
+  test('after unsubscribe, all six per-channel unsub closures fire', () => {
     const bridge = makeFakeBridge();
     const addNotice = mock<(notice: UpdateNotice) => void>(() => {});
     const unsubscribe = attachUpdateSubscribers(castBridge(bridge), addNotice);
     unsubscribe();
     expect(bridge._downloadedUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._relaunchingUnsub).toHaveBeenCalledTimes(1);
+    expect(bridge._relaunchFailedUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._whatsNewUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._whatsNewDismissedUnsub).toHaveBeenCalledTimes(1);
     expect(bridge._stuckHintUnsub).toHaveBeenCalledTimes(1);
