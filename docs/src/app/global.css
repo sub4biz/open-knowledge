@@ -269,6 +269,10 @@
   opacity: 0.92;
 }
 
+.slide-btn-primary:active {
+  transform: scale(0.97);
+}
+
 .dark .slide-btn-primary {
   /* Dark mode: --slide-accent-strong is LIGHT (#93c5fd) — pair with dark
      text (--slide-bg = #0c0c0c) for ~10.9:1 contrast. Using --slide-text
