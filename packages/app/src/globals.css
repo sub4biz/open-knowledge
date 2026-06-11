@@ -1488,8 +1488,12 @@
   text-decoration-style: dotted;
 }
 
-/* External — leaves-the-workspace visual (↗ cue via ::after would require
-   layout room on inline; we take a subtler color-differentiation route). */
+/* External — leaves-the-workspace visual. Find decorations split a single
+   link into adjacent inline fragments; only the final fragment gets the cue. */
+.ProseMirror [data-resolution-state="external"]:has(+ [data-resolution-state="external"])::after {
+  content: none;
+}
+
 .ProseMirror [data-resolution-state="external"]::after {
   content: " ↗";
   font-size: 0.85em;
