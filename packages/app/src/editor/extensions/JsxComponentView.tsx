@@ -174,6 +174,15 @@ export function extractPrimitiveProps(
   return sanitizeComponentProps(result);
 }
 
+interface ElementJsxAttrs extends Record<string, unknown> {
+  kind: 'element';
+  props: Record<string, unknown>;
+}
+
+export function getElementJsxAttrs(attrs: Record<string, unknown>): ElementJsxAttrs | null {
+  return attrs.kind === 'element' ? (attrs as ElementJsxAttrs) : null;
+}
+
 const MAX_AUTO_CONVERT_RETRIES = 3;
 
 export function JsxComponentView({ node, editor, extension, getPos, selected }: NodeViewProps) {
@@ -644,20 +653,21 @@ export function JsxComponentView({ node, editor, extension, getPos, selected }: 
                     if (!ALIGNABLE_DESCRIPTOR_NAMES.has(curDescriptorName)) {
                       return;
                     }
-                    if (curNode.attrs.kind !== 'element') return;
+                    const elementAttrs = getElementJsxAttrs(curNode.attrs);
+                    if (!elementAttrs) return;
                     const isCommonMark = curDescriptorName === 'CommonMarkImage';
                     const nextProps = {
-                      ...(curNode.attrs.props as Record<string, unknown>),
+                      ...elementAttrs.props,
                       align: value,
                     };
                     const nextAttrs = isCommonMark
                       ? {
-                          ...curNode.attrs,
+                          ...elementAttrs,
                           componentName: 'img',
                           props: nextProps,
                           sourceDirty: true,
                         }
-                      : { ...curNode.attrs, props: nextProps, sourceDirty: true };
+                      : { ...elementAttrs, props: nextProps, sourceDirty: true };
                     runWithAlignAnimation(wrapperEl, () => {
                       editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, null, nextAttrs));
                       markUserTyping();
@@ -1024,15 +1034,16 @@ export function JsxComponentView({ node, editor, extension, getPos, selected }: 
             if (typeof livePos !== 'number') return;
             const curNode = editor.state.doc.nodeAt(livePos);
             if (!curNode) return;
-            if (curNode.attrs.kind !== 'element') return;
+            const elementAttrs = getElementJsxAttrs(curNode.attrs);
+            if (!elementAttrs) return;
             try {
-              const currentNodeProps = (curNode.attrs.props as Record<string, unknown>) ?? {};
+              const currentNodeProps = elementAttrs.props;
               const nextProps = {
                 ...currentNodeProps,
                 [editableSource.propName]: value,
               };
               const nextAttrs = {
-                ...curNode.attrs,
+                ...elementAttrs,
                 props: nextProps,
                 sourceDirty: true,
               };
@@ -1077,8 +1088,9 @@ export function JsxComponentView({ node, editor, extension, getPos, selected }: 
               if (typeof p !== 'number') return;
               const curNode = editor.state.doc.nodeAt(p);
               if (!curNode) return;
-              if (curNode.attrs.kind !== 'element') return;
-              const currentNodeProps = (curNode.attrs.props as Record<string, unknown>) ?? {};
+              const elementAttrs = getElementJsxAttrs(curNode.attrs);
+              if (!elementAttrs) return;
+              const currentNodeProps = elementAttrs.props;
               const nextProps: Record<string, unknown> = { ...currentNodeProps };
               const currentAttributes = Array.isArray(curNode.attrs.attributes)
                 ? (curNode.attrs.attributes as unknown[])
@@ -1100,7 +1112,7 @@ export function JsxComponentView({ node, editor, extension, getPos, selected }: 
               }
               editor.view.dispatch(
                 editor.state.tr.setNodeMarkup(p, null, {
-                  ...curNode.attrs,
+                  ...elementAttrs,
                   attributes: nextAttributes,
                   props: nextProps,
                   sourceDirty: true,
