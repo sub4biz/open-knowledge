@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test';
+import * as actualSonner from 'sonner';
 import type {
   OkDesktopBridge,
   OkServerRestartOutcome,
@@ -12,6 +13,7 @@ const toastError = mock((_msg: string, _opts?: unknown) => 'error-id');
 const toastDismiss = mock((_id?: unknown) => {});
 const toastCustom = mock((_render: (id: unknown) => unknown, _opts?: unknown) => 'custom-id');
 mock.module('sonner', () => ({
+  ...actualSonner,
   toast: Object.assign(
     mock(() => {}),
     {
