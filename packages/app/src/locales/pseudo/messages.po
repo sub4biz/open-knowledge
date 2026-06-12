@@ -345,6 +345,10 @@ msgstr ""
 msgid "{tokens, plural, one {token} other {tokens}}"
 msgstr ""
 
+#: src/components/FileTree.tsx
+msgid "{truncatedShownCount, plural, one {Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.} other {Showing the first {formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.}}"
+msgstr ""
+
 #: src/presence/PresenceBar.tsx
 msgid "{userName} · {tabCount, plural, one {# tab} other {# tabs}}"
 msgstr ""
@@ -5067,10 +5071,6 @@ msgstr ""
 
 #: src/editor/components/Pdf.tsx
 msgid "Show thumbnails"
-msgstr ""
-
-#: src/components/FileTree.tsx
-msgid "Showing first {truncatedShownCount} items — use search to find others"
 msgstr ""
 
 #: src/components/CommandPalette.tsx

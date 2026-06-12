@@ -345,6 +345,10 @@ msgstr "{settingsDescriptorLabel} properties"
 msgid "{tokens, plural, one {token} other {tokens}}"
 msgstr "{tokens, plural, one {token} other {tokens}}"
 
+#: src/components/FileTree.tsx
+msgid "{truncatedShownCount, plural, one {Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.} other {Showing the first {formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.}}"
+msgstr "{truncatedShownCount, plural, one {Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.} other {Showing the first {formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.}}"
+
 #: src/presence/PresenceBar.tsx
 msgid "{userName} · {tabCount, plural, one {# tab} other {# tabs}}"
 msgstr "{userName} · {tabCount, plural, one {# tab} other {# tabs}}"
@@ -5073,10 +5077,6 @@ msgstr "Show replace"
 #: src/editor/components/Pdf.tsx
 msgid "Show thumbnails"
 msgstr "Show thumbnails"
-
-#: src/components/FileTree.tsx
-msgid "Showing first {truncatedShownCount} items — use search to find others"
-msgstr "Showing first {truncatedShownCount} items — use search to find others"
 
 #: src/components/CommandPalette.tsx
 msgid "Showing results for \"{semanticResultsLabel}\""

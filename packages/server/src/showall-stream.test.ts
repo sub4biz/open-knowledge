@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ASSET_EXTENSIONS, type DocumentListEntry } from '@inkeep/open-knowledge-core';
@@ -124,6 +124,187 @@ describe('streamShowAllEntries — abort + laziness', () => {
     const ret = await gen.return({ truncated: false });
     expect(ret.done).toBe(true);
   });
+
+  test('abort between queued directories is honored when the remaining dirs are empty', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-stream-abort-')));
+    for (const sub of ['a', 'b', 'c']) {
+      mkdirSync(join(dir, sub));
+    }
+    __resetShowAllWalkStatsForTesting();
+    const controller = new AbortController();
+    const gen = streamShowAllEntries({
+      ...streamOptsFor(dir, 50_000),
+      signal: controller.signal,
+    });
+    await gen.next();
+    await gen.next();
+    const third = await gen.next();
+    expect(third.done).toBe(false);
+    controller.abort();
+    const final = await gen.next();
+    expect(final.done).toBe(true);
+    expect(__getShowAllWalkStatsForTesting().aborts).toBe(1);
+  });
+});
+
+function entryPath(e: DocumentListEntry): string {
+  return e.kind === 'document' ? e.docName : e.path;
+}
+
+describe('streamShowAllEntries — level-order emission (PRD-6858)', () => {
+  function makeStarvationFixture(): { dir: string; rootFolders: string[]; rootDocs: string[] } {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-bfs-')));
+    const rootFolders: string[] = [];
+    const rootDocs: string[] = [];
+    for (let d = 0; d < 5; d++) {
+      const sub = `dir-${d}`;
+      mkdirSync(join(dir, sub));
+      rootFolders.push(sub);
+      for (let f = 0; f < 20; f++) {
+        writeFileSync(join(dir, sub, `leaf-${String(f).padStart(2, '0')}.md`), `# leaf ${f}\n`);
+      }
+    }
+    for (let f = 0; f < 5; f++) {
+      const name = `root-file-${f}`;
+      writeFileSync(join(dir, `${name}.md`), `# ${name}\n`);
+      rootDocs.push(name);
+    }
+    return { dir, rootFolders, rootDocs };
+  }
+
+  test('cap hit inside a deep subtree never starves root-level entries', async () => {
+    const { dir, rootFolders, rootDocs } = makeStarvationFixture();
+    const CAP = 15;
+    const { entries, truncated } = await drain(streamShowAllEntries(streamOptsFor(dir, CAP)));
+
+    expect(truncated).toBe(true);
+    expect(entries.length).toBe(CAP);
+
+    const paths = entries.map(entryPath);
+    for (const folder of rootFolders) expect(paths).toContain(folder);
+    for (const doc of rootDocs) expect(paths).toContain(doc);
+  });
+
+  test('every depth-N entry emits before the first depth-N+1 entry, parents before children', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-levelorder-')));
+    writeFileSync(join(dir, 'root.md'), '# root\n');
+    mkdirSync(join(dir, 'a', 'sub'), { recursive: true });
+    mkdirSync(join(dir, 'b'));
+    writeFileSync(join(dir, 'a', 'one.md'), '# one\n');
+    writeFileSync(join(dir, 'a', 'note.txt'), 'asset\n');
+    writeFileSync(join(dir, 'b', 'two.md'), '# two\n');
+    writeFileSync(join(dir, 'a', 'sub', 'deep.md'), '# deep\n');
+
+    const { entries, truncated } = await drain(streamShowAllEntries(streamOptsFor(dir, 50_000)));
+    expect(truncated).toBe(false);
+
+    const depths = entries.map((e) => entryPath(e).split('/').length);
+    expect(depths).toEqual([1, 1, 1, 2, 2, 2, 2, 3]);
+
+    const paths = entries.map(entryPath);
+    for (const path of paths) {
+      const segments = path.split('/');
+      if (segments.length < 2) continue;
+      const parent = segments.slice(0, -1).join('/');
+      const parentIdx = entries.findIndex((e) => e.kind === 'folder' && e.path === parent);
+      expect(parentIdx).toBeGreaterThanOrEqual(0);
+      expect(parentIdx).toBeLessThan(paths.indexOf(path));
+    }
+  });
+
+  test('maxDepth=1 yields a single level with hasChildren stamped, never recursing', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-depth1-')));
+    writeFileSync(join(dir, 'top.md'), '# top\n');
+    mkdirSync(join(dir, 'full', 'grandchild'), { recursive: true });
+    writeFileSync(join(dir, 'full', 'child.md'), '# child\n');
+    mkdirSync(join(dir, 'hollow'));
+
+    const { entries, truncated } = await drain(
+      streamShowAllEntries({ ...streamOptsFor(dir, 50_000), maxDepth: 1 }),
+    );
+    expect(truncated).toBe(false);
+
+    const paths = entries.map(entryPath);
+    expect(paths.toSorted()).toEqual(['full', 'hollow', 'top']);
+
+    const full = entries.find((e) => e.kind === 'folder' && e.path === 'full');
+    const hollow = entries.find((e) => e.kind === 'folder' && e.path === 'hollow');
+    expect(full?.kind === 'folder' && full.hasChildren).toBe(true);
+    expect(hollow?.kind === 'folder' && hollow.hasChildren).toBe(false);
+  });
+});
+
+describe('streamShowAllEntries — cap accounting boundary quirks', () => {
+  test('an excludable entry past the cap still reports truncated (cap checked before exclusion)', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-quirk-')));
+    const CAP = 4;
+    mkdirSync(join(dir, 'sub'));
+    for (let i = 0; i < CAP - 1; i++) {
+      writeFileSync(join(dir, `f-${i}.md`), `# f ${i}\n`);
+    }
+    mkdirSync(join(dir, 'sub', 'node_modules'));
+
+    const { entries, truncated } = await drain(streamShowAllEntries(streamOptsFor(dir, CAP)));
+    expect(entries.length).toBe(CAP);
+    expect(entries.map(entryPath).toSorted()).toEqual(['f-0', 'f-1', 'f-2', 'sub']);
+    expect(truncated).toBe(true);
+  });
+
+  test('the same tree under a roomier cap drains untruncated — the exclusion gate still prunes', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-quirk-roomy-')));
+    mkdirSync(join(dir, 'sub'));
+    for (let i = 0; i < 3; i++) {
+      writeFileSync(join(dir, `f-${i}.md`), `# f ${i}\n`);
+    }
+    mkdirSync(join(dir, 'sub', 'node_modules'));
+
+    const { entries, truncated } = await drain(streamShowAllEntries(streamOptsFor(dir, 5)));
+    expect(entries.length).toBe(4);
+    expect(entries.map(entryPath)).not.toContain('sub/node_modules');
+    expect(truncated).toBe(false);
+  });
+});
+
+describe('streamShowAllEntries — unreadable directory mid-queue', () => {
+  const runningAsRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+
+  test.skipIf(runningAsRoot)(
+    'a permission-denied directory skips with a warn while every other entry still emits',
+    async () => {
+      const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-showall-eacces-')));
+      writeFileSync(join(dir, 'root.md'), '# root\n');
+      mkdirSync(join(dir, 'locked'));
+      writeFileSync(join(dir, 'locked', 'hidden.md'), '# hidden\n');
+      mkdirSync(join(dir, 'open'));
+      writeFileSync(join(dir, 'open', 'visible.md'), '# visible\n');
+      chmodSync(join(dir, 'locked'), 0o000);
+
+      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const { entries, truncated } = await drain(
+          streamShowAllEntries(streamOptsFor(dir, 50_000)),
+        );
+
+        const paths = entries.map(entryPath);
+        expect(paths).not.toContain('locked/hidden');
+        expect(paths).toContain('root');
+        expect(paths).toContain('open');
+        expect(paths).toContain('open/visible');
+        expect(truncated).toBe(false);
+
+        const lockedWarn = warnSpy.mock.calls.find(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes('failed for') &&
+            call[0].includes('locked'),
+        );
+        expect(lockedWarn).toBeDefined();
+      } finally {
+        warnSpy.mockRestore();
+        chmodSync(join(dir, 'locked'), 0o755);
+      }
+    },
+  );
 });
 
 describe('streamShowAllEntries — .base/.canvas mediaKind', () => {

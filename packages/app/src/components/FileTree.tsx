@@ -36,10 +36,12 @@ import {
   FolderOpen,
   FolderPlus,
   FoldVertical,
+  Info,
   Pencil,
   SquarePen,
   Terminal,
   Trash2,
+  TriangleAlert,
   UnfoldVertical,
 } from 'lucide-react';
 import { __iconNode as botIcon } from 'lucide-react/dist/esm/icons/bot';
@@ -48,6 +50,7 @@ import { useTheme } from 'next-themes';
 import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
   type Ref,
   startTransition,
   useEffect,
@@ -113,6 +116,7 @@ import {
   isAssetEntry,
   isDocumentEntry,
   isFolderEntry,
+  toFileEntries,
 } from '@/components/file-tree-utils';
 import { NewItemDialog } from '@/components/NewItemDialog';
 import {
@@ -172,10 +176,11 @@ import {
   consumeShowAllStream,
   isNdjsonResponse,
   SHOW_ALL_NDJSON_ACCEPT,
+  ShowAllStreamError,
 } from '@/lib/show-all-stream';
 import { OK_SIDEBAR_DRAG_MIME, serializeSidebarDragPayload } from '@/lib/sidebar-drag';
 import { joinWorkspacePath } from '@/lib/workspace-paths';
-import { mergeAndPruneRecentLocalAdds } from './file-tree-merge';
+import { mergeAndPruneRecentLocalAdds, spliceLazyFolderChildren } from './file-tree-merge';
 import { OpenInAgentContextSubmenu } from './handoff/OpenInAgentContextSubmenu';
 import {
   buildFolderHandoffInput,
@@ -972,8 +977,49 @@ export interface FileTreeHandle {
   subscribe(listener: () => void): () => void;
 }
 
+type ShowAllDepth1ListingResult =
+  | { kind: 'entries'; entries: FileEntry[]; truncated: boolean }
+  | { kind: 'http-error'; title: string }
+  | { kind: 'network-error'; cause: unknown };
+
+async function fetchShowAllDepth1Listing(
+  dir: string,
+  signal: AbortSignal,
+  fallbackErrorTitle: string,
+  schemaMismatchTitle: string,
+): Promise<ShowAllDepth1ListingResult> {
+  try {
+    const res = await fetch(`/api/documents?showAll=true&dir=${encodeURIComponent(dir)}&depth=1`, {
+      signal,
+      headers: SHOW_ALL_NDJSON_ACCEPT,
+    });
+    if (isNdjsonResponse(res)) {
+      const consumed = await consumeShowAllStream(res);
+      return {
+        kind: 'entries',
+        entries: toFileEntries(consumed.entries),
+        truncated: consumed.truncated,
+      };
+    }
+    const parsed = await parseServerResponse(res, fallbackErrorTitle);
+    if (!parsed.ok) return { kind: 'http-error', title: parsed.title };
+    const success = DocumentListSuccessSchema.safeParse(parsed.body);
+    if (!success.success) return { kind: 'http-error', title: schemaMismatchTitle };
+    return {
+      kind: 'entries',
+      entries: toFileEntries(success.data.documents),
+      truncated: success.data.truncated === true,
+    };
+  } catch (cause) {
+    if (cause instanceof ShowAllStreamError) {
+      return { kind: 'http-error', title: cause.message };
+    }
+    return { kind: 'network-error', cause };
+  }
+}
+
 export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const {
     activeDocName,
     activeTarget,
@@ -1095,6 +1141,12 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
   const sidebarDragClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busyPathRef = useRef<string | null>(null);
   const recentLocalAddsRef = useRef<Map<string, number>>(new Map());
+  const lazyLoadedDirTreePathsRef = useRef<Set<string>>(new Set());
+  const lazyChildFetchControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const lazyChildFetchGenerationRef = useRef(0);
+  const prevExpandedFolderTreePathsRef = useRef<ReadonlySet<string>>(new Set());
+  const detectLazyFolderExpansionsRef = useRef<() => void>(() => {});
+  const revalidateExpandedLazyDirsRef = useRef<() => void>(() => {});
   const showHiddenFilesRef = useRef<boolean>(false);
   const showAllFilesRef = useRef<boolean>(false);
   const refreshDocsScheduleRef = useRef<(() => void) | null>(null);
@@ -1297,6 +1349,67 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     model.resetPaths(nextPaths, {
       initialExpandedPaths: expandedPathsForReset(nextDocuments),
     });
+  };
+
+  async function fetchLazyFolderChildren(folderTreePath: string) {
+    const generation = lazyChildFetchGenerationRef.current;
+    const controller = new AbortController();
+    lazyChildFetchControllersRef.current.set(folderTreePath, controller);
+    const result = await fetchShowAllDepth1Listing(
+      treeDirectoryPathToFolderPath(folderTreePath),
+      controller.signal,
+      t`Failed to load documents`,
+      t`Documents response did not match expected shape.`,
+    );
+    if (lazyChildFetchControllersRef.current.get(folderTreePath) === controller) {
+      lazyChildFetchControllersRef.current.delete(folderTreePath);
+    }
+    if (controller.signal.aborted || generation !== lazyChildFetchGenerationRef.current) return;
+    if (result.kind === 'network-error') {
+      setError(t`Could not reach server`);
+      console.warn('[FileTree] lazy folder children fetch failed:', folderTreePath, result.cause);
+      return;
+    }
+    if (result.kind === 'http-error') {
+      console.warn('[FileTree] lazy folder children http error:', folderTreePath, result.title);
+      setError(result.title);
+      return;
+    }
+    const bypassClientDotDrop = showHiddenFilesRef.current || showAllFilesRef.current;
+    const children = filterVisibleEntries(result.entries, bypassClientDotDrop);
+    lazyLoadedDirTreePathsRef.current.add(folderTreePath);
+    setDocuments((prev) =>
+      spliceLazyFolderChildren(prev, folderTreePath, children, recentLocalAddsRef.current),
+    );
+    setError(null);
+    if (result.truncated) setTruncatedShownCount(result.entries.length);
+  }
+
+  const detectLazyFolderExpansions = () => {
+    const expanded = collectExpandedFolderTreePaths();
+    const previous = prevExpandedFolderTreePathsRef.current;
+    prevExpandedFolderTreePathsRef.current = expanded;
+    if (!showAllFilesRef.current) return;
+    for (const folderTreePath of expanded) {
+      if (previous.has(folderTreePath)) continue;
+      if (lazyLoadedDirTreePathsRef.current.has(folderTreePath)) continue;
+      if (lazyChildFetchControllersRef.current.has(folderTreePath)) continue;
+      const folderPath = treeDirectoryPathToFolderPath(folderTreePath);
+      const entry = documentsRef.current.find(
+        (candidate): candidate is Extract<FileEntry, { kind: 'folder' }> =>
+          isFolderEntry(candidate) && candidate.path === folderPath,
+      );
+      if (entry?.hasChildren === false) continue;
+      void fetchLazyFolderChildren(folderTreePath);
+    }
+  };
+
+  const revalidateExpandedLazyDirs = () => {
+    for (const folderTreePath of collectExpandedFolderTreePaths()) {
+      if (lazyLoadedDirTreePathsRef.current.has(folderTreePath)) continue;
+      if (lazyChildFetchControllersRef.current.has(folderTreePath)) continue;
+      void fetchLazyFolderChildren(folderTreePath);
+    }
   };
 
   const reconcileModelAfterChipRename = (
@@ -1551,9 +1664,15 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
       refreshController?.abort();
       const controller = new AbortController();
       refreshController = controller;
+      lazyChildFetchGenerationRef.current += 1;
+      for (const childController of lazyChildFetchControllersRef.current.values()) {
+        childController.abort();
+      }
+      lazyChildFetchControllersRef.current.clear();
+      lazyLoadedDirTreePathsRef.current.clear();
       try {
         const showAll = showAllFilesRef.current;
-        const url = showAll ? '/api/documents?showAll=true' : '/api/documents';
+        const url = showAll ? '/api/documents?showAll=true&dir=&depth=1' : '/api/documents';
         const res = await fetch(url, {
           signal: controller.signal,
           headers: showAll ? SHOW_ALL_NDJSON_ACCEPT : undefined,
@@ -1562,18 +1681,13 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
           const { entries, truncated } = await consumeShowAllStream(res);
           if (!active) return;
           const bypassClientDotDrop = showHiddenFilesRef.current || showAll;
-          const serverEntries = filterVisibleEntries(
-            entries as unknown as FileEntry[],
-            bypassClientDotDrop,
+          const serverEntries = filterVisibleEntries(toFileEntries(entries), bypassClientDotDrop);
+          setDocuments((prev) =>
+            spliceLazyFolderChildren(prev, '', serverEntries, recentLocalAddsRef.current),
           );
-          const merged = mergeAndPruneRecentLocalAdds(
-            serverEntries,
-            documentsRef.current,
-            recentLocalAddsRef.current,
-          );
-          setDocuments(merged);
           setError(null);
           setTruncatedShownCount(truncated ? entries.length : null);
+          revalidateExpandedLazyDirsRef.current();
         } else {
           const parsed = await parseServerResponse(res, t`Failed to load documents`);
           if (!active) return;
@@ -1588,25 +1702,34 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
             } else {
               const bypassClientDotDrop = showHiddenFilesRef.current || showAll;
               const serverEntries = filterVisibleEntries(
-                success.data.documents as unknown as FileEntry[],
+                toFileEntries(success.data.documents),
                 bypassClientDotDrop,
               );
-              const merged = mergeAndPruneRecentLocalAdds(
-                serverEntries,
-                documentsRef.current,
-                recentLocalAddsRef.current,
-              );
-              setDocuments(merged);
+              if (showAll) {
+                setDocuments((prev) =>
+                  spliceLazyFolderChildren(prev, '', serverEntries, recentLocalAddsRef.current),
+                );
+              } else {
+                const merged = mergeAndPruneRecentLocalAdds(
+                  serverEntries,
+                  documentsRef.current,
+                  recentLocalAddsRef.current,
+                );
+                setDocuments(merged);
+              }
               setError(null);
               setTruncatedShownCount(
                 showAll && success.data.truncated === true ? success.data.documents.length : null,
               );
+              if (showAll) revalidateExpandedLazyDirsRef.current();
             }
           }
         }
       } catch (err) {
         if (controller.signal.aborted) return;
-        if (active) setError(t`Could not reach server`);
+        if (active) {
+          setError(err instanceof ShowAllStreamError ? err.message : t`Could not reach server`);
+        }
         console.warn('[FileTree] fetch failed:', err);
       }
       if (active) setLoading(false);
@@ -1631,6 +1754,10 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
       active = false;
       refreshDocsScheduleRef.current = null;
       scheduler.dispose();
+      for (const childController of lazyChildFetchControllersRef.current.values()) {
+        childController.abort();
+      }
+      lazyChildFetchControllersRef.current.clear();
       window.removeEventListener('focus', handleResume);
       window.removeEventListener('visibilitychange', handleResume);
       unsubscribe();
@@ -1714,6 +1841,10 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
         }
       }
     });
+  }, [model]);
+
+  useEffect(() => {
+    return model.subscribe(() => detectLazyFolderExpansionsRef.current());
   }, [model]);
 
   useEffect(() => {
@@ -2193,6 +2324,8 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     treePathsRef.current = treePaths;
     folderTreePathsRef.current = folderTreePaths;
     activeAncestorTreePathsRef.current = activeAncestorTreePaths;
+    detectLazyFolderExpansionsRef.current = detectLazyFolderExpansions;
+    revalidateExpandedLazyDirsRef.current = revalidateExpandedLazyDirs;
     cleanupPendingCreateRef.current = cleanupPendingCreate;
     handleSelectionChangeRef.current = (selectedPaths) => {
       if (suppressSelectionRef.current || sidebarDragInProgressRef.current) return;
@@ -2866,24 +2999,24 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
 
   const anyActionBusy = busyPath !== null;
   const primaryDeleteTarget = deleteRequest?.targets[0] ?? null;
+  let truncationNotice: string | null = null;
+  if (truncatedShownCount !== null) {
+    const formattedCount = new Intl.NumberFormat(i18n.locale).format(truncatedShownCount);
+    truncationNotice = plural(truncatedShownCount, {
+      one: 'Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.',
+      other: `Showing the first ${formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.`,
+    });
+  }
   return (
     <>
       <div ref={fileTreeHostRef} className="flex min-h-0 flex-1 flex-col">
         <PierreFileTree
           header={
-            (error || truncatedShownCount !== null) && (
+            (error || truncationNotice !== null) && (
               <>
-                {error && (
-                  <span role="alert" className="px-3 pb-1 text-destructive text-xs">
-                    {error}
-                  </span>
-                )}
-                {truncatedShownCount !== null && (
-                  <span role="status" className="px-3 pb-1 text-muted-foreground text-xs">
-                    <Trans>
-                      Showing first {truncatedShownCount} items — use search to find others
-                    </Trans>
-                  </span>
+                {error && <FileTreeHeaderNotice kind="error">{error}</FileTreeHeaderNotice>}
+                {truncationNotice !== null && (
+                  <FileTreeHeaderNotice kind="info">{truncationNotice}</FileTreeHeaderNotice>
                 )}
               </>
             )
@@ -3038,5 +3171,20 @@ function FileTreeSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+function FileTreeHeaderNotice({ kind, children }: { kind: 'error' | 'info'; children: ReactNode }) {
+  const Icon = kind === 'error' ? TriangleAlert : Info;
+  return (
+    <span
+      role={kind === 'error' ? 'alert' : 'status'}
+      className={`mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs leading-snug ${
+        kind === 'error' ? 'text-destructive' : 'text-muted-foreground'
+      }`}
+    >
+      <Icon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+      <span className="min-w-0">{children}</span>
+    </span>
   );
 }

@@ -38,6 +38,7 @@ export interface ApiHelpers {
 
 type WorkerFixtures = {
   workerServer: WorkerServer;
+  workerServerEnv: Record<string, string>;
 };
 
 type TestFixtures = {
@@ -88,9 +89,9 @@ function seedRequiredFixtureFiles(contentDir: string): void {
 }
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  workerServerEnv: [{}, { scope: 'worker', option: true }],
   workerServer: [
-    // biome-ignore lint/correctness/noEmptyPattern: Playwright requires an object-destructuring pattern for the fixtures arg; this fixture has no dependencies so the destructure is empty by design.
-    async ({}, use, workerInfo) => {
+    async ({ workerServerEnv }, use, workerInfo) => {
       const port = await getFreePort();
       const contentDir = mkdtempSync(join(tmpdir(), `ok-w${workerInfo.workerIndex}-`));
       const viteCacheDir = prepareViteCacheDir(`w${workerInfo.workerIndex}`);
@@ -103,6 +104,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         cwd: APP_PACKAGE_ROOT,
         env: {
           ...process.env,
+          ...workerServerEnv,
           VITE_PORT: String(port),
           OK_TEST_CONTENT_DIR: contentDir,
           OK_TEST_VITE_CACHE_DIR: viteCacheDir,

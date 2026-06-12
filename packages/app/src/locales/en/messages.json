@@ -1085,7 +1085,6 @@
       ["1"],
       "."
     ],
-    "_HekAK": ["Showing first ", ["truncatedShownCount"], " items — use search to find others"],
     "_K2CvV": ["Template"],
     "_N2eSU": ["org"],
     "_PACVa": ["Release notes"],
@@ -1456,6 +1455,22 @@
     ],
     "mNY1G6": ["Undo all edits"],
     "mSJ3Rn": ["Computing scaffold plan"],
+    "mSpqzP": [
+      [
+        "truncatedShownCount",
+        "plural",
+        {
+          "one": [
+            "Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view."
+          ],
+          "other": [
+            "Showing the first ",
+            ["formattedCount"],
+            " items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view."
+          ]
+        }
+      ]
+    ],
     "mU3j1b": ["Remove item ", ["0"]],
     "mWVJRX": ["Collapsible section with a clickable summary."],
     "mYGY3B": ["Date"],

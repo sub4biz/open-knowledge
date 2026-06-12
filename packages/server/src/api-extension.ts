@@ -931,7 +931,11 @@ export async function* streamShowAllEntries(
         try {
           const childCanonical = await realpath(`${absDir}/${entry.name}`);
           if (!isInsideContentDir(childCanonical)) continue;
-        } catch {
+        } catch (err) {
+          console.warn(
+            `[document-list][showAll] probe realpath failed for ${absDir}/${entry.name}:`,
+            err,
+          );
           continue;
         }
         return true;
@@ -944,122 +948,134 @@ export async function* streamShowAllEntries(
   }
 
   async function* walk(
-    absDir: string,
-    relDir: string,
-    depth: number,
+    startAbsDir: string,
+    startRelDir: string,
+    startDepth: number,
   ): AsyncGenerator<DocumentListEntry> {
-    let entries: import('node:fs').Dirent[];
-    try {
-      entries = await readdir(absDir, { withFileTypes: true });
-    } catch (err) {
-      console.warn(`[document-list][showAll] readdir failed for ${absDir}:`, err);
-      return;
-    }
-
-    for (const entry of entries) {
+    const queue: Array<{ absDir: string; relDir: string; depth: number }> = [
+      { absDir: startAbsDir, relDir: startRelDir, depth: startDepth },
+    ];
+    for (let head = 0; head < queue.length; head++) {
       if (signal?.aborted) {
         aborted = true;
         return;
       }
-      if (emitted >= maxEntries) {
-        truncated = true;
-        return;
+      const { absDir, relDir, depth } = queue[head];
+      let entries: import('node:fs').Dirent[];
+      try {
+        entries = await readdir(absDir, { withFileTypes: true });
+      } catch (err) {
+        console.warn(`[document-list][showAll] readdir failed for ${absDir}:`, err);
+        continue;
       }
-      const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
 
-      if (entry.isDirectory()) {
-        if (contentFilter.isDirExcluded(relPath, { bypassFilters: true })) continue;
-
-        const dirAbsRaw = `${absDir}/${entry.name}`;
-        let dirCanonical: string;
-        try {
-          dirCanonical = await realpath(dirAbsRaw);
-        } catch (err) {
-          console.warn(`[document-list][showAll] realpath failed for ${dirAbsRaw}:`, err);
-          continue;
+      for (const entry of entries) {
+        if (signal?.aborted) {
+          aborted = true;
+          return;
         }
-        if (!isInsideContentDir(dirCanonical)) {
-          console.warn(
-            `[document-list][showAll] refusing symlink-escape ${dirAbsRaw} -> ${dirCanonical}`,
-          );
-          continue;
+        if (emitted >= maxEntries) {
+          truncated = true;
+          return;
         }
+        const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
 
-        if (passesDirFilter(relPath)) {
-          let folderStat: import('node:fs').Stats | null = null;
+        if (entry.isDirectory()) {
+          if (contentFilter.isDirExcluded(relPath, { bypassFilters: true })) continue;
+
+          const dirAbsRaw = `${absDir}/${entry.name}`;
+          let dirCanonical: string;
           try {
-            folderStat = await stat(dirAbsRaw);
+            dirCanonical = await realpath(dirAbsRaw);
           } catch (err) {
-            console.warn(`[document-list][showAll] stat failed for ${dirAbsRaw}:`, err);
+            console.warn(`[document-list][showAll] realpath failed for ${dirAbsRaw}:`, err);
+            continue;
           }
+          if (!isInsideContentDir(dirCanonical)) {
+            console.warn(
+              `[document-list][showAll] refusing symlink-escape ${dirAbsRaw} -> ${dirCanonical}`,
+            );
+            continue;
+          }
+
+          if (passesDirFilter(relPath)) {
+            let folderStat: import('node:fs').Stats | null = null;
+            try {
+              folderStat = await stat(dirAbsRaw);
+            } catch (err) {
+              console.warn(`[document-list][showAll] stat failed for ${dirAbsRaw}:`, err);
+            }
+            emitted += 1;
+            const atLeafDepth = depth >= maxDepth;
+            const hasChildren = atLeafDepth
+              ? await probeHasChildren(dirAbsRaw, relPath)
+              : undefined;
+            yield {
+              kind: 'folder',
+              path: relPath,
+              size: 0,
+              modified: folderStat ? folderStat.mtime.toISOString() : '',
+              docExt: '.md',
+              isSymlink: false,
+              canonicalDocName: null,
+              targetPath: null,
+              ...(hasChildren === undefined ? {} : { hasChildren }),
+            };
+          }
+
+          if (depth < maxDepth) {
+            queue.push({ absDir: dirAbsRaw, relDir: relPath, depth: depth + 1 });
+          }
+          continue;
+        }
+
+        if (!entry.isFile()) continue;
+        if (contentFilter.isExcluded(relPath, { bypassFilters: true })) continue;
+        if (!passesDirFilter(relPath)) continue;
+
+        let fileStat: import('node:fs').Stats | null = null;
+        try {
+          fileStat = await stat(`${absDir}/${entry.name}`);
+        } catch (err) {
+          console.warn(`[document-list][showAll] stat failed for ${absDir}/${entry.name}:`, err);
+          continue;
+        }
+
+        if (isSupportedDocFile(entry.name)) {
+          const docName = relPath.replace(/\.(md|mdx)$/i, '');
+          const docExt = getDocExtension(docName);
           emitted += 1;
-          const atLeafDepth = depth >= maxDepth;
-          const hasChildren = atLeafDepth ? await probeHasChildren(dirAbsRaw, relPath) : undefined;
           yield {
-            kind: 'folder',
-            path: relPath,
-            size: 0,
-            modified: folderStat ? folderStat.mtime.toISOString() : '',
-            docExt: '.md',
+            kind: 'document',
+            docName,
+            docExt,
+            size: fileStat.size,
+            modified: fileStat.mtime.toISOString(),
             isSymlink: false,
             canonicalDocName: null,
             targetPath: null,
-            ...(hasChildren === undefined ? {} : { hasChildren }),
           };
+          continue;
         }
 
-        if (depth < maxDepth) {
-          yield* walk(dirAbsRaw, relPath, depth + 1);
-        }
-        continue;
-      }
-
-      if (!entry.isFile()) continue;
-      if (contentFilter.isExcluded(relPath, { bypassFilters: true })) continue;
-      if (!passesDirFilter(relPath)) continue;
-
-      let fileStat: import('node:fs').Stats | null = null;
-      try {
-        fileStat = await stat(`${absDir}/${entry.name}`);
-      } catch (err) {
-        console.warn(`[document-list][showAll] stat failed for ${absDir}/${entry.name}:`, err);
-        continue;
-      }
-
-      if (isSupportedDocFile(entry.name)) {
-        const docName = relPath.replace(/\.(md|mdx)$/i, '');
-        const docExt = getDocExtension(docName);
+        const assetExt = synthesizeShowAllAssetExt(entry.name);
+        const mediaKind: InlineAssetMediaKind | null = mediaKindForSidebarAssetExtension(assetExt);
         emitted += 1;
         yield {
-          kind: 'document',
-          docName,
-          docExt,
+          kind: 'asset',
+          docName: relPath,
+          docExt: assetExt,
+          path: relPath,
+          assetExt,
+          mediaKind,
+          referencedBy: [],
           size: fileStat.size,
           modified: fileStat.mtime.toISOString(),
           isSymlink: false,
           canonicalDocName: null,
           targetPath: null,
         };
-        continue;
       }
-
-      const assetExt = synthesizeShowAllAssetExt(entry.name);
-      const mediaKind: InlineAssetMediaKind | null = mediaKindForSidebarAssetExtension(assetExt);
-      emitted += 1;
-      yield {
-        kind: 'asset',
-        docName: relPath,
-        docExt: assetExt,
-        path: relPath,
-        assetExt,
-        mediaKind,
-        referencedBy: [],
-        size: fileStat.size,
-        modified: fileStat.mtime.toISOString(),
-        isSymlink: false,
-        canonicalDocName: null,
-        targetPath: null,
-      };
     }
   }
 
