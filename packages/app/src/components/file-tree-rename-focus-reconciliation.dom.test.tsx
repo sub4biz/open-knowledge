@@ -271,7 +271,7 @@ mock.module('@/editor/DocumentContext', () => ({
 }));
 
 mock.module('@/components/PageListContext', () => ({
-  usePageList: () => ({ addPage: addPageMock }),
+  usePageList: () => ({ addPage: addPageMock, pageMeta: new Map() }),
 }));
 
 mock.module('./ui/sidebar', () => ({

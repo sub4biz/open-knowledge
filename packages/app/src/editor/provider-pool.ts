@@ -84,6 +84,12 @@ interface TearingDownPoolEntry extends PoolEntryBase {
 
 type PoolEntry = ActivePoolEntry | TearingDownPoolEntry;
 
+type RenameRedirectHandler = (args: {
+  fromDocName: string;
+  toDocName: string;
+  hadOpenProvider: boolean;
+}) => void;
+
 type ObserverCounterMap = { providerObserverFires: Record<string, number> };
 const counterGlobal = globalThis as unknown as { __okPerfCounters?: ObserverCounterMap };
 
@@ -753,16 +759,10 @@ export class ProviderPool {
     };
   }
 
-  private onRenameRedirect:
-    | ((args: { fromDocName: string; toDocName: string; hadOpenProvider: boolean }) => void)
-    | null = null;
+  private onRenameRedirect: RenameRedirectHandler | null = null;
   private onDocDeleted: ((args: { docName: string; hadOpenProvider: boolean }) => void) | null =
     null;
-  setOnRenameRedirect(
-    cb:
-      | ((args: { fromDocName: string; toDocName: string; hadOpenProvider: boolean }) => void)
-      | null,
-  ): void {
+  setOnRenameRedirect(cb: RenameRedirectHandler | null): void {
     this.onRenameRedirect = cb;
   }
   setOnDocDeleted(
@@ -1026,7 +1026,11 @@ export class ProviderPool {
         this.deleteLineageEpochRecord(fromDocName);
         const existing = this.entries.get(fromDocName);
         const hadOpenProvider = existing !== undefined && existing.kind === 'active';
-        this.onRenameRedirect?.({ fromDocName, toDocName, hadOpenProvider });
+        this.onRenameRedirect?.({
+          fromDocName,
+          toDocName,
+          hadOpenProvider,
+        });
         return;
       }
       if (typed === 'doc-deleted') {

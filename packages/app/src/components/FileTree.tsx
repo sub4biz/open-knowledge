@@ -151,6 +151,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { asDirectoryHandle, useSelectionMirror } from '@/components/use-selection-mirror';
+import { getEditorForDoc } from '@/editor/active-editor';
 import { useDocumentContext } from '@/editor/DocumentContext';
 import { captureRenameSnapshots } from '@/editor/editor-cache';
 import { assetTabId, docTabId, folderTabId, remapPathForFolderRenames } from '@/editor/editor-tabs';
@@ -202,6 +203,16 @@ function parseAlreadyExistsRenamePath(message: string): string | null {
 function markdownTreeExtension(path: string): string | null {
   const match = path.match(MARKDOWN_TREE_EXTENSION_PATTERN);
   return match ? match[0] : null;
+}
+
+function focusEditorAfterRename(docName: string): void {
+  window.requestAnimationFrame(() => {
+    const editor = getEditorForDoc(docName);
+    if (!editor || editor.isDestroyed) return;
+    try {
+      editor.commands.focus();
+    } catch {}
+  });
 }
 
 async function copyToClipboard(text: string, kind: 'full' | 'relative'): Promise<void> {
@@ -1903,7 +1914,8 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     ) {
       navigateToFolderWithPulse(nextActiveFolderPath);
     } else if (nextActiveDocName && nextActiveDocName !== currentActiveDocName) {
-      window.location.hash = hashFromDocName(nextActiveDocName);
+      navigateToWithPulse(nextActiveDocName);
+      focusEditorAfterRename(nextActiveDocName);
     } else if (
       currentActiveAssetPath &&
       nextActiveAssetPath &&

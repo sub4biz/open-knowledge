@@ -251,10 +251,10 @@ describe('file-tree-operations', () => {
     ).toBe('README');
   });
 
-  describe('planRenameCleanupCalls — symptom 1+3 race gate', () => {
+  describe('planRenameCleanupCalls', () => {
     const poolHasAll = () => true;
 
-    test('pool active === toDocName → skip the destructive `to` clear', () => {
+    test('skips destination cleanup when redirect already reopened it', () => {
       expect(
         planRenameCleanupCalls(
           [{ fromDocName: 'docs/notes', toDocName: 'docs/renamed' }],
@@ -264,7 +264,7 @@ describe('file-tree-operations', () => {
       ).toEqual(['docs/notes']);
     });
 
-    test('pool active === fromDocName (server-push not yet run) → clear BOTH ends', () => {
+    test('clears both ends when redirect has not run yet', () => {
       expect(
         planRenameCleanupCalls(
           [{ fromDocName: 'docs/notes', toDocName: 'docs/renamed' }],
@@ -274,7 +274,7 @@ describe('file-tree-operations', () => {
       ).toEqual(['docs/notes', 'docs/renamed']);
     });
 
-    test('pool active is unrelated (renamed doc was never active) → clear BOTH ends', () => {
+    test('clears both ends when the active doc is unrelated', () => {
       expect(
         planRenameCleanupCalls(
           [{ fromDocName: 'docs/notes', toDocName: 'docs/renamed' }],
@@ -284,7 +284,7 @@ describe('file-tree-operations', () => {
       ).toEqual(['docs/notes', 'docs/renamed']);
     });
 
-    test('pool active is null (collabUrl unresolved) → clear BOTH ends', () => {
+    test('clears both ends when active doc is unknown', () => {
       expect(
         planRenameCleanupCalls(
           [{ fromDocName: 'docs/notes', toDocName: 'docs/renamed' }],
@@ -294,7 +294,7 @@ describe('file-tree-operations', () => {
       ).toEqual(['docs/notes', 'docs/renamed']);
     });
 
-    test('multi-rename batch — gate is per-entry', () => {
+    test('applies redirect guard per rename entry', () => {
       expect(
         planRenameCleanupCalls(
           [
@@ -313,7 +313,7 @@ describe('file-tree-operations', () => {
       expect(planRenameCleanupCalls([], 'anything', poolHasAll)).toEqual([]);
     });
 
-    test('pool has no entry for toDocName (never-opened) → skip toDocName cleanup', () => {
+    test('skips destination cleanup when the pool never opened it', () => {
       expect(
         planRenameCleanupCalls(
           [{ fromDocName: 'Untitled', toDocName: 'dhx' }],
@@ -323,7 +323,7 @@ describe('file-tree-operations', () => {
       ).toEqual(['Untitled']);
     });
 
-    test('bulk rename — per-entry poolHas decision', () => {
+    test('applies pool presence guard per rename entry', () => {
       const poolHas = (docName: string) => docName === 'archive/a' || docName === 'archive/c';
       expect(
         planRenameCleanupCalls(

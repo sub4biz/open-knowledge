@@ -103,6 +103,37 @@ interface TiptapEditorProps {
 
 type ClipboardState = ReturnType<typeof buildClipboardState>;
 
+type EditorContentBindingState = Editor & {
+  contentComponent: unknown | null;
+  isEditorContentInitialized: boolean;
+};
+
+function hasEditorContentBindingState(editor: Editor): editor is EditorContentBindingState {
+  return 'contentComponent' in editor && 'isEditorContentInitialized' in editor;
+}
+
+function repairDetachedEditorContent(editor: Editor, portalTarget: HTMLElement): boolean {
+  const view = getEditorView(editor);
+  if (!view || portalTarget.contains(view.dom)) return false;
+
+  if (!hasEditorContentBindingState(editor)) {
+    console.warn(
+      '[TiptapEditor] TipTap EditorContent binding fields missing; detached editor repair skipped',
+    );
+    return false;
+  }
+
+  const editorWithContent = editor;
+  if (editorWithContent.contentComponent == null) return false;
+
+  try {
+    view.setProps({ nodeViews: {} });
+  } catch {}
+  editorWithContent.contentComponent = null;
+  editorWithContent.isEditorContentInitialized = false;
+  return true;
+}
+
 type ProsemirrorMapping = ReturnType<typeof initProseMirrorDoc>['mapping'];
 
 function buildClipboardState() {
@@ -382,6 +413,7 @@ const TiptapEditorChrome: FC<TiptapEditorChromeProps> = ({
   portalTarget,
 }) => {
   const portalSlotRef = useRef<HTMLDivElement | null>(null);
+  const [editorContentRevision, setEditorContentRevision] = useState(0);
   useLayoutEffect(() => {
     const slot = portalSlotRef.current;
     if (!slot) return;
@@ -392,6 +424,12 @@ const TiptapEditorChrome: FC<TiptapEditorChromeProps> = ({
       }
     };
   }, [portalTarget]);
+
+  useEffect(() => {
+    if (repairDetachedEditorContent(editor, portalTarget)) {
+      setEditorContentRevision((revision) => revision + 1);
+    }
+  }, [editor, portalTarget]);
   useEffect(() => {
     const docName = provider.configuration.name ?? null;
     setEditorDocName(editor, docName);
@@ -859,7 +897,11 @@ const TiptapEditorChrome: FC<TiptapEditorChromeProps> = ({
       <div ref={portalSlotRef} style={{ display: 'contents' }} />
       {createPortal(
         // biome-ignore lint/plugin/no-unportaled-editor-content: canonical portaled site — H6 fix per PRECEDENTS.md #44
-        <EditorContent editor={editor} className="tiptap-editor-portal-content h-full" />,
+        <EditorContent
+          key={editorContentRevision}
+          editor={editor}
+          className="tiptap-editor-portal-content h-full"
+        />,
         portalTarget,
       )}
       {/* Aria-live announcer for selection changes. Always in the DOM
