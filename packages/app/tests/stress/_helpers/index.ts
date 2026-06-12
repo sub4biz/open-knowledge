@@ -30,7 +30,7 @@ export {
   tailServerLog,
   waitForHttpReady,
 } from './server-process.ts';
-export { sidebarFileButton } from './sidebar.ts';
+export { createFileViaSidebar, createFolderViaSidebar, sidebarFileButton } from './sidebar.ts';
 export {
   getSelectedItemSnapshot,
   type SelectedItemSnapshot,

@@ -1,7 +1,13 @@
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
-import { type ApiHelpers, expect, test } from './_helpers';
+import {
+  type ApiHelpers,
+  createFileViaSidebar,
+  createFolderViaSidebar,
+  expect,
+  test,
+} from './_helpers';
 
 type DeleteKind = 'file' | 'folder';
 
@@ -702,16 +708,8 @@ test.describe('FileTree sidebar create', () => {
     try {
       await gotoRootAndAwaitSidebar(page);
 
-      await page.getByRole('button', { name: 'New Folder', exact: true }).click();
-      const input = page.getByRole('textbox', { name: /rename New Folder/i });
-      await expect(input).toBeVisible({ timeout: 10_000 });
-      await input.fill('hello');
-      await input.press('Enter');
+      await createFolderViaSidebar(page, 'hello');
 
-      await expect(sidebarTreeItem(page, 'hello')).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByRole('button', { name: 'hello/', exact: true })).toBeVisible({
-        timeout: 10_000,
-      });
       await expect(page.getByRole('button', { name: 'New Folder/', exact: true })).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'New Folder.md', exact: true })).toHaveCount(0);
       expect(existsSync(join(workerServer.contentDir, 'hello'))).toBe(true);
@@ -738,34 +736,16 @@ test.describe('FileTree sidebar create', () => {
     try {
       await gotoRootAndAwaitSidebar(page);
 
-      await page.getByRole('button', { name: 'New Folder', exact: true }).click();
-      const folderInput = page.getByRole('textbox', { name: /rename New Folder/i });
-      await expect(folderInput).toBeVisible({ timeout: 10_000 });
-      await folderInput.fill(name);
-      await folderInput.press('Enter');
-
+      await createFolderViaSidebar(page, name);
       const folderItem = await visibleSidebarItemByPath(page, `${name}/`);
-      await expect(activeEditorTabButton(page, `${name}/`)).toBeVisible({
-        timeout: 10_000,
-      });
-      await expect(page).toHaveURL(new RegExp(`#/${name}/$`));
 
       await page.evaluate(() => {
         window.location.hash = '#/';
       });
       await expect(page).toHaveURL(/#\/$/);
-      await page.getByRole('button', { name: 'New File', exact: true }).click();
-      const fileInput = page.getByRole('textbox', { name: /rename Untitled\.md/i });
-      await expect(fileInput).toBeVisible({ timeout: 10_000 });
-      await fileInput.fill(name);
-      await fileInput.press('Enter');
-
+      await createFileViaSidebar(page, name);
       const fileItem = await visibleSidebarItemByPath(page, `${name}.md`);
-      await expect(activeEditorTabButton(page, `${name}.md`)).toBeVisible({
-        timeout: 10_000,
-      });
       await expect(editorTabButton(page, `${name}/`).first()).toBeVisible();
-      await expect(page).toHaveURL(new RegExp(`#/${name}$`));
 
       await folderItem.click();
       await expect(page).toHaveURL(new RegExp(`#/${name}/$`));
