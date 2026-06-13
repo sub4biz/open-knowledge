@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { ProblemDetailsSchema } from '@inkeep/open-knowledge-core';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { createTestServer, pollUntil, type TestServer } from './test-harness';
 
 const execFileAsync = promisify(execFile);
@@ -103,7 +104,7 @@ describe('DU (delete-modify) conflict — foundational contract', () => {
 
   beforeAll(async () => {
     server = await createDUTestServer();
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();
@@ -158,7 +159,7 @@ describe('UD (modify-delete) conflict — foundational contract', () => {
 
   beforeAll(async () => {
     server = await createUDTestServer();
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();
@@ -200,7 +201,7 @@ describe("POST /api/sync/resolve-conflict { strategy: 'content', content: '' }",
 
   beforeAll(async () => {
     server = await createDUTestServer();
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();
@@ -258,7 +259,7 @@ describe('both-modified conflict — backward compatibility', () => {
     await registerConflict(contentDir, 'foo.md');
 
     server = await createTestServer({ contentDir, keepContentDir: false });
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();

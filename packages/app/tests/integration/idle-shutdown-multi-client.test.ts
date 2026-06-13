@@ -12,6 +12,7 @@ import {
   ensureProjectGit,
 } from '@inkeep/open-knowledge-server';
 import * as Y from 'yjs';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { waitForSync } from './test-harness.ts';
 
 const IDLE_SHUTDOWN_MS = 400;
@@ -40,7 +41,7 @@ beforeAll(async () => {
     idleShutdownMs: IDLE_SHUTDOWN_MS,
   });
   lockPath = resolve(contentDir, OK_DIR, LOCAL_DIR, 'server.lock');
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await booted?.destroy();

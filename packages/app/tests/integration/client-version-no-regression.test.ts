@@ -3,6 +3,7 @@ import { HocuspocusProvider } from '@hocuspocus/provider';
 import { clientVersionHeaders } from '@inkeep/open-knowledge-core';
 import * as Y from 'yjs';
 import { buildAuthToken } from '../../src/editor/provider-pool';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { createTestServer, type TestServer, waitForSync } from './test-harness';
 
 describe('read-blind server accepts instrumented clients', () => {
@@ -10,7 +11,7 @@ describe('read-blind server accepts instrumented clients', () => {
 
   beforeAll(async () => {
     server = await createTestServer();
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();

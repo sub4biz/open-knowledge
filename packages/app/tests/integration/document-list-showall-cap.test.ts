@@ -3,6 +3,7 @@ import { mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DocumentListSuccessSchema } from '@inkeep/open-knowledge-core';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { awaitFileWatcherIndexed, createTestServer, type TestServer } from './test-harness';
 
 const FIXTURE_FILE_COUNT = 25;
@@ -16,7 +17,7 @@ beforeAll(async () => {
   }
   server = await createTestServer({ contentDir, keepContentDir: false });
   await awaitFileWatcherIndexed(server, 'file-00');
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();

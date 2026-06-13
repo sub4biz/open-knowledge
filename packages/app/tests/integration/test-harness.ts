@@ -51,6 +51,8 @@ import { ControllableWebSocket } from './network-control';
 export const mdManager = new MarkdownManager({ extensions: sharedExtensions });
 export const schema = getSchema(sharedExtensions);
 
+export const HARNESS_BOOT_TIMEOUT_MS = 30_000;
+
 async function getFreePort(): Promise<number> {
   return new Promise((resolve) => {
     const s = createNetServer();

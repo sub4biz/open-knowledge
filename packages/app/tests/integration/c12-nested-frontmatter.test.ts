@@ -10,6 +10,7 @@ import {
   stripFrontmatter,
 } from '@inkeep/open-knowledge-core';
 import * as Y from 'yjs';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import {
   createTestClients,
   createTestServer,
@@ -23,7 +24,7 @@ let server: TestServer;
 
 beforeAll(async () => {
   server = await createTestServer();
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();

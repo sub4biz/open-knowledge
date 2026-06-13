@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { setTimeout as wait } from 'node:timers/promises';
 import { swapContributors } from '@inkeep/open-knowledge-server';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import type { TestServer } from './test-harness';
 import { agentWriteMd, createTestServer } from './test-harness';
 
@@ -10,7 +11,7 @@ let server: TestServer;
 
 beforeAll(async () => {
   server = await createTestServer({ keepaliveGraceMs: GRACE_MS });
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();

@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DocumentListSuccessSchema } from '@inkeep/open-knowledge-core';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { createTestServer, type TestServer, wait } from './test-harness';
 
 const LIVE_FOLDER_TIMEOUT_MS = 45_000;
@@ -42,7 +43,7 @@ describe('/api/documents empty folder — boot-time', () => {
     mkdirSync(join(contentDir, 'empty-folder'), { recursive: true });
     mkdirSync(join(contentDir, 'nested', 'empty-child'), { recursive: true });
     server = await createTestServer({ contentDir, keepContentDir: false });
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();
@@ -74,7 +75,7 @@ describe('/api/documents empty folder — live creation', () => {
     const contentDir = realpathSync(mkdtempSync(join(tmpdir(), 'ok-empty-folder-live-')));
     writeFileSync(join(contentDir, 'readme.md'), '# Root\n', 'utf-8');
     server = await createTestServer({ contentDir, keepContentDir: false });
-  });
+  }, HARNESS_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     await server.cleanup();

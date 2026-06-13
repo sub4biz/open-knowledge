@@ -11,13 +11,14 @@ import {
 import { applyExternalChange, BacklinkIndex, reconcile } from '@inkeep/open-knowledge-server';
 import * as encoding from 'lib0/encoding';
 import * as Y from 'yjs';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { createTestServer, pollUntil, type TestServer, waitForSync } from './test-harness';
 
 let server: TestServer;
 
 beforeAll(async () => {
   server = await createTestServer();
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();

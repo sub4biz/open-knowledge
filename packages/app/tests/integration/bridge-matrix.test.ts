@@ -5,6 +5,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { updateYFragment, yXmlFragmentToProseMirrorRootNode } from '@tiptap/y-tiptap';
 import * as Y from 'yjs';
 import { markUserTyping } from '../../src/editor/observers';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import {
   agentPatch,
   agentWriteMd,
@@ -74,7 +75,7 @@ let server: TestServer;
 
 beforeAll(async () => {
   server = await createTestServer();
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();

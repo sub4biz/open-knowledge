@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { agentPatch, agentWriteMd, createTestServer, type TestServer } from './test-harness';
 
 let server: TestServer;
@@ -21,7 +22,7 @@ beforeAll(async () => {
   symlinkSync('target.md', join(contentDir, 'foo.md'));
 
   server = await createTestServer({ contentDir });
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();

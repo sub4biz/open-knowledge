@@ -1,12 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import type { AdvisoryWarning } from '@inkeep/open-knowledge-core';
+import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { createTestServer, getServerState, type TestServer } from './test-harness.ts';
 
 let server: TestServer;
 
 beforeAll(async () => {
   server = await createTestServer();
-});
+}, HARNESS_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await server.cleanup();
