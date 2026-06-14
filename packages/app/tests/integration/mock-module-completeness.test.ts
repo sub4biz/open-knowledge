@@ -31,6 +31,10 @@ function extractMockModuleCalls(src: string): Array<{ specifier: string; factory
   return calls;
 }
 
+function factoryHasActualSpread(factory: string): boolean {
+  return /\.\.\.\s*actual[A-Za-z_$]?[\w$]*/.test(factory);
+}
+
 describe('mock.module factory completeness (process-global leak guard)', () => {
   test('every plain-test factory spreads the real module or is allowlisted', async () => {
     const glob = new Glob('src/**/*.test.{ts,tsx}');
@@ -42,7 +46,7 @@ describe('mock.module factory completeness (process-global leak guard)', () => {
       const src = readFileSync(abs, 'utf-8');
       if (!src.includes('mock.module(')) continue;
       for (const call of extractMockModuleCalls(src)) {
-        const hasSpread = /\.\.\.\s*actual[A-Za-z_$]?[\w$]*/.test(call.factory);
+        const hasSpread = factoryHasActualSpread(call.factory);
         const allowKey = `${rel}::${call.specifier}`;
         if (!hasSpread && !(allowKey in ALLOWLIST)) {
           violations.push(
@@ -54,5 +58,44 @@ describe('mock.module factory completeness (process-global leak guard)', () => {
       }
     }
     expect(violations).toEqual([]);
+  });
+});
+
+describe('guard self-test (bidirectional + planted-positive)', () => {
+  test('extractMockModuleCalls: finds every call (planted-positive), nothing in clean source', () => {
+    const twoCalls = [
+      "mock.module('sonner', () => ({ toast }));",
+      "mock.module('@/editor/DocumentContext', () => ({ useDocumentContext: () => ({}) }));",
+    ].join('\n');
+    expect(extractMockModuleCalls(twoCalls).map((c) => c.specifier)).toEqual([
+      'sonner',
+      '@/editor/DocumentContext',
+    ]);
+    expect(extractMockModuleCalls('const x = 1; await import("./y");')).toEqual([]);
+  });
+
+  test('factoryHasActualSpread: accepts ...actual* spreads (must-fire-true)', () => {
+    expect(factoryHasActualSpread('() => ({ ...actualSonner, toast })')).toBe(true);
+    expect(factoryHasActualSpread('() => ({ ...actual, useDocumentContext: () => ({}) })')).toBe(
+      true,
+    );
+    expect(
+      factoryHasActualSpread('() => ({\n  ...actualNextThemes,\n  useTheme: () => ({}),\n})'),
+    ).toBe(true);
+  });
+
+  test('factoryHasActualSpread: rejects partial and non-actual spreads (adjacent negatives)', () => {
+    expect(factoryHasActualSpread('() => ({ useDocumentContext: () => ({}) })')).toBe(false);
+    expect(factoryHasActualSpread('() => ({ wrap: (...args) => fn(...args) })')).toBe(false);
+    expect(factoryHasActualSpread('() => ({ ...localConfig, toast })')).toBe(false);
+  });
+
+  test('end-to-end: a partial factory is flagged, an ...actual factory is not', () => {
+    const flagged = (src: string) =>
+      extractMockModuleCalls(src).filter((c) => !factoryHasActualSpread(c.factory)).length;
+    expect(flagged("mock.module('sonner', () => ({ toast: { error() {} } }));")).toBe(1);
+    expect(
+      flagged("mock.module('sonner', () => ({ ...actualSonner, toast: { error() {} } }));"),
+    ).toBe(0);
   });
 });
