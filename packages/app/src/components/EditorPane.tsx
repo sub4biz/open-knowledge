@@ -36,7 +36,6 @@ export function EditorPane({ onOpenSearch }: EditorPaneProps = {}) {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authInitialStep, setAuthInitialStep] = useState<'auth' | 'identity'>('auth');
   const [activeTab, setActiveTab] = useState<PanelTab>(TABS[0].id);
-  const [saving, setSaving] = useState(false);
   const [autoSyncOnboardingDismissed, setAutoSyncOnboardingDismissed] = useState(false);
   const [openInAgentMenuOpen, setOpenInAgentMenuOpen] = useState(false);
   const [openInAgentMenuInput, setOpenInAgentMenuInput] = useState<HandoffDispatchInput | null>(
@@ -74,27 +73,6 @@ export function EditorPane({ onOpenSearch }: EditorPaneProps = {}) {
   function handleModeChange(mode: EditorModeValue) {
     setEditorMode(mode);
     setPersistedMode(mode);
-  }
-
-  async function handleSaveVersion() {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/save-version', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (res.ok) {
-        toast.success(t`Version saved`);
-      } else {
-        console.error('[save-version] failed:', await res.text());
-        toast.error(t`Couldn't save version — try again`);
-      }
-    } catch (e) {
-      console.error('[save-version] failed:', e);
-      toast.error(t`Couldn't save version — try again`);
-    }
-    setSaving(false);
   }
 
   function handleOpenInAgentMenuOpenChange(open: boolean) {
@@ -143,8 +121,6 @@ export function EditorPane({ onOpenSearch }: EditorPaneProps = {}) {
           onModeChange={handleModeChange}
           activeTab={activeTab}
           onActiveTabChange={setActiveTab}
-          onSaveVersion={handleSaveVersion}
-          saving={saving}
         />
       </OpenInAgentMenuRequestProvider>
       <AuthModal

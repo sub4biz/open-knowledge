@@ -327,7 +327,6 @@
     "9PQysm": ["Hide advanced"],
     "9R7pRC": ["No tags match \"", ["trimmed"], "\". Continue typing to create one."],
     "9UQ730": ["Clone"],
-    "9Uv1CD": ["Restore this auto-save"],
     "9bCiQ8": ["No pages are missing incoming graph links."],
     "9clcD5": ["Open documents tagged #", ["chip"]],
     "9euN0m": [
@@ -592,7 +591,6 @@
       "Server-side cleanup failed for ",
       ["failedCount", "plural", { "one": ["#", " item"], "other": ["#", " items"] }]
     ],
-    "IrYrzq": ["Save version"],
     "IreQBq": ["Repository"],
     "It9ARY": ["Toggle the right document panel."],
     "Ix0K8o": ["Hide external URL nodes"],
@@ -751,13 +749,6 @@
     "OETysD": ["No hub pages yet. Hubs appear once pages accumulate inbound graph links."],
     "OJTOUj": ["Requires ", ["brand"], "."],
     "OJeiSH": ["Failed to add property"],
-    "OKQe56": [
-      [
-        "entryCount",
-        "plural",
-        { "one": ["Hide ", "#", " auto-save"], "other": ["Hide ", "#", " auto-saves"] }
-      ]
-    ],
     "OLBz-_": ["Mermaid diagram failed to render."],
     "OLIKgw": ["Drag item ", ["0"], " to reorder"],
     "ONPvOb": ["Loading agent activity"],
@@ -792,7 +783,6 @@
     "PQCdtv": ["\"", ["docName"], "\" doesn't exist."],
     "PR9FSv": ["Move to the next visual-editor find result."],
     "PVUn_c": ["Open folder"],
-    "PXXeW8": ["Restore this auto-save?"],
     "PZt1uN": ["Search files, commands, projects, and AI handoff actions."],
     "PZt2Ds": ["Clone ended unexpectedly."],
     "PdA9NZ": [["ahead"], " ahead"],
@@ -827,7 +817,6 @@
     "R0jJzV": ["Paste URL, owner/repo, or search your repos"],
     "R3y75Z": ["Edit source"],
     "RDrXh4": ["Configure user, project, and integration settings."],
-    "RFQ1Yx": ["Restore this version"],
     "RGCCrg": ["Copy share link"],
     "RGkNeJ": ["Initialize a starter pack"],
     "RJ3a8Z": ["Looking for <0>", ["lookingForUrl"], "</0>."],
@@ -1063,7 +1052,6 @@
     "Zul8Ry": ["never"],
     "ZxXhLY": ["Hide Files (", ["sidebarShortcut"], ")"],
     "Zz25kq": ["Show Files (", ["sidebarShortcut"], ")"],
-    "_4rAQI": ["Recovered from an external change", ["sizeSuffix"]],
     "_6IEmc": ["Open in Terminal, No workspace"],
     "_7UQ7y": ["Whole word"],
     "_8quCH": ["From template"],
@@ -1263,7 +1251,6 @@
     "gYz2ep": ["Expires in ", ["timeLabel"]],
     "gbHcbI": ["Failed to delete property"],
     "gcV0dI": ["The folders and templates are in place; there's nothing left to scaffold."],
-    "gg3Rpy": ["Restore this version?"],
     "ggm6JX": [
       "This page doesn't exist yet. Open it to create the page in the editor and collapse the graph."
     ],
@@ -1273,7 +1260,6 @@
     "gmJ0An": ["Failed to open folder."],
     "goO4Ll": ["Editor status bar"],
     "gp3I7-": ["Before syncing, set your identity for git commits:"],
-    "gsePqm": ["Save Version"],
     "gtEbeW": ["Highlight"],
     "h06R3C": ["No pages are missing outgoing graph links."],
     "h6EvY-": [
@@ -1377,13 +1363,6 @@
       "A template named <0>",
       ["trimmedSlug"],
       "</0> already exists here. Saving creates a local copy that overrides it for this folder."
-    ],
-    "k9jDvw": [
-      [
-        "entryCount",
-        "plural",
-        { "one": ["Show ", "#", " auto-save"], "other": ["Show ", "#", " auto-saves"] }
-      ]
     ],
     "kCNU4q": [
       "Indexing your pages — ",
@@ -1578,7 +1557,6 @@
     "pzutoc": ["Italic"],
     "q2kXMG": ["Inline Math"],
     "q6-JVU": ["Loading pages"],
-    "q7zsRM": ["Couldn't save version — try again"],
     "qAQVSD": ["Page headings response was not JSON"],
     "qAhFeg": [
       ["userName"],
@@ -1630,7 +1608,6 @@
     "rZ9HZq": ["To do"],
     "rZVMkf": ["Visual editor replace input focused"],
     "rageVb": ["Custom HTML with a live preview pane (sandboxed iframe)."],
-    "rdE6_3": ["Version saved"],
     "rdU729": ["Layout"],
     "rfFpcF": ["Remove ", ["chip"]],
     "rgPqOw": ["Convert the current block to a paragraph."],
@@ -1717,7 +1694,6 @@
       "No templates yet. Add one in this folder's Templates section, or in Settings → Templates."
     ],
     "uWx2ZP": ["Last sync"],
-    "uZAG7T": ["Auto-saved before a concurrent edit", ["sizeSuffix"]],
     "u_lS4C": ["Clone complete — opening project"],
     "ugoTXs": ["folder"],
     "uhJEA2": [

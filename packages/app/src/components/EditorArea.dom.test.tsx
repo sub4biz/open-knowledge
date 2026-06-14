@@ -88,8 +88,6 @@ function renderEditorArea() {
       onModeChange={() => {}}
       activeTab="timeline"
       onActiveTabChange={() => {}}
-      onSaveVersion={() => {}}
-      saving={false}
     />,
   );
 }

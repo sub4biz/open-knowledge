@@ -11,18 +11,14 @@ import { plural, t } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import type { LucideProps } from 'lucide-react';
 import {
-  AlertTriangle,
   ArrowDownToLine,
   ChevronDown,
   ChevronRight,
   Columns2,
-  Diamond,
-  FileArchive,
   GitBranch,
   HardDrive,
   Loader2,
   Rows2,
-  Save,
   Sparkles,
   Undo2,
   User,
@@ -84,7 +80,7 @@ async function pollHistoryOnce(
       return 'error';
     }
     const data = (await res.json()) as { entries: TimelineEntry[] };
-    handlers.setEntries(data.entries ?? []);
+    handlers.setEntries((data.entries ?? []).filter((e) => e.type !== 'checkpoint'));
     handlers.setError(null);
     return 'ok';
   } catch (e) {
@@ -101,11 +97,6 @@ interface TimelineContentProps {
   docName: string;
   diffLayout: DiffLayout;
   onDiffLayoutChange: (layout: DiffLayout) => void;
-  /** Create a checkpoint of the current document. Lives here (not the editor
-   *  header) so the Save-version action sits with the version history it
-   *  produces. */
-  onSaveVersion: () => void;
-  saving: boolean;
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -201,111 +192,6 @@ function ContributorIcon({ entry, isDark }: { entry: TimelineEntry; isDark: bool
     return <ArrowDownToLine className={iconClass} />;
   }
   return <User className={iconClass} />;
-}
-
-interface WipGroupProps {
-  entries: TimelineEntry[];
-  defaultExpanded: boolean;
-  isDark: boolean;
-  diffLayout: DiffLayout;
-  cache: LruStringCache;
-  docName: string;
-  expandedShas: Set<string>;
-  onToggleExpanded: (sha: string) => void;
-  onRestoreSuccess: () => void;
-}
-
-function WipGroup({
-  entries,
-  defaultExpanded,
-  isDark,
-  diffLayout,
-  cache,
-  docName,
-  expandedShas,
-  onToggleExpanded,
-  onRestoreSuccess,
-}: WipGroupProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const entryCount = entries.length;
-
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <button
-        type="button"
-        aria-expanded={expanded}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors text-left"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-        {expanded
-          ? plural(entryCount, { one: 'Hide # auto-save', other: 'Hide # auto-saves' })
-          : plural(entryCount, { one: 'Show # auto-save', other: 'Show # auto-saves' })}
-      </button>
-      {expanded &&
-        entries.map((entry) => (
-          <EntryRow
-            key={entry.sha}
-            entry={entry}
-            isDark={isDark}
-            diffLayout={diffLayout}
-            cache={cache}
-            docName={docName}
-            expanded={expandedShas.has(entry.sha)}
-            onToggleExpanded={onToggleExpanded}
-            onRestoreSuccess={onRestoreSuccess}
-          />
-        ))}
-    </div>
-  );
-}
-
-type CheckpointVariant = 'save' | 'bridge-merge-loss' | 'external-change-rescue';
-
-export function checkpointVariant(entry: TimelineEntry): CheckpointVariant {
-  if (!entry.checkpoint) return 'save';
-  if (entry.checkpoint.kind === 'auto-consolidation') return 'save';
-  return entry.checkpoint.kind;
-}
-
-export function checkpointHeadlineLabel(entry: TimelineEntry): string {
-  const variant = checkpointVariant(entry);
-  if (variant === 'save') return t`Save Version`;
-  const size = entry.checkpoint?.size ?? null;
-  const sizeSuffix = size != null && size > 0 ? ` (${formatBytes(size)})` : '';
-  if (variant === 'bridge-merge-loss') {
-    return t`Auto-saved before a concurrent edit${sizeSuffix}`;
-  }
-  return t`Recovered from an external change${sizeSuffix}`;
-}
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${Math.round(n / 102.4) / 10} KB`;
-  return `${Math.round(n / 104857.6) / 10} MB`;
-}
-
-type RestoreSemantic = 'version' | 'auto-save' | 'wip';
-
-function restoreSemantic(entry: TimelineEntry): RestoreSemantic {
-  if (entry.type !== 'checkpoint') return 'wip';
-  return checkpointVariant(entry) === 'save' ? 'version' : 'auto-save';
-}
-
-function restoreTooltipText(entry: TimelineEntry): string {
-  const semantic = restoreSemantic(entry);
-  if (semantic === 'version') return t`Restore this version`;
-  if (semantic === 'auto-save') return t`Restore this auto-save`;
-  return t`Restore to this point`;
-}
-
-function restoreDialogTitle(entry: TimelineEntry): string {
-  const semantic = restoreSemantic(entry);
-  if (semantic === 'version') return t`Restore this version?`;
-  if (semantic === 'auto-save') return t`Restore this auto-save?`;
-  return t`Restore to this point?`;
 }
 
 export function allSummariesFor(entry: TimelineEntry): string[] {
@@ -404,7 +290,6 @@ function EntryDiffPanel({ sha, docName, cache, diffLayout, panelId }: EntryDiffP
 
 interface EntryRowProps {
   entry: TimelineEntry;
-  prominent?: boolean;
   isDark: boolean;
   diffLayout: DiffLayout;
   cache: LruStringCache;
@@ -416,7 +301,6 @@ interface EntryRowProps {
 
 function EntryRow({
   entry,
-  prominent = false,
   isDark,
   diffLayout,
   cache,
@@ -504,30 +388,7 @@ function EntryRow({
     cleanup();
   }
 
-  const leadingIcon = prominent ? (
-    (() => {
-      const variant = checkpointVariant(entry);
-      if (variant === 'bridge-merge-loss') {
-        return (
-          <AlertTriangle
-            className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-            aria-hidden="true"
-          />
-        );
-      }
-      if (variant === 'external-change-rescue') {
-        return (
-          <FileArchive
-            className="size-3.5 shrink-0 text-sky-600 dark:text-sky-400"
-            aria-hidden="true"
-          />
-        );
-      }
-      return <Diamond className="size-3.5 shrink-0 text-muted-foreground" />;
-    })()
-  ) : (
-    <ContributorIcon entry={entry} isDark={isDark} />
-  );
+  const leadingIcon = <ContributorIcon entry={entry} isDark={isDark} />;
 
   return (
     <>
@@ -558,17 +419,7 @@ function EntryRow({
           <div className="min-w-0 flex-1 space-y-0.5">
             {/* Row 1: title + date + Restore icon, vertically centered with the icon */}
             <div className="flex items-center gap-1.5">
-              {prominent ? (
-                <>
-                  <span className="text-xs text-foreground truncate">
-                    {checkpointHeadlineLabel(entry)}
-                  </span>
-                  <span className="text-xs text-muted-foreground/50">·</span>
-                  <span className="truncate text-xs text-muted-foreground">{authorName}</span>
-                </>
-              ) : (
-                <span className="truncate text-xs text-foreground">{authorName}</span>
-              )}
+              <span className="truncate text-xs text-foreground">{authorName}</span>
               <time
                 className="ml-auto shrink-0 text-xs text-muted-foreground/80"
                 dateTime={entry.timestamp}
@@ -585,7 +436,7 @@ function EntryRow({
                     size="icon"
                     className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
                     data-testid="timeline-entry-restore"
-                    aria-label={restoreTooltipText(entry)}
+                    aria-label={t`Restore to this point`}
                     disabled={restoring}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -599,7 +450,7 @@ function EntryRow({
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">{restoreTooltipText(entry)}</TooltipContent>
+                <TooltipContent side="top">{t`Restore to this point`}</TooltipContent>
               </Tooltip>
             </div>
 
@@ -637,7 +488,7 @@ function EntryRow({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{restoreDialogTitle(entry)}</DialogTitle>
+            <DialogTitle>{t`Restore to this point?`}</DialogTitle>
             <DialogDescription>
               <Trans>
                 This will replace the current document content with the version from{' '}
@@ -673,13 +524,7 @@ function EntryRow({
   );
 }
 
-export function TimelineContent({
-  docName,
-  diffLayout,
-  onDiffLayoutChange,
-  onSaveVersion,
-  saving,
-}: TimelineContentProps) {
+export function TimelineContent({ docName, diffLayout, onDiffLayoutChange }: TimelineContentProps) {
   const { t } = useLingui();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -742,109 +587,51 @@ export function TimelineContent({
     };
   }, [docName, t]);
 
-  const groups: Array<
-    | { kind: 'checkpoint'; entry: TimelineEntry }
-    | { kind: 'wip-group'; entries: TimelineEntry[]; isPreCheckpoint: boolean }
-  > = [];
-
-  let pendingWip: TimelineEntry[] = [];
-  let hasSeenCheckpoint = false;
-
-  for (const entry of entries) {
-    if (entry.type === 'checkpoint') {
-      if (pendingWip.length > 0) {
-        groups.push({
-          kind: 'wip-group',
-          entries: pendingWip,
-          isPreCheckpoint: !hasSeenCheckpoint,
-        });
-        pendingWip = [];
-      }
-      groups.push({ kind: 'checkpoint', entry });
-      hasSeenCheckpoint = true;
-    } else {
-      pendingWip.push(entry);
-    }
-  }
-  if (pendingWip.length > 0) {
-    groups.push({
-      kind: 'wip-group',
-      entries: pendingWip,
-      isPreCheckpoint: !hasSeenCheckpoint,
-    });
-  }
-
-  const hasNoCheckpoints = !entries.some((e) => e.type === 'checkpoint');
-
   const hasEntries = !loading && !error && entries.length > 0;
 
   return (
     <div className="flex h-full flex-col">
       {/* Panel header — uses the shared PanelHeader primitive for parity with
           GraphPanel/LinksPanel (justify-between puts the title left, the
-          controls group right). The diff-layout toggle sits left of the
-          Save-version action, which stays the rightmost element. The toggle
-          only renders once there are entries to diff. The Save button is
-          icon-only with a tooltip — its `aria-label` is the accessible name
-          since there's no visible text. */}
+          diff-layout toggle right). The toggle only renders once there are
+          entries to diff. */}
       <PanelHeader>
         <PanelTitle>
           <Trans>Timeline</Trans>
         </PanelTitle>
 
-        <div className="flex items-center gap-2">
-          {hasEntries && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ToggleGroup
-                  type="single"
-                  value={diffLayout}
-                  onValueChange={(v) => {
-                    if (v) onDiffLayoutChange(v as DiffLayout);
-                  }}
-                  aria-label={t`Diff layout`}
-                  variant="segmented"
-                  size="sm"
-                  spacing={1}
-                  className="bg-muted dark:bg-background p-0.5 rounded-md shrink-0"
-                >
-                  <ToggleGroupItem
-                    value="unified"
-                    aria-label={t`Unified diff`}
-                    className="size-6 px-0"
-                  >
-                    <Rows2 className="size-3.5" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="split" aria-label={t`Split diff`} className="size-6 px-0">
-                    <Columns2 className="size-3.5" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </TooltipTrigger>
-              <TooltipContent>
-                {diffLayout === 'unified' ? <Trans>Unified diff</Trans> : <Trans>Split diff</Trans>}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
+        {hasEntries && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onSaveVersion}
-                disabled={saving}
-                aria-label={t`Save version`}
-                className="text-muted-foreground"
-                data-testid="timeline-save-version"
+              <ToggleGroup
+                type="single"
+                value={diffLayout}
+                onValueChange={(v) => {
+                  if (v) onDiffLayoutChange(v as DiffLayout);
+                }}
+                aria-label={t`Diff layout`}
+                variant="segmented"
+                size="sm"
+                spacing={1}
+                className="bg-muted dark:bg-background p-0.5 rounded-md shrink-0"
               >
-                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              </Button>
+                <ToggleGroupItem
+                  value="unified"
+                  aria-label={t`Unified diff`}
+                  className="size-6 px-0"
+                >
+                  <Rows2 className="size-3.5" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="split" aria-label={t`Split diff`} className="size-6 px-0">
+                  <Columns2 className="size-3.5" />
+                </ToggleGroupItem>
+              </ToggleGroup>
             </TooltipTrigger>
             <TooltipContent>
-              {saving ? <Trans>Saving</Trans> : <Trans>Save version</Trans>}
+              {diffLayout === 'unified' ? <Trans>Unified diff</Trans> : <Trans>Split diff</Trans>}
             </TooltipContent>
           </Tooltip>
-        </div>
+        )}
       </PanelHeader>
       {/* Scrollable entry list */}
       <div className="flex-1 overflow-y-auto subtle-scrollbar scroll-fade-mask">
@@ -884,8 +671,8 @@ export function TimelineContent({
           </div>
         )}
 
-        {/* Flat list when no checkpoints */}
-        {!loading && !error && hasNoCheckpoints && entries.length > 0 && (
+        {/* Flat reverse-chronological list of actor/system commits. */}
+        {!loading && !error && entries.length > 0 && (
           <div className="flex flex-col gap-1 p-2">
             {entries.map((entry) => (
               <EntryRow
@@ -900,44 +687,6 @@ export function TimelineContent({
                 onRestoreSuccess={handleRestoreSuccess}
               />
             ))}
-          </div>
-        )}
-
-        {/* Grouped list with checkpoints */}
-        {!loading && !error && !hasNoCheckpoints && (
-          <div className="flex flex-col gap-1 p-2">
-            {groups.map((group, idx) => {
-              if (group.kind === 'checkpoint') {
-                return (
-                  <EntryRow
-                    key={group.entry.sha}
-                    entry={group.entry}
-                    prominent
-                    isDark={isDark}
-                    diffLayout={diffLayout}
-                    cache={cache}
-                    docName={docName}
-                    expanded={expandedShas.has(group.entry.sha)}
-                    onToggleExpanded={toggleExpanded}
-                    onRestoreSuccess={handleRestoreSuccess}
-                  />
-                );
-              }
-              return (
-                <WipGroup
-                  key={group.entries[0]?.sha ?? `wip-${idx}`}
-                  entries={group.entries}
-                  defaultExpanded={group.isPreCheckpoint}
-                  isDark={isDark}
-                  diffLayout={diffLayout}
-                  cache={cache}
-                  docName={docName}
-                  expandedShas={expandedShas}
-                  onToggleExpanded={toggleExpanded}
-                  onRestoreSuccess={handleRestoreSuccess}
-                />
-              );
-            })}
           </div>
         )}
       </div>

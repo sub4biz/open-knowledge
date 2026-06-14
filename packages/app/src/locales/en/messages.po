@@ -234,14 +234,6 @@ msgstr "{diffMin}m ago"
 msgid "{docName} is {0}. Open Knowledge currently opens files up to {1}."
 msgstr "{docName} is {0}. Open Knowledge currently opens files up to {1}."
 
-#: src/components/TimelinePanel.tsx
-msgid "{entryCount, plural, one {Hide # auto-save} other {Hide # auto-saves}}"
-msgstr "{entryCount, plural, one {Hide # auto-save} other {Hide # auto-saves}}"
-
-#: src/components/TimelinePanel.tsx
-msgid "{entryCount, plural, one {Show # auto-save} other {Show # auto-saves}}"
-msgstr "{entryCount, plural, one {Show # auto-save} other {Show # auto-saves}}"
-
 #: src/components/ActivityModeContent.tsx
 msgid "{fileCount, plural, one {# file} other {# files}}"
 msgstr "{fileCount, plural, one {# file} other {# files}}"
@@ -710,10 +702,6 @@ msgstr "Authorize in browser"
 #: src/components/TimelinePanel.tsx
 msgid "Auto-save"
 msgstr "Auto-save"
-
-#: src/components/TimelinePanel.tsx
-msgid "Auto-saved before a concurrent edit{sizeSuffix}"
-msgstr "Auto-saved before a concurrent edit{sizeSuffix}"
 
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Auto-sync is off — you don't have permission to push to this repo"
@@ -1578,10 +1566,6 @@ msgstr "Couldn't save the key — please try again."
 #: src/components/DiffViewBoundary.tsx
 msgid "Couldn't save the resolution for {filePath}."
 msgstr "Couldn't save the resolution for {filePath}."
-
-#: src/components/EditorPane.tsx
-msgid "Couldn't save version — try again"
-msgstr "Couldn't save version — try again"
 
 #: src/components/EditorPane.tsx
 msgid "Couldn't send the selection — please try again."
@@ -4417,10 +4401,6 @@ msgstr "Reconnected"
 msgid "Reconnecting after server restart"
 msgstr "Reconnecting after server restart"
 
-#: src/components/TimelinePanel.tsx
-msgid "Recovered from an external change{sizeSuffix}"
-msgstr "Recovered from an external change{sizeSuffix}"
-
 #: src/components/InstallInClaudeDesktopDialog.tsx
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Reinstall"
@@ -4622,22 +4602,6 @@ msgid "Restore failed — document unchanged"
 msgstr "Restore failed — document unchanged"
 
 #: src/components/TimelinePanel.tsx
-msgid "Restore this auto-save"
-msgstr "Restore this auto-save"
-
-#: src/components/TimelinePanel.tsx
-msgid "Restore this auto-save?"
-msgstr "Restore this auto-save?"
-
-#: src/components/TimelinePanel.tsx
-msgid "Restore this version"
-msgstr "Restore this version"
-
-#: src/components/TimelinePanel.tsx
-msgid "Restore this version?"
-msgstr "Restore this version?"
-
-#: src/components/TimelinePanel.tsx
 msgid "Restore to this point"
 msgstr "Restore to this point"
 
@@ -4731,14 +4695,6 @@ msgstr "Save failed: {error}"
 msgid "Save resolution"
 msgstr "Save resolution"
 
-#: src/components/TimelinePanel.tsx
-msgid "Save version"
-msgstr "Save version"
-
-#: src/components/TimelinePanel.tsx
-msgid "Save Version"
-msgstr "Save Version"
-
 #: src/components/settings/OkignoreSection.tsx
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Saved"
@@ -4754,7 +4710,6 @@ msgstr "Saves the file to <0>~/Downloads/openknowledge.skill</0> and opens the C
 
 #: src/components/settings/EmbeddingsKeySection.tsx
 #: src/components/TemplateEditDialog.tsx
-#: src/components/TimelinePanel.tsx
 msgid "Saving"
 msgstr "Saving"
 
@@ -5879,10 +5834,6 @@ msgstr "Using the <0>OK_EMBEDDINGS_API_KEY</0> environment variable (managed out
 #: src/components/FolderPropertiesCard.tsx
 msgid "Value is required"
 msgstr "Value is required"
-
-#: src/components/EditorPane.tsx
-msgid "Version saved"
-msgstr "Version saved"
 
 #: src/components/CommandPalette.tsx
 msgid "via {viaTags}"

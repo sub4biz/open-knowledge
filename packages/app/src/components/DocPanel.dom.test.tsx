@@ -50,8 +50,6 @@ function renderPanel(activeTab: 'outline' | 'links' | 'graph' | 'timeline') {
         activeTab={activeTab}
         onActiveTabChange={() => {}}
         mode="doc"
-        onSaveVersion={() => {}}
-        saving={false}
       />
     </TooltipProvider>,
   );

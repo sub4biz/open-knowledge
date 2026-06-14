@@ -48,10 +48,6 @@ interface DocPanelProps {
   activeTab: PanelTab;
   onActiveTabChange: (tab: PanelTab) => void;
   mode: DocPanelMode;
-  /** Checkpoint trigger + in-flight flag for the timeline tab's Save-version
-   *  control (moved here from EditorHeader). */
-  onSaveVersion: () => void;
-  saving: boolean;
 }
 
 export function DocPanel({
@@ -60,8 +56,6 @@ export function DocPanel({
   activeTab,
   onActiveTabChange,
   mode,
-  onSaveVersion,
-  saving,
 }: DocPanelProps) {
   const { t } = useLingui();
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('unified');
@@ -141,8 +135,6 @@ export function DocPanel({
               docName={docName}
               diffLayout={diffLayout}
               onDiffLayoutChange={setDiffLayout}
-              onSaveVersion={onSaveVersion}
-              saving={saving}
             />
           )}
         </div>

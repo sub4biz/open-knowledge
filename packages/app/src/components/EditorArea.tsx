@@ -56,10 +56,6 @@ interface EditorAreaProps {
   onModeChange: (mode: EditorMode) => void;
   activeTab: PanelTab;
   onActiveTabChange: (tab: PanelTab) => void;
-  /** Checkpoint trigger + in-flight flag, threaded to DocPanel's timeline tab
-   *  where the Save-version control now lives (moved off EditorHeader). */
-  onSaveVersion: () => void;
-  saving: boolean;
 }
 
 export function EditorArea(props: EditorAreaProps) {
@@ -96,8 +92,6 @@ function EditorAreaInner({
   onModeChange,
   activeTab,
   onActiveTabChange,
-  onSaveVersion,
-  saving,
 }: EditorAreaProps) {
   const { t } = useLingui();
   const {
@@ -525,8 +519,6 @@ function EditorAreaInner({
             activeTab={activeTab}
             onActiveTabChange={onActiveTabChange}
             mode={docPanelMode}
-            onSaveVersion={onSaveVersion}
-            saving={saving}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
