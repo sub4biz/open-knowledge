@@ -16,7 +16,7 @@ import { dispatchExternalLinkClick } from '@/lib/external-link';
 import { cn } from '@/lib/utils';
 
 const INSTALL_COMMAND = 'npx @inkeep/open-knowledge install-skill';
-const DOCS_URL = 'https://openknowledge.ai/docs/integrations/claude-desktop';
+const DOCS_URL = 'https://openknowledge.ai/docs/integrations/claude-code';
 
 interface InstallInClaudeDesktopDialogProps {
   open: boolean;

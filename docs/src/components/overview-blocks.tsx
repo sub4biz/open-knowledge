@@ -88,7 +88,7 @@ const PATHS: Path[] = [
   {
     href: '/docs/integrations/claude-code',
     title: 'Setting up an editor?',
-    desc: 'Pick yours from Integrations: Claude Code, Cursor, Codex, or Claude Desktop.',
+    desc: 'Pick yours from Integrations: Claude, Cursor, or Codex.',
   },
   {
     href: '/docs/reference/mcp',
