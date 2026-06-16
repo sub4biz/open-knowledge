@@ -343,6 +343,10 @@ assertSubset(
 
 export const TEXT_VIEWER_FALLBACK_EXTENSIONS: ReadonlySet<string> = new Set(['base', 'canvas']);
 
+import { CODE_FILE_EXTENSIONS } from './code-languages';
+
+export { CODE_FILE_EXTENSIONS };
+
 export const LINKABLE_ASSET_EXTENSIONS: ReadonlySet<string> = new Set([
   ...ASSET_EXTENSIONS,
   ...TEXT_VIEWER_FALLBACK_EXTENSIONS,
@@ -356,5 +360,6 @@ export function mediaKindForSidebarAssetExtension(ext: string): InlineAssetMedia
   if (SIDEBAR_PDF_ASSET_EXTENSIONS.has(normalized)) return 'pdf';
   if (SIDEBAR_TEXT_ASSET_EXTENSIONS.has(normalized)) return 'text';
   if (TEXT_VIEWER_FALLBACK_EXTENSIONS.has(normalized)) return 'text';
+  if (CODE_FILE_EXTENSIONS.has(normalized)) return 'text';
   return null;
 }

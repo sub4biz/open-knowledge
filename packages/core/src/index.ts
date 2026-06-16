@@ -174,6 +174,12 @@ export {
   type ConfigDocName,
   SYSTEM_DOC_NAME,
 } from './constants/cc1.ts';
+export {
+  CODE_FILE_BARE_NAMES_TO_LANGUAGE,
+  CODE_FILE_EXTENSIONS_TO_LANGUAGE,
+  codeLanguageForBareFilename,
+  codeLanguageForExtension,
+} from './constants/code-languages.ts';
 export type { CreateNewBannerKind } from './constants/create-new-banner.ts';
 export {
   CREATE_NEW_PROJECT_FAILURE_REASONS,
@@ -223,6 +229,7 @@ export {
   ALLOWED_VIDEO_MIME_TYPES,
   ASSET_EXTENSIONS,
   AUDIO_EXTENSIONS,
+  CODE_FILE_EXTENSIONS,
   DEFAULT_ATTACHMENT_FOLDER_PATH,
   DEFAULT_DEDUP_MODE,
   DEFAULT_DEDUP_UI,

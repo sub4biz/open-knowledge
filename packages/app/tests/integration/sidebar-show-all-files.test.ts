@@ -106,7 +106,7 @@ describe('/api/documents?showAll=true', () => {
     const indexTs = body.documents.find((e) => e.kind === 'asset' && e.path === 'src/index.ts');
     expect(indexTs).toBeTruthy();
     expect(indexTs?.assetExt).toBe('ts');
-    expect(indexTs?.mediaKind).toBe(null);
+    expect(indexTs?.mediaKind).toBe('text');
 
     const analysisPy = body.documents.find((e) => e.kind === 'asset' && e.path === 'analysis.py');
     expect(analysisPy).toBeTruthy();
