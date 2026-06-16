@@ -779,7 +779,8 @@ export const builtInComponents: JsxComponentMeta[] = [
     icon: 'AppWindow',
     category: 'media',
     displayName: 'Embed',
-    description: 'Inline web embed (iframe) — drop a URL, get a resizable preview pane',
+    description:
+      'Inline web embed (iframe) — drop a URL, get a resizable preview pane. For YouTube / Vimeo / Loom prefer `<video src="…">` (player props, click-facade); `<Embed>` auto-rewrites watch URLs as a fallback.',
     searchTerms: ['embed', 'iframe', 'website', 'page', 'inline', 'frame', 'preview'],
     placeholder: { label: 'Embed a URL' },
     serialize: (node, ctx) => emitMdxJsx('Embed', node, ctx, embedProps),
