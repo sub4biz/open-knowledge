@@ -1880,12 +1880,17 @@ describe('createServer() — phantom-doc unload', () => {
       expect(server.hocuspocus.documents.has(docName)).toBe(true);
       await conn.disconnect();
 
-      await new Promise((r) => setTimeout(r, 500));
+      const controlName = 'phantom-control';
+      const controlConn = await server.hocuspocus.openDirectConnection(controlName);
+      await controlConn.disconnect();
+      const controlUnloaded = await waitForUnload(server, controlName, 2_000);
+      expect(controlUnloaded).toBe(true);
+
       expect(server.hocuspocus.documents.has(docName)).toBe(true);
     } finally {
       await server.destroy();
     }
-  });
+  }, 15_000);
 
   test('transient doc with CRDT content but no disk file stays resident', async () => {
     const server = createServer({

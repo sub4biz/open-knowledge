@@ -129,13 +129,17 @@ describe('readShadowLog — multi-writer merge', () => {
     const principal: WriterIdentity = { id: 'principal-b', name: 'B', email: 'b@t.test' };
 
     writeFileSync(authPath, '# v1\n');
-    await commitWip(shadow, agent, contentDir, 'agent first', branch);
-    await wait(1100);
+    await commitWip(shadow, agent, contentDir, 'agent first', branch, {
+      date: '2026-05-05T12:00:01+00:00',
+    });
     writeFileSync(authPath, '# v2\n');
-    await commitWip(shadow, principal, contentDir, 'principal second', branch);
-    await wait(1100);
+    await commitWip(shadow, principal, contentDir, 'principal second', branch, {
+      date: '2026-05-05T12:00:02+00:00',
+    });
     writeFileSync(authPath, '# v3\n');
-    await commitWip(shadow, agent, contentDir, 'agent third', branch);
+    await commitWip(shadow, agent, contentDir, 'agent third', branch, {
+      date: '2026-05-05T12:00:03+00:00',
+    });
 
     const { commits } = await readShadowLog(project, 'content/auth.md', 10);
     expect(commits.length).toBe(3);
@@ -159,8 +163,9 @@ describe('readShadowLog — multi-writer merge', () => {
 
     for (let i = 0; i < 4; i++) {
       writeFileSync(authPath, `# v${i}\n`);
-      await commitWip(shadow, writer, contentDir, `edit ${i}`, branch);
-      await wait(1100);
+      await commitWip(shadow, writer, contentDir, `edit ${i}`, branch, {
+        date: `2026-05-05T12:00:0${i + 1}+00:00`,
+      });
     }
 
     const { commits } = await readShadowLog(project, 'content/auth.md', 2);

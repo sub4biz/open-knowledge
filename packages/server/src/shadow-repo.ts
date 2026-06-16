@@ -220,12 +220,17 @@ export async function sweepLegacyShadowRefs(shadow: ShadowHandle): Promise<numbe
   return deleted;
 }
 
+export interface CommitWipOptions {
+  date?: string;
+}
+
 export async function commitWip(
   shadow: ShadowHandle,
   writer: WriterIdentity,
   contentRoot: string,
   message: string,
   branch = 'main',
+  opts?: CommitWipOptions,
 ): Promise<string> {
   return withSpan(
     'shadow.commitWip',
@@ -235,7 +240,7 @@ export async function commitWip(
         'shadow.branch': branch,
       },
     },
-    async () => commitWipInner(shadow, writer, contentRoot, message, branch),
+    async () => commitWipInner(shadow, writer, contentRoot, message, branch, opts?.date),
   );
 }
 
@@ -245,6 +250,7 @@ async function commitWipInner(
   contentRoot: string,
   message: string,
   branch = 'main',
+  date?: string,
 ): Promise<string> {
   const tmpIndex = resolve(shadow.gitDir, `index-wip-${writer.id}`);
   const ref = `refs/wip/${branch}/${writer.id}`;
@@ -289,17 +295,18 @@ async function commitWipInner(
     const args = ['commit-tree', treeSha, '-m', message];
     if (parentSha) args.push('-p', parentSha);
 
-    const commitSha = (
-      await sg
-        .env({
-          GIT_DIR: shadow.gitDir,
-          GIT_AUTHOR_NAME: writer.name,
-          GIT_AUTHOR_EMAIL: writer.email,
-          GIT_COMMITTER_NAME: 'openknowledge',
-          GIT_COMMITTER_EMAIL: 'noreply@openknowledge.local',
-        })
-        .raw(...args)
-    ).trim();
+    const commitEnv: Record<string, string> = {
+      GIT_DIR: shadow.gitDir,
+      GIT_AUTHOR_NAME: writer.name,
+      GIT_AUTHOR_EMAIL: writer.email,
+      GIT_COMMITTER_NAME: 'openknowledge',
+      GIT_COMMITTER_EMAIL: 'noreply@openknowledge.local',
+    };
+    if (date) {
+      commitEnv.GIT_AUTHOR_DATE = date;
+      commitEnv.GIT_COMMITTER_DATE = date;
+    }
+    const commitSha = (await sg.env(commitEnv).raw(...args)).trim();
 
     await sg.raw('update-ref', ref, commitSha);
     return commitSha;
@@ -978,6 +985,7 @@ export interface SaveVersionOptions {
   checkpointKind?: { foldedRefs: number; trigger: AutoConsolidationTrigger };
   includeUpstream?: boolean;
   timeoutMs?: number;
+  date?: string;
 }
 
 export async function saveVersion(
@@ -1084,17 +1092,18 @@ async function saveVersionInner(
       checkpointArgs.push('-p', p);
     }
 
-    const checkpointSha = (
-      await sg
-        .env({
-          GIT_DIR: shadow.gitDir,
-          GIT_AUTHOR_NAME: 'openknowledge',
-          GIT_AUTHOR_EMAIL: 'noreply@openknowledge.local',
-          GIT_COMMITTER_NAME: 'openknowledge',
-          GIT_COMMITTER_EMAIL: 'noreply@openknowledge.local',
-        })
-        .raw(...checkpointArgs)
-    ).trim();
+    const checkpointEnv: Record<string, string> = {
+      GIT_DIR: shadow.gitDir,
+      GIT_AUTHOR_NAME: 'openknowledge',
+      GIT_AUTHOR_EMAIL: 'noreply@openknowledge.local',
+      GIT_COMMITTER_NAME: 'openknowledge',
+      GIT_COMMITTER_EMAIL: 'noreply@openknowledge.local',
+    };
+    if (options?.date) {
+      checkpointEnv.GIT_AUTHOR_DATE = options.date;
+      checkpointEnv.GIT_COMMITTER_DATE = options.date;
+    }
+    const checkpointSha = (await sg.env(checkpointEnv).raw(...checkpointArgs)).trim();
 
     const checkpointRef = `refs/checkpoints/${branch}/${checkpointSha}`;
     await sg.raw('update-ref', checkpointRef, checkpointSha);

@@ -22,6 +22,7 @@ import {
   type ParkableDoc,
   parkBranch,
   SERVICE_WRITER,
+  type ShadowHandle,
   saveVersion,
   type WriterIdentity,
 } from './shadow-repo';
@@ -66,6 +67,19 @@ const agent: WriterIdentity = {
   name: 'cursor-agent',
   email: 'cursor@openknowledge.local',
 };
+
+function datedCommits(shadow: ShadowHandle) {
+  let t = Date.parse('2026-05-05T12:00:00.000Z');
+  const next = () => {
+    t += 1000;
+    return new Date(t).toISOString();
+  };
+  return {
+    cw: (message: string) =>
+      commitWip(shadow, human, 'content/docs', message, 'main', { date: next() }),
+    sv: () => saveVersion(shadow, 'content/docs', [human], 'main', undefined, { date: next() }),
+  };
+}
 
 describe('getDocumentHistory', () => {
   test('returns empty result when shadow has no commits', async () => {
@@ -384,20 +398,19 @@ describe('getDocumentHistory — rename-history mitigation (US-004)', () => {
 
   test('rename a → b: timeline of `b` includes pre-rename WIP commits at path `a`', async () => {
     const { contentDir, shadow } = await setup();
+    const { cw, sv } = datedCommits(shadow);
 
     writeFileSync(resolve(contentDir, 'a.md'), '# A v1\n');
-    const aWipSha = await commitWip(shadow, human, 'content/docs', 'WIP: a v1');
-    await saveVersion(shadow, 'content/docs', [human]);
-
-    await new Promise((r) => setTimeout(r, 1100));
+    const aWipSha = await cw('WIP: a v1');
+    await sv();
 
     rmSync(resolve(contentDir, 'a.md'));
     writeFileSync(resolve(contentDir, 'b.md'), '# B v1\n');
-    const renameSha = await commitWip(shadow, human, 'content/docs', 'rename: a -> b');
-    await saveVersion(shadow, 'content/docs', [human]);
+    const renameSha = await cw('rename: a -> b');
+    await sv();
 
     writeFileSync(resolve(contentDir, 'b.md'), '# B v2\n');
-    const bWipSha = await commitWip(shadow, human, 'content/docs', 'WIP: b v2');
+    const bWipSha = await cw('WIP: b v2');
 
     const index = createEmptyIndex();
     appendRenameLogEntry(shadow.gitDir, entry({ from: 'a', to: 'b', commitSha: renameSha }), index);
@@ -428,20 +441,20 @@ describe('getDocumentHistory — rename-history mitigation (US-004)', () => {
   test('chained A→B→C: timeline of `c` spans all three name epochs', async () => {
     const { contentDir, shadow } = await setup();
 
+    const { cw, sv } = datedCommits(shadow);
+
     writeFileSync(resolve(contentDir, 'a.md'), '# A\n');
-    const aSha = await commitWip(shadow, human, 'content/docs', 'WIP: a');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    const aSha = await cw('WIP: a');
+    await sv();
 
     rmSync(resolve(contentDir, 'a.md'));
     writeFileSync(resolve(contentDir, 'b.md'), '# B\n');
-    const renameAB = await commitWip(shadow, human, 'content/docs', 'rename: a -> b');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    const renameAB = await cw('rename: a -> b');
+    await sv();
 
     rmSync(resolve(contentDir, 'b.md'));
     writeFileSync(resolve(contentDir, 'c.md'), '# C\n');
-    const renameBC = await commitWip(shadow, human, 'content/docs', 'rename: b -> c');
+    const renameBC = await cw('rename: b -> c');
 
     const index = createEmptyIndex();
     appendRenameLogEntry(shadow.gitDir, entry({ from: 'a', to: 'b', commitSha: renameAB }), index);
@@ -458,21 +471,21 @@ describe('getDocumentHistory — rename-history mitigation (US-004)', () => {
   test('name-reuse contamination: timeline of `b` does NOT include new-`a` commits', async () => {
     const { contentDir, shadow } = await setup();
 
+    const { cw, sv } = datedCommits(shadow);
+
     writeFileSync(resolve(contentDir, 'a.md'), '# A old\n');
-    await commitWip(shadow, human, 'content/docs', 'WIP: a old');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    await cw('WIP: a old');
+    await sv();
 
     rmSync(resolve(contentDir, 'a.md'));
     writeFileSync(resolve(contentDir, 'b.md'), '# B\n');
-    const renameSha = await commitWip(shadow, human, 'content/docs', 'rename: a -> b');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    const renameSha = await cw('rename: a -> b');
+    await sv();
 
     rmSync(resolve(contentDir, 'b.md'));
     writeFileSync(resolve(contentDir, 'a.md'), '# A new (unrelated)\n');
-    const newASha = await commitWip(shadow, human, 'content/docs', 'WIP: new-a');
-    await saveVersion(shadow, 'content/docs', [human]);
+    const newASha = await cw('WIP: new-a');
+    await sv();
 
     const index = createEmptyIndex();
     appendRenameLogEntry(shadow.gitDir, entry({ from: 'a', to: 'b', commitSha: renameSha }), index);
@@ -585,22 +598,22 @@ describe('getDocumentHistory — rename-history mitigation (US-004)', () => {
   test('per-step error isolation: failure on one predecessor preserves others', async () => {
     const { contentDir, shadow } = await setup();
 
+    const { cw, sv } = datedCommits(shadow);
+
     writeFileSync(resolve(contentDir, 'a.md'), '# A v1\n');
-    const aWipSha = await commitWip(shadow, human, 'content/docs', 'WIP: a v1');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    const aWipSha = await cw('WIP: a v1');
+    await sv();
 
     rmSync(resolve(contentDir, 'a.md'));
     writeFileSync(resolve(contentDir, 'b.md'), '# B v1\n');
-    await commitWip(shadow, human, 'content/docs', 'rename: a -> b');
+    await cw('rename: a -> b');
     writeFileSync(resolve(contentDir, 'b.md'), '# B v2\n');
-    const bWipSha = await commitWip(shadow, human, 'content/docs', 'WIP: b v2');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    const bWipSha = await cw('WIP: b v2');
+    await sv();
 
     rmSync(resolve(contentDir, 'b.md'));
     writeFileSync(resolve(contentDir, 'c.md'), '# C v1\n');
-    const renameBC = await commitWip(shadow, human, 'content/docs', 'rename: b -> c');
+    const renameBC = await cw('rename: b -> c');
 
     const index = createEmptyIndex();
     const bogusSha = '0123456789abcdef0123456789abcdef01234567';
@@ -629,15 +642,16 @@ describe('getDocumentHistory — rename-history mitigation (US-004)', () => {
   test('checkpoint-only fast path: pre-rename checkpoint visible after rename', async () => {
     const { contentDir, shadow } = await setup();
 
+    const { cw, sv } = datedCommits(shadow);
+
     writeFileSync(resolve(contentDir, 'a.md'), '# A pre-rename\n');
-    await commitWip(shadow, human, 'content/docs', 'WIP: a');
-    await saveVersion(shadow, 'content/docs', [human]);
-    await new Promise((r) => setTimeout(r, 1100));
+    await cw('WIP: a');
+    await sv();
 
     rmSync(resolve(contentDir, 'a.md'));
     writeFileSync(resolve(contentDir, 'b.md'), '# B post-rename\n');
-    const renameSha = await commitWip(shadow, human, 'content/docs', 'rename: a -> b');
-    await saveVersion(shadow, 'content/docs', [human]);
+    const renameSha = await cw('rename: a -> b');
+    await sv();
 
     const index = createEmptyIndex();
     appendRenameLogEntry(shadow.gitDir, entry({ from: 'a', to: 'b', commitSha: renameSha }), index);
