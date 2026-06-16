@@ -234,6 +234,10 @@ msgstr ""
 msgid "{docName} is {0}. Open Knowledge currently opens files up to {1}."
 msgstr ""
 
+#: src/components/FileTree.tsx
+msgid "{failedCount, plural, one {1 file failed to upload} other {{failedCount} files failed to upload}}"
+msgstr ""
+
 #: src/components/ActivityModeContent.tsx
 msgid "{fileCount, plural, one {# file} other {# files}}"
 msgstr ""
@@ -339,6 +343,10 @@ msgstr ""
 
 #: src/components/FileTree.tsx
 msgid "{truncatedShownCount, plural, one {Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.} other {Showing the first {formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.}}"
+msgstr ""
+
+#: src/components/FileTree.tsx
+msgid "{uploadedCount, plural, one {Uploaded one file} other {Uploaded {uploadedCount} files}}"
 msgstr ""
 
 #: src/presence/PresenceBar.tsx
@@ -2303,6 +2311,10 @@ msgstr ""
 msgid "Failed to update property"
 msgstr ""
 
+#: src/components/FileTree.tsx
+msgid "Failed to upload file"
+msgstr ""
+
 #: src/components/ActivityPanelBurstRow.tsx
 msgid "Failed: {loadError}"
 msgstr ""
@@ -2322,6 +2334,14 @@ msgstr ""
 #: src/components/share-metadata-rows.tsx
 #: src/editor/slash-command/component-items.tsx
 msgid "File"
+msgstr ""
+
+#: src/components/FileTree.tsx
+msgid "File already exists"
+msgstr ""
+
+#: src/components/FileTree.tsx
+msgid "File drop zone"
 msgstr ""
 
 #: src/components/FileTree.tsx
@@ -4253,6 +4273,7 @@ msgstr ""
 msgid "Project folder created, but git init failed. Try again."
 msgstr ""
 
+#: src/components/FileTree.tsx
 #: src/components/SeedDialog.tsx
 msgid "Project root"
 msgstr ""
@@ -5826,8 +5847,14 @@ msgstr ""
 msgid "Upload failed: {message}"
 msgstr ""
 
+#: src/components/FileSidebar.tsx
+#: src/components/FileTree.tsx
 #: src/editor/components/PropPanel.tsx
 msgid "Upload file"
+msgstr ""
+
+#: src/components/FileTree.tsx
+msgid "Upload may have succeeded but the sidebar is out of date — refresh to resync"
 msgstr ""
 
 #: src/editor/image-upload/index.ts

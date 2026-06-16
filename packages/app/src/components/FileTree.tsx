@@ -14,6 +14,7 @@ import {
   type OkignoreBinding,
   RenamePathSuccessSchema,
   TrashCleanupSuccessSchema,
+  UploadAssetSuccessSchema,
   WorkspaceSuccessSchema,
 } from '@inkeep/open-knowledge-core';
 import { plural, t } from '@lingui/core/macro';
@@ -43,12 +44,14 @@ import {
   Trash2,
   TriangleAlert,
   UnfoldVertical,
+  Upload,
 } from 'lucide-react';
 import { __iconNode as botIcon } from 'lucide-react/dist/esm/icons/bot';
 import { __iconNode as link2Icon } from 'lucide-react/dist/esm/icons/link-2';
 import { useTheme } from 'next-themes';
 import {
   type CSSProperties,
+  type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
@@ -70,15 +73,21 @@ import {
   docNameToTreePath,
   documentsToTreePaths,
   documentsTreePathSignature,
+  fileEntryFromUploadedPath,
   fileEntryToTreePath,
+  filesFromExternalDrop,
   folderPathToTreeDirectoryPath,
+  isExternalFileDrag,
   normalizeTreePathForKind,
+  parentFolderPathForTreeItemDropTarget,
   relativePathForTreeItem,
   treeDirectoryPathToFolderPath,
   treeFilePathToDocName,
   treeItemToTarget,
   treePathSignature,
   treePathToAppPath,
+  uploadedPathForSidebarDrop,
+  uploadParentDocNameForFolderDrop,
 } from '@/components/file-tree-adapter';
 import {
   applyExtensionBadges,
@@ -180,6 +189,7 @@ import {
   ShowAllStreamError,
 } from '@/lib/show-all-stream';
 import { OK_SIDEBAR_DRAG_MIME, serializeSidebarDragPayload } from '@/lib/sidebar-drag';
+import { cn } from '@/lib/utils';
 import { joinWorkspacePath } from '@/lib/workspace-paths';
 import { mergeAndPruneRecentLocalAdds, spliceLazyFolderChildren } from './file-tree-merge';
 import { OpenInAgentContextSubmenu } from './handoff/OpenInAgentContextSubmenu';
@@ -213,6 +223,39 @@ function focusEditorAfterRename(docName: string): void {
       editor.commands.focus();
     } catch {}
   });
+}
+
+interface ExternalFileDropTarget {
+  parentDir: string;
+  row: HTMLElement | null;
+  root: HTMLElement | null;
+  busyPath: string;
+}
+
+interface ExternalFileDropAffordanceRef {
+  current: {
+    row: HTMLElement | null;
+    root: HTMLElement | null;
+  };
+}
+
+function clearExternalFileDropAffordance(ref: ExternalFileDropAffordanceRef) {
+  const current = ref.current;
+  current.row?.removeAttribute(FILE_TREE_EXTERNAL_FILE_DROP_TARGET_ATTR);
+  current.root?.removeAttribute(FILE_TREE_EXTERNAL_FILE_DROP_ROOT_ATTR);
+  ref.current = { row: null, root: null };
+}
+
+function setExternalFileDropAffordance(
+  ref: ExternalFileDropAffordanceRef,
+  target: ExternalFileDropTarget,
+) {
+  const current = ref.current;
+  if (current.row === target.row && current.root === target.root) return;
+  clearExternalFileDropAffordance(ref);
+  target.row?.setAttribute(FILE_TREE_EXTERNAL_FILE_DROP_TARGET_ATTR, 'true');
+  target.root?.setAttribute(FILE_TREE_EXTERNAL_FILE_DROP_ROOT_ATTR, 'true');
+  ref.current = { row: target.row, root: target.root };
 }
 
 async function copyToClipboard(text: string, kind: 'full' | 'relative'): Promise<void> {
@@ -283,6 +326,38 @@ const FILE_TREE_ROOT_DROP_CSS = `
   }
 `;
 
+const FILE_TREE_EXTERNAL_FILE_DROP_TARGET_ATTR = 'data-ok-external-file-drop-target';
+const FILE_TREE_EXTERNAL_FILE_DROP_ROOT_ATTR = 'data-ok-external-file-drop-root-target';
+const FILE_TREE_EXTERNAL_FILE_DROP_BUSY_PATH = '__external-file-drop__';
+const FILE_TREE_EXTERNAL_FILE_DROP_CSS = `
+  [data-type="item"][${FILE_TREE_EXTERNAL_FILE_DROP_TARGET_ATTR}="true"] {
+    background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 72%, transparent);
+  }
+  [data-file-tree-virtualized-root][${FILE_TREE_EXTERNAL_FILE_DROP_ROOT_ATTR}="true"] {
+    position: relative;
+  }
+  [data-file-tree-virtualized-root][${FILE_TREE_EXTERNAL_FILE_DROP_ROOT_ATTR}="true"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    border-radius: 0.375rem;
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--color-primary) 80%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 6%, transparent);
+    pointer-events: none;
+  }
+  @media (forced-colors: active) {
+    [data-type="item"][${FILE_TREE_EXTERNAL_FILE_DROP_TARGET_ATTR}="true"] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+    [data-file-tree-virtualized-root][${FILE_TREE_EXTERNAL_FILE_DROP_ROOT_ATTR}="true"]::after {
+      border: 2px solid Highlight;
+    }
+  }
+`;
+
 const FILE_TREE_CREATION_CLEARED_ATTR = 'data-ok-creation-cleared';
 const FILE_TREE_CREATION_CLEARED_CSS = `
   :host([${FILE_TREE_CREATION_CLEARED_ATTR}]) [data-item-focused="true"] {
@@ -290,7 +365,7 @@ const FILE_TREE_CREATION_CLEARED_CSS = `
   }
 `;
 
-const FILE_TREE_UNSAFE_CSS = `${FILE_TREE_EXT_BADGE_CSS}\n${FILE_TREE_RENAME_CHIP_CSS}\n${FILE_TREE_ROOT_DROP_CSS}\n${FILE_TREE_CREATION_CLEARED_CSS}`;
+const FILE_TREE_UNSAFE_CSS = `${FILE_TREE_EXT_BADGE_CSS}\n${FILE_TREE_RENAME_CHIP_CSS}\n${FILE_TREE_ROOT_DROP_CSS}\n${FILE_TREE_EXTERNAL_FILE_DROP_CSS}\n${FILE_TREE_CREATION_CLEARED_CSS}`;
 
 function createFileTreeStyle(resolvedTheme: string | undefined): CSSProperties {
   return {
@@ -469,6 +544,7 @@ interface FileTreeMenuProps {
    *  (`appearance.sidebar.{showHiddenFiles,showAllFiles}`). */
   mergedConfig: Config | null;
   onStartCreating: (kind: 'file' | 'folder', parentDir: string) => void;
+  onUploadFiles: (parentDir: string) => void;
   /** Inline create-from-template for the given parent dir + template name —
    *  same inline-rename fast path as `onStartCreating`, seeded from a template.
    *  Drives the folder menu's "New from template" hover submenu. */
@@ -529,6 +605,35 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
+function chooseSidebarUploadFiles(): Promise<readonly File[]> {
+  if (typeof document === 'undefined') return Promise.resolve([]);
+
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.tabIndex = -1;
+    input.style.position = 'fixed';
+    input.style.inlineSize = '1px';
+    input.style.blockSize = '1px';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+
+    let settled = false;
+    const settle = (files: readonly File[]) => {
+      if (settled) return;
+      settled = true;
+      input.remove();
+      resolve(files);
+    };
+
+    input.addEventListener('change', () => settle(Array.from(input.files ?? [])), { once: true });
+    input.addEventListener('cancel', () => settle([]), { once: true });
+    document.body.append(input);
+    input.click();
+  });
+}
+
 function collectTabsToCloseForDelete(
   targets: readonly FileTreeTarget[],
   documents: readonly FileEntry[],
@@ -586,6 +691,7 @@ function FileTreeMenu({
   projectLocalBinding,
   mergedConfig,
   onStartCreating,
+  onUploadFiles,
   onCreateFromTemplate,
   onDuplicate,
   onDelete,
@@ -747,6 +853,16 @@ function FileTreeMenu({
             >
               <FolderPlus aria-hidden="true" />
               <Trans>New folder</Trans>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={anyActionBusy}
+              onSelect={() => {
+                closeForInlineSurface();
+                onUploadFiles(treeDirectoryPathToFolderPath(item.path));
+              }}
+            >
+              <Upload aria-hidden="true" />
+              <Trans>Upload file</Trans>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <RevealInFileManagerMenuItem item={item} workspace={workspace} onClose={close} />
@@ -1006,6 +1122,7 @@ function FileTreeMenu({
 
 export interface FileTreeHandle {
   startCreating(kind: 'file' | 'folder', parentDir: string): void;
+  uploadFiles(parentDir: string): void;
   /** Open NewItemDialog at the given parentDir so the template picker is
    *  reachable. Used by the native macOS File menu's "New from Template…"
    *  item, where an inline hover-submenu of templates isn't expressible. */
@@ -1186,6 +1303,13 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
   const suppressSelectionRef = useRef(false);
   const sidebarDragInProgressRef = useRef(false);
   const sidebarDragClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const externalFileDropTargetRef = useRef<{ row: HTMLElement | null; root: HTMLElement | null }>({
+    row: null,
+    root: null,
+  });
+  const uploadExternalFilesRef = useRef<
+    (files: readonly File[], parentDir: string, busyPath: string) => void
+  >(() => {});
   const busyPathRef = useRef<string | null>(null);
   const recentLocalAddsRef = useRef<Map<string, number>>(new Map());
   const lazyLoadedDirTreePathsRef = useRef<Set<string>>(new Set());
@@ -1203,11 +1327,13 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
   const handleRenameErrorRef = useRef<(message: string) => void>((message) => toast.error(message));
   const handleDropCompleteRef = useRef<(event: FileTreeDropResult) => void>(() => {});
   const activeTargetRef = useRef(activeTarget);
+  const [emptyExternalFileDropActive, setEmptyExternalFileDropActive] = useState(false);
 
   useEffect(() => {
     if (loading || documents.length === 0) return;
     const shadow = fileTreeHostRef.current?.querySelector(FILE_TREE_TAG_NAME)?.shadowRoot;
     if (!shadow) return;
+    const shadowRoot = shadow;
 
     function clearSidebarDragInProgressSoon() {
       if (sidebarDragClearTimerRef.current !== null) {
@@ -1242,15 +1368,59 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
       event.dataTransfer?.setData(OK_SIDEBAR_DRAG_MIME, serializeSidebarDragPayload(payload));
     }
 
+    function handleExternalFileDragOver(event: Event) {
+      if (!(event instanceof DragEvent)) return;
+      if (!isExternalFileDrag(event)) return;
+      const target = resolveExternalFileDropTarget(event);
+      if (!target) {
+        clearExternalFileDropAffordance(externalFileDropTargetRef);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      setExternalFileDropAffordance(externalFileDropTargetRef, target);
+    }
+
+    function handleExternalFileDragLeave(event: Event) {
+      if (!(event instanceof DragEvent)) return;
+      if (!isExternalFileDrag(event)) return;
+      const related = event.relatedTarget;
+      if (related instanceof Node && shadowRoot.contains(related)) return;
+      clearExternalFileDropAffordance(externalFileDropTargetRef);
+    }
+
+    function handleExternalFileDrop(event: Event) {
+      if (!(event instanceof DragEvent)) return;
+      if (!isExternalFileDrag(event)) return;
+      const target = resolveExternalFileDropTarget(event);
+      const files = filesFromExternalDrop(event);
+      if (!target || files.length === 0) {
+        clearExternalFileDropAffordance(externalFileDropTargetRef);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      clearExternalFileDropAffordance(externalFileDropTargetRef);
+      uploadExternalFilesRef.current(files, target.parentDir, target.busyPath);
+    }
+
     shadow.addEventListener('dragstart', handleDragStart, { capture: true });
+    shadow.addEventListener('dragover', handleExternalFileDragOver, { capture: true });
+    shadow.addEventListener('dragleave', handleExternalFileDragLeave, { capture: true });
+    shadow.addEventListener('drop', handleExternalFileDrop, { capture: true });
     shadow.addEventListener('dragend', clearSidebarDragInProgressSoon, { capture: true });
     window.addEventListener('drop', clearSidebarDragInProgressSoon, true);
     window.addEventListener('dragend', clearSidebarDragInProgressSoon, true);
     return () => {
       shadow.removeEventListener('dragstart', handleDragStart, { capture: true });
+      shadow.removeEventListener('dragover', handleExternalFileDragOver, { capture: true });
+      shadow.removeEventListener('dragleave', handleExternalFileDragLeave, { capture: true });
+      shadow.removeEventListener('drop', handleExternalFileDrop, { capture: true });
       shadow.removeEventListener('dragend', clearSidebarDragInProgressSoon, { capture: true });
       window.removeEventListener('drop', clearSidebarDragInProgressSoon, true);
       window.removeEventListener('dragend', clearSidebarDragInProgressSoon, true);
+      clearExternalFileDropAffordance(externalFileDropTargetRef);
       if (sidebarDragClearTimerRef.current !== null) {
         clearTimeout(sidebarDragClearTimerRef.current);
         sidebarDragClearTimerRef.current = null;
@@ -2188,6 +2358,141 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     }
   }
 
+  async function uploadExternalFilesToTarget(
+    files: readonly File[],
+    parentDir: string,
+    uploadBusyPath: string,
+  ) {
+    if (files.length === 0 || busyPathRef.current !== null) return;
+
+    const clearBusyState = () => {
+      busyPathRef.current = null;
+      setBusyPath(null);
+    };
+    busyPathRef.current = uploadBusyPath;
+    setBusyPath(uploadBusyPath);
+    setError(null);
+
+    const uploadedEntries: FileEntry[] = [];
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append(
+        'parentDocName',
+        uploadParentDocNameForFolderDrop(parentDir, file.name || 'upload'),
+      );
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const parsed = await parseServerResponse(res, t`Failed to upload file`);
+        if (!parsed.ok) {
+          failedCount += 1;
+          toast.error(parsed.title, { description: file.name });
+          continue;
+        }
+
+        const success = parseSuccessOrWarn(
+          UploadAssetSuccessSchema,
+          parsed.body,
+          'upload:drop',
+          null,
+        );
+        if (success === null) {
+          failedCount += 1;
+          toast.error(t`Failed to upload file`, { description: file.name });
+          continue;
+        }
+        const uploadedPath = uploadedPathForSidebarDrop(parentDir, success);
+        if (success.deduped === true) {
+          failedCount += 1;
+          toast.error(t`File already exists`, { description: uploadedPath });
+          continue;
+        }
+        uploadedCount += 1;
+        const entry = fileEntryFromUploadedPath(uploadedPath, file);
+        if (entry) uploadedEntries.push(entry);
+      } catch (err) {
+        failedCount += 1;
+        console.warn('[FileTree] external file upload failed:', err);
+        toast.error(
+          err instanceof TypeError ? t`Network error — please try again` : t`Failed to upload file`,
+          {
+            description: file.name,
+          },
+        );
+      }
+    }
+
+    try {
+      if (uploadedEntries.length > 0) {
+        for (const entry of uploadedEntries) {
+          if (isDocumentEntry(entry)) addPage(entry.docName);
+        }
+        setDocuments((current) => {
+          const existing = new Set(current.map(fileEntryToTreePath));
+          let changed = false;
+          const next = [...current];
+          for (const entry of uploadedEntries) {
+            const treePath = fileEntryToTreePath(entry);
+            recentLocalAddsRef.current.set(treePath, Date.now());
+            if (existing.has(treePath)) continue;
+            existing.add(treePath);
+            next.push(entry);
+            changed = true;
+          }
+          if (!changed) return current;
+          resetModelToDocuments(next);
+          markNextDocumentsAsApplied(next);
+          return next;
+        });
+      }
+
+      if (uploadedCount > 0) {
+        emitDocumentsChanged(['files', 'backlinks', 'graph']);
+        refreshDocsScheduleRef.current?.();
+        toast.success(
+          plural(uploadedCount, {
+            one: 'Uploaded one file',
+            other: `Uploaded ${uploadedCount} files`,
+          }),
+          { description: parentDir || t`Project root` },
+        );
+      }
+
+      if (failedCount > 0) {
+        setError(
+          uploadedCount > 0
+            ? plural(failedCount, {
+                one: '1 file failed to upload',
+                other: `${failedCount} files failed to upload`,
+              })
+            : t`Failed to upload file`,
+        );
+      }
+      clearBusyState();
+    } catch (err) {
+      const message = t`Upload may have succeeded but the sidebar is out of date — refresh to resync`;
+      console.warn('[FileTree] upload post-upload reconciliation failed:', err);
+      toast.error(message);
+      setError(message);
+      clearBusyState();
+    }
+  }
+
+  async function uploadFilesToTargetFromPicker(parentDir: string) {
+    if (busyPathRef.current !== null) return;
+    const files = await chooseSidebarUploadFiles();
+    if (files.length === 0) return;
+    const uploadBusyPath =
+      parentDir === ''
+        ? FILE_TREE_EXTERNAL_FILE_DROP_BUSY_PATH
+        : folderPathToTreeDirectoryPath(parentDir);
+    await uploadExternalFilesToTarget(files, parentDir, uploadBusyPath);
+  }
+
   function startCreatingFromTemplate(parentDir: string) {
     setNewItemRequest({ parentDir });
   }
@@ -2386,6 +2691,9 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     detectLazyFolderExpansionsRef.current = detectLazyFolderExpansions;
     revalidateExpandedLazyDirsRef.current = revalidateExpandedLazyDirs;
     cleanupPendingCreateRef.current = cleanupPendingCreate;
+    uploadExternalFilesRef.current = (files, parentDir, uploadBusyPath) => {
+      void uploadExternalFilesToTarget(files, parentDir, uploadBusyPath);
+    };
     handleSelectionChangeRef.current = (selectedPaths) => {
       if (suppressSelectionRef.current || sidebarDragInProgressRef.current) return;
       if (selectedPaths.length !== 1) return;
@@ -2526,9 +2834,11 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
 
   const startCreatingRef = useRef(startCreating);
   const startCreatingFromTemplateRef = useRef(startCreatingFromTemplate);
+  const uploadFilesRef = useRef(uploadFilesToTargetFromPicker);
   useEffect(() => {
     startCreatingRef.current = startCreating;
     startCreatingFromTemplateRef.current = startCreatingFromTemplate;
+    uploadFilesRef.current = uploadFilesToTargetFromPicker;
   });
 
   useImperativeHandle(
@@ -2536,6 +2846,9 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     () => ({
       startCreating(kind, parentDir) {
         void startCreatingRef.current(kind, parentDir);
+      },
+      uploadFiles(parentDir) {
+        void uploadFilesRef.current(parentDir);
       },
       startCreatingFromTemplate(parentDir) {
         startCreatingFromTemplateRef.current(parentDir);
@@ -3044,6 +3357,30 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     queueMicrotask(() => activateTreePath(path));
   }
 
+  function handleEmptyExternalFileDragOver(event: ReactDragEvent<HTMLDivElement>) {
+    if (!isExternalFileDrag(event.nativeEvent)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setEmptyExternalFileDropActive(true);
+  }
+
+  function handleEmptyExternalFileDragLeave(event: ReactDragEvent<HTMLDivElement>) {
+    const related = event.relatedTarget;
+    if (related instanceof Node && event.currentTarget.contains(related)) return;
+    setEmptyExternalFileDropActive(false);
+  }
+
+  function handleEmptyExternalFileDrop(event: ReactDragEvent<HTMLDivElement>) {
+    if (!isExternalFileDrag(event.nativeEvent)) return;
+    const files = filesFromExternalDrop(event.nativeEvent);
+    if (files.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setEmptyExternalFileDropActive(false);
+    void uploadExternalFilesToTarget(files, '', FILE_TREE_EXTERNAL_FILE_DROP_BUSY_PATH);
+  }
+
   if (loading) {
     return <FileTreeSkeleton />;
   }
@@ -3057,7 +3394,16 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
       );
     }
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8">
+      <section
+        aria-label={t`File drop zone`}
+        className={cn(
+          'flex flex-1 flex-col items-center justify-center gap-3 rounded-md py-8',
+          emptyExternalFileDropActive && 'bg-primary/5 ring-2 ring-primary/70 ring-inset',
+        )}
+        onDragOver={handleEmptyExternalFileDragOver}
+        onDragLeave={handleEmptyExternalFileDragLeave}
+        onDrop={handleEmptyExternalFileDrop}
+      >
         <span className="select-none text-sidebar-foreground/30 text-sm">
           <Trans>No files yet.</Trans>
         </span>
@@ -3069,7 +3415,18 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
         >
           <Trans>Create your first file</Trans>
         </Button>
-      </div>
+        <Button
+          variant="link"
+          size="sm"
+          className="font-mono uppercase"
+          onClick={() => {
+            void uploadFilesToTargetFromPicker('');
+          }}
+        >
+          <Upload aria-hidden="true" />
+          <Trans>Upload file</Trans>
+        </Button>
+      </section>
     );
   }
 
@@ -3115,6 +3472,9 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
               projectLocalBinding={projectLocalBinding}
               mergedConfig={merged}
               onStartCreating={startCreating}
+              onUploadFiles={(parentDir) => {
+                void uploadFilesToTargetFromPicker(parentDir);
+              }}
               onCreateFromTemplate={(parentDir, templateName) =>
                 startCreating('file', parentDir, { template: templateName })
               }
@@ -3226,6 +3586,38 @@ function findTreeItemElement(event: MouseEvent): HTMLElement | null {
   return null;
 }
 
+function findTreeVirtualizedRootElement(event: MouseEvent): HTMLElement | null {
+  for (const entry of event.composedPath()) {
+    if (entry instanceof HTMLElement && entry.matches('[data-file-tree-virtualized-root]')) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+function resolveExternalFileDropTarget(event: MouseEvent): ExternalFileDropTarget | null {
+  const item = findTreeItemElement(event);
+  if (item) {
+    const rawPath = item.dataset.itemPath;
+    if (!rawPath) return null;
+    const isFolder = item.dataset.itemType === 'folder';
+    const parentDir = parentFolderPathForTreeItemDropTarget(rawPath, isFolder);
+    return {
+      parentDir,
+      row: item,
+      root: null,
+      busyPath: isFolder ? folderPathToTreeDirectoryPath(parentDir) : rawPath,
+    };
+  }
+  if (!clickIsInTreeContentArea(event)) return null;
+  return {
+    parentDir: '',
+    row: null,
+    root: findTreeVirtualizedRootElement(event),
+    busyPath: FILE_TREE_EXTERNAL_FILE_DROP_BUSY_PATH,
+  };
+}
+
 function clickIsInTreeContentArea(event: MouseEvent): boolean {
   for (const entry of event.composedPath()) {
     if (entry instanceof HTMLElement && entry.matches('[data-file-tree-virtualized-scroll]')) {
@@ -3265,9 +3657,10 @@ function FileTreeHeaderNotice({ kind, children }: { kind: 'error' | 'info'; chil
   return (
     <span
       role={kind === 'error' ? 'alert' : 'status'}
-      className={`mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs leading-snug ${
-        kind === 'error' ? 'text-destructive' : 'text-muted-foreground'
-      }`}
+      className={cn(
+        'mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-xs leading-snug',
+        kind === 'error' ? 'text-destructive' : 'text-muted-foreground',
+      )}
     >
       <Icon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
       <span className="min-w-0">{children}</span>

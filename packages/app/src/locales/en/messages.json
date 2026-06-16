@@ -147,6 +147,7 @@
     "4A3Yzu": ["Code block"],
     "4BITzH": ["Error:"],
     "4CfgPM": ["Project folder created, but git init failed. Try again."],
+    "4Gz2wC": ["Failed to upload file"],
     "4KmEoC": ["Hotkeys"],
     "4NC2Ym": ["Move to the next or previous table cell."],
     "4PYsOz": ["Hide Files (", ["sidebarShortcutLabel"], ")"],
@@ -160,6 +161,7 @@
     "4jDd0j": ["Anyone can see"],
     "4niEzY": ["Sandboxed HTML embed — write HTML, see the rendered preview live."],
     "4nj6n8": ["/api/config returned HTTP ", ["code"]],
+    "4sKwf6": ["File already exists"],
     "4uNLmk": ["Pulling"],
     "4v2Yyz": ["Select every visible file-tree row when focus is in the Files sidebar."],
     "4xtLTl": ["Hidden folder “", ["basename"], "”"],
@@ -188,6 +190,7 @@
     "5SwVv1": ["Not installed"],
     "5Tk8Fb": ["Loading files"],
     "5WDhAk": ["Link to a page or external URL."],
+    "5ZB7XC": ["File drop zone"],
     "5gr_ev": [
       "Becomes the document's content when someone creates a doc from this template. Type <0>",
       ["dateToken"],
@@ -937,6 +940,7 @@
     "VZGh8G": ["Fold, unfold, fold all, or unfold all source ranges."],
     "VZSBXL": ["Semantic ranking activates the first time an agent runs a search."],
     "VbqhBI": ["Already at ", ["assetContentPath"], " — reusing."],
+    "VcqWBy": ["Upload may have succeeded but the sidebar is out of date — refresh to resync"],
     "VdXv4D": ["Clone from GitHub"],
     "Vlc75q": ["Keep file deleted"],
     "VsBxkh": [
@@ -1740,6 +1744,13 @@
     "uynXup": [["tokens", "plural", { "one": ["token"], "other": ["tokens"] }]],
     "v-h2hx": ["Delete ", ["targetGitPath"]],
     "v41fCm": ["File not found"],
+    "v75Em9": [
+      [
+        "uploadedCount",
+        "plural",
+        { "one": ["Uploaded one file"], "other": ["Uploaded ", ["uploadedCount"], " files"] }
+      ]
+    ],
     "v7lbnC": ["Find next match"],
     "vDXqVv": ["Insert a markdown hard break."],
     "vEJDlt": ["The file is in your Trash; the file-watcher will reconcile."],
@@ -1822,6 +1833,16 @@
       "The preview blocks resources that don't meet its security rules (for example plain http:// URLs, or code that uses eval). The content above may render incompletely."
     ],
     "yFyZMJ": ["No pages matched \"", ["semanticQueryText"], "\" by meaning."],
+    "yH7T4q": [
+      [
+        "failedCount",
+        "plural",
+        {
+          "one": ["1 file failed to upload"],
+          "other": [["failedCount"], " files failed to upload"]
+        }
+      ]
+    ],
     "yHikCO": ["Open CodeMirror's go-to-line prompt."],
     "yKu_3Y": ["Restore"],
     "yLq4w4": ["Separator"],

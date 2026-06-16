@@ -234,6 +234,10 @@ msgstr "{diffMin}m ago"
 msgid "{docName} is {0}. Open Knowledge currently opens files up to {1}."
 msgstr "{docName} is {0}. Open Knowledge currently opens files up to {1}."
 
+#: src/components/FileTree.tsx
+msgid "{failedCount, plural, one {1 file failed to upload} other {{failedCount} files failed to upload}}"
+msgstr "{failedCount, plural, one {1 file failed to upload} other {{failedCount} files failed to upload}}"
+
 #: src/components/ActivityModeContent.tsx
 msgid "{fileCount, plural, one {# file} other {# files}}"
 msgstr "{fileCount, plural, one {# file} other {# files}}"
@@ -340,6 +344,10 @@ msgstr "{tokens, plural, one {token} other {tokens}}"
 #: src/components/FileTree.tsx
 msgid "{truncatedShownCount, plural, one {Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.} other {Showing the first {formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.}}"
 msgstr "{truncatedShownCount, plural, one {Showing the first item in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.} other {Showing the first {formattedCount} items in one folder — the rest of that folder is hidden. Turn off Show all files for the filtered view.}}"
+
+#: src/components/FileTree.tsx
+msgid "{uploadedCount, plural, one {Uploaded one file} other {Uploaded {uploadedCount} files}}"
+msgstr "{uploadedCount, plural, one {Uploaded one file} other {Uploaded {uploadedCount} files}}"
 
 #: src/presence/PresenceBar.tsx
 msgid "{userName} · {tabCount, plural, one {# tab} other {# tabs}}"
@@ -2308,6 +2316,10 @@ msgstr "Failed to reorder"
 msgid "Failed to update property"
 msgstr "Failed to update property"
 
+#: src/components/FileTree.tsx
+msgid "Failed to upload file"
+msgstr "Failed to upload file"
+
 #: src/components/ActivityPanelBurstRow.tsx
 msgid "Failed: {loadError}"
 msgstr "Failed: {loadError}"
@@ -2328,6 +2340,14 @@ msgstr "Fetching"
 #: src/editor/slash-command/component-items.tsx
 msgid "File"
 msgstr "File"
+
+#: src/components/FileTree.tsx
+msgid "File already exists"
+msgstr "File already exists"
+
+#: src/components/FileTree.tsx
+msgid "File drop zone"
+msgstr "File drop zone"
 
 #: src/components/FileTree.tsx
 msgid "File duplicated"
@@ -4258,6 +4278,7 @@ msgstr "Project"
 msgid "Project folder created, but git init failed. Try again."
 msgstr "Project folder created, but git init failed. Try again."
 
+#: src/components/FileTree.tsx
 #: src/components/SeedDialog.tsx
 msgid "Project root"
 msgstr "Project root"
@@ -5831,9 +5852,15 @@ msgstr "Upload failed — please try again"
 msgid "Upload failed: {message}"
 msgstr "Upload failed: {message}"
 
+#: src/components/FileSidebar.tsx
+#: src/components/FileTree.tsx
 #: src/editor/components/PropPanel.tsx
 msgid "Upload file"
 msgstr "Upload file"
+
+#: src/components/FileTree.tsx
+msgid "Upload may have succeeded but the sidebar is out of date — refresh to resync"
+msgstr "Upload may have succeeded but the sidebar is out of date — refresh to resync"
 
 #: src/editor/image-upload/index.ts
 msgid "Uploading {fileName}"
