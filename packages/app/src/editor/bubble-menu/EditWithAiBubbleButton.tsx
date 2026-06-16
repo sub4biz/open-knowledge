@@ -2,28 +2,15 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { isMacOS } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { Sparkles } from 'lucide-react';
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-  type PointerEvent as ReactPointerEvent,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useState } from 'react';
 import { toast } from 'sonner';
-import { OpenInAgentMenuContent } from '@/components/handoff/OpenInAgentMenu';
 import {
-  buildSelectionOrDocHandoffInput,
-  type HandoffDispatchInput,
-  useHandoffDispatch,
-} from '@/components/handoff/useHandoffDispatch';
-import { useInstalledAgents } from '@/components/handoff/useInstalledAgents';
+  EditWithAiPopover,
+  type EditWithAiSelectionSnapshot,
+} from '@/components/handoff/EditWithAiPopover';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { useIsEmbedded } from '@/hooks/use-is-embedded';
-import { useConfigContext } from '@/lib/config-context';
 import { matchesKeyboardShortcut } from '@/lib/keyboard-shortcuts';
 import { useWorkspace } from '@/lib/use-workspace';
 import { serializeWysiwygSelection } from '../edit-with-ai-selection.ts';
@@ -57,101 +44,40 @@ function EditWithAiBubbleMenu({
   shortcutEnabled: boolean;
 }): ReactNode {
   const { t } = useLingui();
-  const { states, refresh } = useInstalledAgents();
-  const { dispatch } = useHandoffDispatch();
-  const { merged } = useConfigContext();
   const workspace = useWorkspace();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuInput, setMenuInput] = useState<HandoffDispatchInput | null>(null);
-  const menuInputRef = useRef<HandoffDispatchInput | null>(null);
-  const suppressNextClickRef = useRef(false);
-  const autoOpen = merged?.appearance?.preview?.autoOpen ?? true;
-  const isElectronHost = typeof window !== 'undefined' && window.okDesktop != null;
-  const selectionErrorMessage = t`Couldn't read the selection — please try again.`;
+  const [open, setOpen] = useState(false);
+  const [snapshot, setSnapshot] = useState<EditWithAiSelectionSnapshot | null>(null);
 
-  const captureSelectionInput = (): HandoffDispatchInput | null => {
+  const captureSnapshot = (): EditWithAiSelectionSnapshot | null => {
     let selectionMarkdown: string;
     try {
       selectionMarkdown = serializeWysiwygSelection(editor);
     } catch (err) {
       console.error('Edit with AI: could not read the selection', err);
-      toast.error(selectionErrorMessage);
+      toast.error(t`Couldn't read the selection — please try again.`);
       return null;
     }
-
-    const docName = getEditorDocName(editor);
-    const input = buildSelectionOrDocHandoffInput({
-      docName,
-      workspace,
-      instruction: '',
-      selectionMarkdown,
-    });
-    if (input === null) {
-      toast.error(selectionErrorMessage);
-      return null;
-    }
-    return input;
+    return { docName: getEditorDocName(editor), workspace, selectionMarkdown };
   };
 
-  const primeSelectionMenu = (): boolean => {
-    const input = captureSelectionInput();
-    if (input === null) return false;
-    menuInputRef.current = input;
-    setMenuInput(input);
-    return true;
+  const openPopover = (): void => {
+    const shot = captureSnapshot();
+    if (shot === null) return;
+    setSnapshot(shot);
+    setOpen(true);
   };
 
-  const openSelectionMenu = (): void => {
-    if (!primeSelectionMenu()) return;
-    setMenuOpen(true);
-    void refresh();
-  };
-
-  const handleOpenChange = (open: boolean): void => {
-    setMenuOpen(open);
-    if (!open) {
-      menuInputRef.current = null;
-      setMenuInput(null);
+  const handleOpenChange = (next: boolean): void => {
+    if (next) {
+      openPopover();
       return;
     }
-    void refresh();
+    setOpen(false);
+    setSnapshot(null);
   };
 
-  const handleTriggerPointerDownCapture = (event: ReactPointerEvent<HTMLButtonElement>): void => {
-    if (menuInputRef.current !== null) {
-      suppressNextClickRef.current = true;
-      return;
-    }
-    if (event.button !== 0) return;
-    suppressNextClickRef.current = true;
-    if (primeSelectionMenu()) return;
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  const handleTriggerKeyDownCapture = (event: ReactKeyboardEvent<HTMLButtonElement>): void => {
-    if (menuInputRef.current !== null) {
-      suppressNextClickRef.current = true;
-      return;
-    }
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    suppressNextClickRef.current = true;
-    if (primeSelectionMenu()) return;
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  const handleTriggerClick = (): void => {
-    if (suppressNextClickRef.current) {
-      suppressNextClickRef.current = false;
-      return;
-    }
-    if (menuInputRef.current !== null) return;
-    openSelectionMenu();
-  };
-
-  const openSelectionMenuEvent = useEffectEvent(() => {
-    openSelectionMenu();
+  const openPopoverEvent = useEffectEvent(() => {
+    openPopover();
   });
 
   useEffect(() => {
@@ -163,7 +89,7 @@ function EditWithAiBubbleMenu({
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      openSelectionMenuEvent();
+      openPopoverEvent();
     };
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
@@ -173,32 +99,20 @@ function EditWithAiBubbleMenu({
   return (
     <>
       <Separator orientation="vertical" className="mx-0.5 h-5 data-vertical:self-center" />
-      <DropdownMenu open={menuOpen} onOpenChange={handleOpenChange} modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            data-testid="edit-with-ai-bubble-button"
-            className="gap-1 px-2 text-sm font-medium text-accent-foreground/80"
-            onPointerDownCapture={handleTriggerPointerDownCapture}
-            onKeyDownCapture={handleTriggerKeyDownCapture}
-            onClick={handleTriggerClick}
-          >
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            <span>
-              <Trans>Edit with AI</Trans>
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <OpenInAgentMenuContent
-          input={menuInput}
-          states={states}
-          dispatch={dispatch}
-          isElectronHost={isElectronHost}
-          autoOpen={autoOpen}
-        />
-      </DropdownMenu>
+      <EditWithAiPopover open={open} onOpenChange={handleOpenChange} snapshot={snapshot}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          data-testid="edit-with-ai-bubble-button"
+          className="gap-1 px-2 text-sm font-medium text-accent-foreground/80"
+        >
+          <Sparkles className="size-3.5" aria-hidden="true" />
+          <span>
+            <Trans>Edit with AI</Trans>
+          </span>
+        </Button>
+      </EditWithAiPopover>
     </>
   );
 }

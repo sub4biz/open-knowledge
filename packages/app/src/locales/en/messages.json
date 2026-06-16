@@ -845,6 +845,7 @@
     "RSqaSd": ["Project root"],
     "RY6Bq1": ["Open shared ", ["targetNoun"]],
     "RaPMZv": ["Keyboard shortcuts available in the editor and workspace."],
+    "Rah7yq": ["What should the AI do? (optional)"],
     "RfHNf8": ["Open activity panel for ", ["tooltipName"]],
     "RfaEio": ["Toggle source comment"],
     "RgbKEe": ["You don't have access to this repository."],
@@ -1058,6 +1059,7 @@
       ["burstCount", "plural", { "one": ["#", " burst"], "other": ["#", " bursts"] }],
       "). Other files and writers are unaffected."
     ],
+    "ZBt4rI": ["Instruction for the AI"],
     "ZLQol-": ["You can turn this on later in <0>Settings → Sync</0>."],
     "ZNK2Tq": ["root"],
     "ZQLDTl": ["created folder"],

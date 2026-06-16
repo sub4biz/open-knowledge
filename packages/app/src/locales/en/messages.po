@@ -924,6 +924,7 @@ msgstr "Cannot upload: no document is open"
 msgid "Checkbox"
 msgstr "Checkbox"
 
+#: src/components/handoff/EditWithAiPopover.tsx
 #: src/components/handoff/OpenInAgentMenu.tsx
 msgid "Checking for installed agents"
 msgstr "Checking for installed agents"
@@ -1568,6 +1569,7 @@ msgid "Couldn't save the resolution for {filePath}."
 msgstr "Couldn't save the resolution for {filePath}."
 
 #: src/components/EditorPane.tsx
+#: src/components/handoff/EditWithAiPopover.tsx
 msgid "Couldn't send the selection — please try again."
 msgstr "Couldn't send the selection — please try again."
 
@@ -1953,6 +1955,7 @@ msgstr "Edit this HTML — the preview updates live."
 msgid "Edit wiki link"
 msgstr "Edit wiki link"
 
+#: src/components/handoff/EditWithAiPopover.tsx
 #: src/editor/bubble-menu/EditWithAiBubbleButton.tsx
 #: src/lib/keyboard-shortcuts.ts
 msgid "Edit with AI"
@@ -2875,6 +2878,10 @@ msgstr "Install in Claude Desktop"
 msgid "Installing"
 msgstr "Installing"
 
+#: src/components/handoff/EditWithAiPopover.tsx
+msgid "Instruction for the AI"
+msgstr "Instruction for the AI"
+
 #: src/components/settings/SettingsDialogBody.tsx
 #: src/components/settings/SettingsDialogShell.tsx
 msgid "Integrations"
@@ -3501,6 +3508,7 @@ msgstr "No hub pages yet. Hubs appear once pages accumulate inbound graph links.
 msgid "No Incoming"
 msgstr "No Incoming"
 
+#: src/components/handoff/EditWithAiPopover.tsx
 #: src/components/handoff/OpenInAgentMenu.tsx
 msgid "No installed agents found"
 msgstr "No installed agents found"
@@ -5974,6 +5982,10 @@ msgstr "What gets created"
 #: src/components/PublishToGitHubDialog.tsx
 msgid "What is this knowledge base for?"
 msgstr "What is this knowledge base for?"
+
+#: src/components/handoff/EditWithAiPopover.tsx
+msgid "What should the AI do? (optional)"
+msgstr "What should the AI do? (optional)"
 
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "When enabled, the agent opens or refreshes the preview after each edit. Disable if you manage your own preview window (OK Desktop, a browser tab on another display, etc.)."

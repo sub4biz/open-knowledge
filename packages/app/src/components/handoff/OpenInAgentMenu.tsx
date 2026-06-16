@@ -50,7 +50,7 @@ interface OpenInAgentMenuContentProps {
   readonly className?: string;
 }
 
-export function OpenInAgentMenuContent({
+function OpenInAgentMenuContent({
   input,
   states,
   dispatch,

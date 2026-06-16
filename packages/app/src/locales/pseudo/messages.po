@@ -919,6 +919,7 @@ msgstr ""
 msgid "Checkbox"
 msgstr ""
 
+#: src/components/handoff/EditWithAiPopover.tsx
 #: src/components/handoff/OpenInAgentMenu.tsx
 msgid "Checking for installed agents"
 msgstr ""
@@ -1563,6 +1564,7 @@ msgid "Couldn't save the resolution for {filePath}."
 msgstr ""
 
 #: src/components/EditorPane.tsx
+#: src/components/handoff/EditWithAiPopover.tsx
 msgid "Couldn't send the selection — please try again."
 msgstr ""
 
@@ -1948,6 +1950,7 @@ msgstr ""
 msgid "Edit wiki link"
 msgstr ""
 
+#: src/components/handoff/EditWithAiPopover.tsx
 #: src/editor/bubble-menu/EditWithAiBubbleButton.tsx
 #: src/lib/keyboard-shortcuts.ts
 msgid "Edit with AI"
@@ -2870,6 +2873,10 @@ msgstr ""
 msgid "Installing"
 msgstr ""
 
+#: src/components/handoff/EditWithAiPopover.tsx
+msgid "Instruction for the AI"
+msgstr ""
+
 #: src/components/settings/SettingsDialogBody.tsx
 #: src/components/settings/SettingsDialogShell.tsx
 msgid "Integrations"
@@ -3496,6 +3503,7 @@ msgstr ""
 msgid "No Incoming"
 msgstr ""
 
+#: src/components/handoff/EditWithAiPopover.tsx
 #: src/components/handoff/OpenInAgentMenu.tsx
 msgid "No installed agents found"
 msgstr ""
@@ -5968,6 +5976,10 @@ msgstr ""
 
 #: src/components/PublishToGitHubDialog.tsx
 msgid "What is this knowledge base for?"
+msgstr ""
+
+#: src/components/handoff/EditWithAiPopover.tsx
+msgid "What should the AI do? (optional)"
 msgstr ""
 
 #: src/components/settings/SettingsDialogBody.tsx
