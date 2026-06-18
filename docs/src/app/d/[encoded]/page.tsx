@@ -60,8 +60,8 @@ export default async function SplashPage({ params }: SplashPageProps) {
     <main className="relative min-h-screen overflow-hidden bg-slide-bg font-[family-name:var(--font-dm-sans)]">
       <SplashChrome />
 
-      <section className="relative z-10 px-6 pt-16 pb-16 md:pt-24 md:pb-20">
-        <div className="mx-auto max-w-3xl">
+      <section className="relative z-10 px-4 pt-16 pb-16 md:pt-24 md:pb-20">
+        <div className="mx-auto max-w-5xl">
           <p className="mb-6 font-mono text-base font-medium uppercase tracking-wide text-primary">
             {view.target === 'folder' ? 'Shared folder' : 'Shared'}
           </p>
@@ -141,8 +141,8 @@ function SplashChrome() {
         variant="left"
         className="bottom-0 left-0 w-40 dark:opacity-30 sm:w-72 lg:w-[515px]"
       />
-      <header className="relative z-10">
-        <div className="container mx-auto flex px-6 pt-8 md:pt-10">
+      <header className="relative z-10 px-4">
+        <div className="mx-auto flex max-w-5xl pt-8 md:pt-10">
           <Link href="/" aria-label="Open Knowledge home" className="inline-flex items-center">
             {/* Link already names the control; hide the wordmark's own label to
                 avoid a doubled "Open Knowledge" announcement. */}
@@ -159,8 +159,8 @@ function SplashFallback({ heading }: { heading: string }) {
     <main className="relative min-h-screen overflow-hidden bg-slide-bg font-[family-name:var(--font-dm-sans)]">
       <SplashChrome />
 
-      <section className="relative z-10 px-6 pt-16 pb-16 md:pt-24 md:pb-20">
-        <div className="mx-auto max-w-3xl">
+      <section className="relative z-10 px-4 pt-16 pb-16 md:pt-24 md:pb-20">
+        <div className="mx-auto max-w-5xl">
           <h1 className="text-3xl font-light tracking-tight text-slide-text sm:text-4xl">
             {heading}
           </h1>
