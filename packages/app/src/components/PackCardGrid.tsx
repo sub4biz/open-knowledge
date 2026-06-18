@@ -1,5 +1,4 @@
 // biome-ignore-all lint/plugin/no-raw-html-interactive-element: pre-rule backlog — file uses raw <button>/<input>/<textarea> awaiting shadcn migration; tracked at https://github.com/inkeep/open-knowledge/blob/main/biome-plugins/README.md#no-raw-html-interactive-elementgrit
-import { plural, t } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Compass, GitBranch, Library, Loader2, Network, PenLine, StickyNote } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -112,37 +111,24 @@ interface PackCardProps {
 
 function PackCard({ pack, onSelect }: PackCardProps) {
   const Icon = iconForPack(pack.id);
-  const { files, folders } = pack.entryCounts;
   return (
     <button
       type="button"
       onClick={onSelect}
       className="group flex h-full flex-col items-start gap-4 rounded-2xl border border-border/60 bg-card p-5 text-left transition-[border-color,box-shadow,transform] hover:border-border hover:shadow-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px"
     >
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-lg bg-primary/5 text-primary"
-          >
-            <Icon className="size-4" />
+          <span aria-hidden="true" className="text-muted-foreground">
+            <Icon className="size-3.5" />
           </span>
           <h3 className="text-sm font-medium leading-tight">{pack.name}</h3>
         </div>
 
         <p className="text-1sm leading-relaxed text-muted-foreground">{pack.description}</p>
       </div>
-      <p className="mt-auto pt-2 font-mono text-2xs uppercase tracking-wider text-muted-foreground">
-        {formatEntryCounts({ files, folders })}
-      </p>
     </button>
   );
-}
-
-export function formatEntryCounts({ files, folders }: { files: number; folders: number }): string {
-  const fileLabel = files > 0 ? plural(files, { one: '# file', other: '# files' }) : null;
-  const folderLabel = plural(folders, { one: '# folder', other: '# folders' });
-  return fileLabel ? t`${fileLabel} · ${folderLabel}` : folderLabel;
 }
 
 function PackCardSkeleton() {

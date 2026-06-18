@@ -348,6 +348,8 @@ export {
   buildClaudeUrl,
   buildCodexUrl,
   buildCursorUrl,
+  type CreateScenario,
+  composeCreatePrompt,
   composeEmptySpacePrompt,
   composeFilePrompt,
   composeFolderPrompt,

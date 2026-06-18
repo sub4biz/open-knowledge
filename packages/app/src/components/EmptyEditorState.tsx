@@ -2,12 +2,15 @@ import { DocumentListSuccessSchema } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { ArrowRightIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { CopyablePromptList } from '@/components/empty-state/CopyablePromptList';
+import { CreatePromptComposer } from '@/components/empty-state/CreatePromptComposer';
 import { CreateView } from '@/components/empty-state/CreateView';
 import { EmptyStateHeader } from '@/components/empty-state/EmptyStateHeader';
 import { filterVisibleEntries } from '@/components/file-tree-utils';
 import { PackCardGrid } from '@/components/PackCardGrid';
 import { SeedDialog } from '@/components/SeedDialog';
 import { Button } from '@/components/ui/button';
+import { useIsEmbedded } from '@/hooks/use-is-embedded';
 import { emitCreateTopLevelFile } from '@/lib/create-file-events';
 import type { OkPackId } from '@/lib/desktop-bridge-types';
 import { subscribeToDocumentsChanged } from '@/lib/documents-events';
@@ -127,17 +130,32 @@ function OnboardingView({
   onPackSelect: (packId: OkPackId) => void;
 }) {
   const { t } = useLingui();
+  const isEmbedded = useIsEmbedded();
   return (
     <div className="flex w-full flex-col gap-10 py-12 max-w-5xl my-auto">
       <EmptyStateHeader
-        title={t`Let's set up your project.`}
-        subtitle={t`Pick a starter pack to scaffold folders, templates, and AI-readable rules.`}
+        title={t`What would you like to create?`}
+        subtitle={
+          isEmbedded
+            ? t`Copy a prompt and paste it into your agent to set up your project.`
+            : t`Describe what you're working on and the agent sets it up for you.`
+        }
         celebrateSignal={celebrateSignal}
       />
-      {/* Group the grid + escape hatch in their own tight container so the
-          link sits close beneath the cards while the header above keeps the
-          parent's wider `gap-10` breathing room. */}
-      <div className="flex w-full flex-col gap-3">
+      {/* AI surface up top — the primary path. Non-embedded: compose a brief and
+          hand off to a coding agent. Embedded (OK inside Cursor/Codex/Claude):
+          show the same starter prompts as copy-to-paste rows, since the launch
+          handoff would loop back. `new-project`: brand-new project. */}
+      {isEmbedded ? (
+        <CopyablePromptList scenario="new-project" />
+      ) : (
+        <CreatePromptComposer scenario="new-project" />
+      )}
+      {/* Group the divider + grid + escape hatch in their own tight container
+          so the link sits close beneath the cards while the header/composer
+          above keep the parent's wider `gap-10` breathing room. */}
+      <div className="flex w-full flex-col gap-4">
+        <TemplateDivider label={isEmbedded ? t`Use a starter pack` : t`Or use a starter pack`} />
         <PackCardGrid onPackSelect={onPackSelect} />
         {/* Escape hatch for users who don't want a scaffolded layout — fires
             the same window-level event the sidebar toolbar uses, so the new
@@ -150,10 +168,22 @@ function OnboardingView({
           onClick={() => emitCreateTopLevelFile()}
         >
           <Trans>
-            or start from scratch <ArrowRightIcon aria-hidden="true" className="size-3" />
+            or create a new file <ArrowRightIcon aria-hidden="true" className="size-3" />
           </Trans>
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Labeled hairline rule above the starter-pack grid ("Or start from a
+ *  template"). Mirrors the screenshot's section divider. */
+function TemplateDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+        {label}
+      </span>
     </div>
   );
 }

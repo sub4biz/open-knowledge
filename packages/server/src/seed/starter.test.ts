@@ -309,12 +309,10 @@ describe('Entity vault pack — GBrain-compatible Markdown shape', () => {
     expect((STARTER_PACKS as Record<string, unknown>).gbrain).toBeUndefined();
   });
 
-  test('metadata ties Entity vault to GBrain compatibility without a replacement-engine claim', () => {
-    expect(ENTITY_VAULT_PACK.name).toBe('Entity vault (GBrain-compatible)');
-    expect(ENTITY_VAULT_PACK.description).toContain('people, companies, meetings, and concepts');
-    expect(ENTITY_VAULT_PACK.description).toContain('GBrain-compatible Markdown');
-    expect(ENTITY_VAULT_PACK.description).toContain('OK handles editing and review');
-    expect(ENTITY_VAULT_PACK.description).not.toContain('Gbrain');
+  test('display name is the plain-language "Personal CRM"; copy stays novice-friendly', () => {
+    expect(ENTITY_VAULT_PACK.name).toBe('Personal CRM');
+    expect(ENTITY_VAULT_PACK.description).toContain('people, companies, and meetings');
+    expect(ENTITY_VAULT_PACK.description).not.toMatch(/replaces?\s+gbrain/i);
   });
 
   test('entity templates keep title + type in the generated document frontmatter', () => {

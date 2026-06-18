@@ -45,6 +45,7 @@
       ["targetLabel"]
     ],
     "0eHrMb": ["Could not complete delete"],
+    "0jD-Gn": ["A team knowledge base, a personal wiki, project docs..."],
     "0kTAXe": ["Open source: ", ["mirrorSrc"]],
     "0njBIq": [
       "Setup files include: <0>.ok/</0>, AI-tool MCP configs (<1>.mcp.json</1> and per-tool files), project skills, and <2>.claude/launch.json</2>.<3/><4>Shared</4> commits them to git, so anyone who clones the repo gets the same setup. <5/><6>Local only</6> keeps them out of git (via <7>.git/info/exclude</7>)."
@@ -80,7 +81,6 @@
     "2277Tu": ["Collapse graph"],
     "237hSL": ["Ended"],
     "25Pw6a": ["Cloning"],
-    "27ANM6": ["With AI"],
     "27XW26": ["Clone happens in the Project Navigator. Reclick the share link there."],
     "29VNqC": ["Unknown error"],
     "29XZXN": ["Set git identity"],
@@ -110,9 +110,11 @@
     "36WXSC": ["Couldn't delete template: ", ["error"]],
     "379t2h": ["Unified diff"],
     "38foVZ": ["Loading diff"],
+    "3DTatP": ["Copy a prompt for your agent, start a blank file, or scaffold from a template."],
     "3Fcb0I": ["Open graph"],
     "3HNlwb": ["Hello, world!"],
     "3Ib6FN": ["Move down"],
+    "3IseAk": ["Install an AI agent to create with AI"],
     "3J7d2N": ["Big section heading."],
     "3JYy1p": ["Branch ", ["0"], " no longer exists. Cloned to default branch."],
     "3MnvrL": ["Showing top ", ["0"], " matches — keep typing to narrow"],
@@ -156,7 +158,6 @@
     "4TzU0n": ["Initialize"],
     "4buZWd": ["Inherited from ", ["path"]],
     "4c_a6S": ["Nothing set yet."],
-    "4etMqs": [["files", "plural", { "one": ["#", " file"], "other": ["#", " files"] }]],
     "4g19V6": ["Failed to update property"],
     "4hJhzz": ["Table"],
     "4jDd0j": ["Anyone can see"],
@@ -252,13 +253,18 @@
     "6caB2T": ["Connect an existing repository"],
     "6cuT_1": ["Open date picker for ", ["keyName"]],
     "6cyguR": ["Connect GitHub to continue."],
+    "6eniID": ["Map the architecture"],
     "6fGjTz": ["Show fewer"],
     "6gRgw8": ["Retry"],
+    "6h4zVU": ["What would you like to create?"],
     "6hfDJr": ["Server error: ", ["status"]],
     "6ibbCg": ["Create your first file"],
     "6ki7F2": [["0", "plural", { "one": ["#", " item"], "other": ["#", " items"] }]],
     "6m_7We": ["Open this settings dialog."],
     "6q0rnH": ["writing"],
+    "6qMe0o": [
+      "Draft a technical spec for my project. Start with an overview, then add cross-linked pages for the architecture, the key modules, and the open questions, all linked from a specs index."
+    ],
     "6s7LXO": ["Heads up"],
     "6u9LvN": [["days", "plural", { "one": ["#", " day ago"], "other": ["#", " days ago"] }]],
     "6vEr3W": ["Link target"],
@@ -277,6 +283,7 @@
     "7PzzBU": ["User"],
     "7_bFEL": ["Drag ", ["patternText"], " to reorder"],
     "7d1a0d": ["Public"],
+    "7hctf2": ["Describe the project you want to create"],
     "7kdoVR": ["Open the Open with AI menu for the current editor selection."],
     "7nrKys": [
       "Open Knowledge is using a GitHub account provided by the gh CLI. There's no separate Open Knowledge credential to disconnect."
@@ -336,6 +343,7 @@
     "9UQ730": ["Clone"],
     "9bCiQ8": ["No pages are missing incoming graph links."],
     "9clcD5": ["Open documents tagged #", ["chip"]],
+    "9dw5bW": ["Create with ", ["0"]],
     "9euN0m": [
       [
         "count",
@@ -387,7 +395,6 @@
     ],
     "Aif3E7": ["Enable semantic search"],
     "Am78jY": ["Drag ", ["keyName"], " to reorder"],
-    "AoX5ld": [["folders", "plural", { "one": ["#", " folder"], "other": ["#", " folders"] }]],
     "AqnqMJ": ["API key set"],
     "ArBWJf": ["Undo last edit"],
     "B11p-O": ["Edit markdown link"],
@@ -527,6 +534,7 @@
     ],
     "FjkaiT": ["Zoom out"],
     "FnMkli": ["Sync disabled — you don't have permission to push"],
+    "FqTpiN": ["Bird wiki"],
     "Fqr8BP": ["Multi-page PDF viewer with toolbar controls (thumbnails, page nav, zoom)."],
     "FvMSms": ["Renaming changes the file on disk and the id agents use to pick this template."],
     "FvpFSZ": ["Reveal in Finder, ", ["hint"]],
@@ -549,6 +557,7 @@
     "GQDSBN": ["Layout options"],
     "GUYwCr": ["Dismiss notice"],
     "GUpclA": ["Created if missing; reused if it exists."],
+    "GUqTzn": ["Competitor research"],
     "GXf9hG": ["Cloning ", ["repoName"], "..."],
     "G_686w": ["Task List"],
     "G_mWXb": ["Filter languages"],
@@ -561,6 +570,7 @@
     "GhjUB_": ["Reconnected"],
     "Gp_twO": ["Local path"],
     "GsBUCk": ["Loading settings"],
+    "GubkSu": ["Use a starter pack"],
     "GuqOb1": ["Failed to load headings"],
     "Gx0VS1": ["e.g. drafts/ or *.draft.md"],
     "H-vDm3": ["Relaunching to install the update…"],
@@ -646,6 +656,9 @@
     "KDuPiY": ["Uploading ", ["fileName"]],
     "KDw4GX": ["Try again"],
     "KFdXwz": ["Show panel (", ["panelShortcut"], ")"],
+    "KOZud0": [
+      "Build a competitor research knowledge base. Start with an overview page, then add cross-linked pages for each competitor, their products and pricing, and the sources behind every claim."
+    ],
     "KPW5WC": ["moved template"],
     "KRJ6xh": ["No tags yet. Continue typing to create one."],
     "KWL_Ih": ["Blog post"],
@@ -670,6 +683,7 @@
     "L-rMC9": ["Reset to default"],
     "L1ZE3M": ["Document statistics"],
     "L3CEC1": ["this item"],
+    "L4Cdd9": ["or create a new file <0/>"],
     "L5Xu8C": [
       "This project is running a different, incompatible build of Open Knowledge than this app (v",
       ["0"],
@@ -683,9 +697,6 @@
     "LDuM35": ["Replace current match from field"],
     "LE7t79": ["Clone to a new folder"],
     "LKOLNn": ["No AI agents installed"],
-    "LMbgDK": [
-      "Start a blank file, scaffold from a template, or open this folder in your AI editor."
-    ],
     "LNum6A": [["minutes"], " min ago"],
     "LRgZAt": [["owner"], "/", ["name"], " already exists"],
     "LXdWeS": ["Medium section heading."],
@@ -693,6 +704,7 @@
     "LYufDw": ["Failed to enable semantic search — ", ["detail"]],
     "Lcehxn": ["Save resolution"],
     "LdABLa": ["Could not open ", ["target"], ". Try opening it manually."],
+    "LdKIHS": ["Draft a spec"],
     "LhWYpm": ["Other OK paths are tracked upstream:"],
     "LlHqdU": ["Initializing project"],
     "Llyqvo": ["This usually means one of:"],
@@ -726,6 +738,7 @@
     "Md709y": ["Loading ", ["fileName"]],
     "MmDDWK": ["Recently opened"],
     "Mnavhe": [["propPanelDescriptorLabel"], " Properties"],
+    "MqQoV-": ["Describe what you want to build, start a blank file, or scaffold from a template."],
     "MrwYIK": ["Toggle a source comment through CodeMirror."],
     "MsuXaI": ["Hide panel (", ["panelShortcut"], ")"],
     "N1YYa7": ["Loading image"],
@@ -744,6 +757,9 @@
     "NSnIUP": ["Two-page (even)"],
     "NUr4kz": ["A reusable starting point for new documents in this folder."],
     "NYUhy5": ["Subfolder name"],
+    "N_7kkF": [
+      "Read through this codebase and draft a technical spec for the most complex module: an overview, the architecture, key files, and open questions, all linked from a specs index page."
+    ],
     "NjrIak": ["File: <0>", ["fixedName"], ".md</0>"],
     "NkXEFS": ["Restore failed — document unchanged"],
     "NlZjSM": [
@@ -824,7 +840,6 @@
     "Q6hhn8": ["Preferences"],
     "Q8A-U_": ["Connected to"],
     "QDZbvN": [["diffDays"], "d ago"],
-    "QI4KgP": [["fileLabel"], " · ", ["folderLabel"]],
     "QOINDn": ["empty"],
     "QQghPu": ["Install in Claude Desktop"],
     "QR5SP1": ["created template"],
@@ -832,6 +847,7 @@
     "QcpeeE": ["Navigate to ", ["docName"]],
     "QlxHAH": ["Showing results for \"", ["semanticResultsLabel"], "\""],
     "QqBQu1": ["Label <0>(visible link text)</0>"],
+    "Qvls7J": ["Eng specs"],
     "QyioBP": ["Move up"],
     "R0cyYB": [
       [
@@ -849,6 +865,7 @@
       "A real shell is off for this project. Turning it on runs commands with the full access of your macOS user account."
     ],
     "RDrXh4": ["Configure user, project, and integration settings."],
+    "RG4XHV": ["Copy ", ["0"], " prompt"],
     "RGCCrg": ["Copy share link"],
     "RGkNeJ": ["Initialize a starter pack"],
     "RJ3a8Z": ["Looking for <0>", ["lookingForUrl"], "</0>."],
@@ -971,7 +988,6 @@
     "W0i24j": ["Object"],
     "W1qRuM": ["This document is already active in the editor. Use Open to collapse the graph."],
     "W5A0Ly": ["An unexpected error occurred."],
-    "W8uemY": ["Pick a starter pack to scaffold folders, templates, and AI-readable rules."],
     "W8vpBM": ["starter pack"],
     "W9_Bub": ["Local changes overlap with incoming sync"],
     "WEzuMq": ["Create a new Open Knowledge project in the folder of your choice."],
@@ -1083,7 +1099,6 @@
     "ZWyHmq": ["This project"],
     "ZhhOwV": ["Quote"],
     "ZjtgI-": ["Command palette"],
-    "ZmGmNh": ["Let's set up your project."],
     "Zon_qG": ["Mirror source <0>", ["label"], "</0>"],
     "ZptNUh": ["Show ", ["hidden"], " more"],
     "ZsGpr_": ["Paste link"],
@@ -1210,6 +1225,7 @@
     "cs4mps": ["Config sharing"],
     "csDS2L": ["Available"],
     "ct2kv5": ["No headings in ", ["pageTarget"]],
+    "cuA8QW": ["Organize specs"],
     "d2uTPx": ["Server error (HTTP ", ["status"], ")"],
     "d5rK4X": [["chars", "plural", { "one": ["char"], "other": ["chars"] }]],
     "dD7NPy": ["Outline"],
@@ -1255,7 +1271,6 @@
     ],
     "eVPynQ": ["Open <0><1>", ["verificationUri"], "</1><2/></0> and enter this code:"],
     "emgiet": ["Authoritative content; mirrored verbatim everywhere it's referenced."],
-    "ensWZc": ["or start from scratch <0/>"],
     "euc6Ns": ["Duplicate"],
     "evs0iw": ["Tags matching \"", ["tagListQuery"], "\""],
     "f1XQyZ": ["Move block"],
@@ -1400,6 +1415,9 @@
     "jhtG3I": [" Your selection has been restored."],
     "jjtmV_": ["First file name"],
     "jol95m": ["Failed to open Project Navigator."],
+    "jtg_8-": [
+      "Build a knowledge wiki about the different types of flightless birds. Start with an overview page, then add cross-linked pages for each major group (ratites like ostriches, emus, and kiwis; penguins; and flightless rails), the regions they live in, and a timeline of how flightlessness evolved."
+    ],
     "ju38ms": [
       "This project has no git repository — sharing mode does not apply. Initialize a repo to enable the toggle."
     ],
@@ -1473,6 +1491,9 @@
       "Adds the Open Knowledge skill to the <0>Claude Desktop App</0> so it's available in Chat and Cowork sessions."
     ],
     "mNY1G6": ["Undo all edits"],
+    "mPy9lS": [
+      "Organize my existing specs into a linked index grouped by area, and flag any that have drifted out of sync with the current code."
+    ],
     "mSJ3Rn": ["Computing scaffold plan"],
     "mSpqzP": [
       [
@@ -1547,6 +1568,7 @@
     "nrGWJ7": [
       "Git identity isn't set — commits use a default author. Set yours so teammates see your name."
     ],
+    "nskygk": ["Choose agent"],
     "nzaV6Q": ["Page thumbnails"],
     "o2yoFu": ["Reveal in Finder, No workspace"],
     "o49mDZ": ["Loading timeline history"],
@@ -1632,6 +1654,7 @@
     "qioCwA": ["Jump to page ", ["pageNumber"]],
     "qjHMHf": ["Failed to disable sync — ", ["detail"]],
     "qo4zCg": ["Path cannot contain backslashes"],
+    "qpQwGC": ["Describe what you're working on and the agent sets it up for you."],
     "qvWGzP": ["Collapse all"],
     "qvcK7S": [
       "Open Knowledge will create commits and push them to your remote automatically. If you do not want automatic commits in your git history, you should not enable auto-sync."
@@ -1734,6 +1757,9 @@
     "u6Hp4N": ["Markdown"],
     "u7H-Wn": ["Show panel (", ["panelShortcutLabel"], ")"],
     "uCaIdy": ["GitHub sign-in is missing or expired. Reconnect to resume syncing."],
+    "uDlyqd": [
+      "Document the architecture of this repo: create an overview page that links to a page per major module describing its responsibilities and entry points."
+    ],
     "uF9ruK": ["Saving"],
     "uH_S-u": [["loadErrorTitle"], ": ", ["message"]],
     "uKRYiW": ["Sync status unavailable — server error."],
@@ -1776,6 +1802,7 @@
     "v7lbnC": ["Find next match"],
     "vDXqVv": ["Insert a markdown hard break."],
     "vEJDlt": ["The file is in your Trash; the file-watcher will reconcile."],
+    "vGeNNQ": ["Copy a prompt and paste it into your agent to set up your project."],
     "vIxrEk": ["Fit width"],
     "vLyv1R": ["Hide"],
     "vPYaz3": ["Scaffold directly under this project."],
@@ -1839,6 +1866,7 @@
     "xaDWAI": ["Switch project"],
     "xbdtfY": ["Markdown source"],
     "xc4g25": ["Parse failed"],
+    "xeXS4P": ["Or use a starter pack"],
     "xeiujy": ["Text"],
     "xhlFsx": ["Inherited — set a value here to replace it."],
     "xiv-dW": ["No files yet."],

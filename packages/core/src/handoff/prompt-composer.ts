@@ -51,6 +51,48 @@ export function composeEmptySpacePrompt(autoOpen: boolean): string {
   return autoOpen ? `${base} Open the OK editor in web view.` : base;
 }
 
+export type CreateScenario = 'new-project' | 'existing-repo';
+
+export function composeCreatePrompt(
+  description: string,
+  autoOpen: boolean,
+  scenario: CreateScenario,
+): string {
+  const trimmed = description.trim();
+  const openTrailer = autoOpen ? ' Open the OK editor in web view.' : '';
+  const blockquote = (text: string): string =>
+    text
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
+
+  if (scenario === 'existing-repo') {
+    const base =
+      trimmed === ''
+        ? `Let's work on this project using Open Knowledge.`
+        : [
+            "Here's what I'd like to do in this Open Knowledge project:",
+            '',
+            blockquote(trimmed),
+          ].join('\n');
+    return `${base}${openTrailer}`;
+  }
+
+  const scaffold =
+    'Scaffold the folders, templates, and AI-readable rules to match, using Open Knowledge.';
+  const base =
+    trimmed === ''
+      ? `Let's set up a new Open Knowledge project. ${scaffold}`
+      : [
+          "I'm setting up a new Open Knowledge project. Here's what I want to create:",
+          '',
+          blockquote(trimmed),
+          '',
+          scaffold,
+        ].join('\n');
+  return `${base}${openTrailer}`;
+}
+
 const MAX_HANDOFF_URL_LENGTH = 4096;
 
 const URL_OVERHEAD_RESERVE = 1024;

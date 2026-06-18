@@ -242,18 +242,6 @@ msgstr ""
 msgid "{fileCount, plural, one {# file} other {# files}}"
 msgstr ""
 
-#: src/components/PackCardGrid.tsx
-msgid "{fileLabel} · {folderLabel}"
-msgstr ""
-
-#: src/components/PackCardGrid.tsx
-msgid "{files, plural, one {# file} other {# files}}"
-msgstr ""
-
-#: src/components/PackCardGrid.tsx
-msgid "{folders, plural, one {# folder} other {# folders}}"
-msgstr ""
-
 #: src/components/ActivityModeContent.tsx
 #: src/components/ActivityPanelFileRow.tsx
 #: src/components/SyncStatusBadge.tsx
@@ -457,6 +445,10 @@ msgstr ""
 
 #: src/components/TemplateForm.tsx
 msgid "A short line shown under the name in the template list."
+msgstr ""
+
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "A team knowledge base, a personal wiki, project docs..."
 msgstr ""
 
 #: src/components/TemplateForm.tsx
@@ -772,6 +764,10 @@ msgstr ""
 msgid "Big section heading."
 msgstr ""
 
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Bird wiki"
+msgstr ""
+
 #: src/components/NewItemDialog.tsx
 msgid "Blank note"
 msgstr ""
@@ -844,6 +840,14 @@ msgstr ""
 
 #: src/components/CloneDialog.tsx
 msgid "Browse your repos:"
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Build a competitor research knowledge base. Start with an overview page, then add cross-linked pages for each competitor, their products and pricing, and the sources behind every claim."
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Build a knowledge wiki about the different types of flightless birds. Start with an overview page, then add cross-linked pages for each major group (ratites like ostriches, emus, and kiwis; penguins; and flightless rails), the regions they live in, and a timeline of how flightlessness evolved."
 msgstr ""
 
 #: src/components/InstallInClaudeDesktopDialog.tsx
@@ -936,6 +940,10 @@ msgstr ""
 
 #: src/editor/slash-command/items.tsx
 msgid "Checklist with checkboxes."
+msgstr ""
+
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "Choose agent"
 msgstr ""
 
 #: src/components/settings/SharingSection.tsx
@@ -1165,6 +1173,10 @@ msgstr ""
 msgid "Commits happen automatically"
 msgstr ""
 
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Competitor research"
+msgstr ""
+
 #: src/components/CloneDialog.tsx
 msgid "Complete"
 msgstr ""
@@ -1301,6 +1313,7 @@ msgstr ""
 msgid "Convert the current block to a paragraph."
 msgstr ""
 
+#: src/components/empty-state/CopyablePromptList.tsx
 #: src/components/InstallInClaudeDesktopDialog.tsx
 #: src/editor/extensions/CodeBlockView.tsx
 msgid "Copied"
@@ -1316,8 +1329,22 @@ msgstr ""
 msgid "Copied relative path"
 msgstr ""
 
+#: src/components/empty-state/CopyablePromptList.tsx
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "Copy"
+msgstr ""
+
+#. placeholder {0}: suggestion.label
+#: src/components/empty-state/CopyablePromptList.tsx
+msgid "Copy {0} prompt"
+msgstr ""
+
+#: src/components/EmptyEditorState.tsx
+msgid "Copy a prompt and paste it into your agent to set up your project."
+msgstr ""
+
+#: src/components/empty-state/CreateView.tsx
+msgid "Copy a prompt for your agent, start a blank file, or scaffold from a template."
 msgstr ""
 
 #: src/editor/extensions/CodeBlockView.tsx
@@ -1593,6 +1620,7 @@ msgid "Counting markdown files"
 msgstr ""
 
 #: src/components/CreateProjectDialog.tsx
+#: src/components/empty-state/CreatePromptComposer.tsx
 #: src/components/NewItemDialog.tsx
 #: src/components/TemplateRow.tsx
 msgid "Create"
@@ -1639,6 +1667,11 @@ msgstr ""
 
 #: src/components/NewTemplateDialog.tsx
 msgid "Create template"
+msgstr ""
+
+#. placeholder {0}: getDisplayNameDefault(selectedAgentId)
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "Create with {0}"
 msgstr ""
 
 #: src/components/FileTree.tsx
@@ -1751,6 +1784,18 @@ msgstr ""
 msgid "Deleting"
 msgstr ""
 
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "Describe the project you want to create"
+msgstr ""
+
+#: src/components/empty-state/CreateView.tsx
+msgid "Describe what you want to build, start a blank file, or scaffold from a template."
+msgstr ""
+
+#: src/components/EmptyEditorState.tsx
+msgid "Describe what you're working on and the agent sets it up for you."
+msgstr ""
+
 #: src/components/TemplateForm.tsx
 msgid "Description"
 msgstr ""
@@ -1852,6 +1897,10 @@ msgstr ""
 msgid "Document statistics"
 msgstr ""
 
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Document the architecture of this repo: create an overview page that links to a page per major module describing its responsibilities and entry points."
+msgstr ""
+
 #: src/components/HelpPopover.tsx
 msgid "Documentation"
 msgstr ""
@@ -1885,6 +1934,14 @@ msgstr ""
 
 #: src/components/ShareReceiveDialog.tsx
 msgid "Downloads {shareOwner}/{shareRepo} from GitHub."
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Draft a spec"
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Draft a technical spec for my project. Start with an overview, then add cross-linked pages for the architecture, the key modules, and the open questions, all linked from a specs index."
 msgstr ""
 
 #: src/components/FrontmatterRow.tsx
@@ -2078,6 +2135,10 @@ msgstr ""
 
 #: src/components/ActivityModeContent.tsx
 msgid "Ended"
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Eng specs"
 msgstr ""
 
 #: src/components/SeedDialog.tsx
@@ -2886,6 +2947,10 @@ msgstr ""
 msgid "Install {brand} →"
 msgstr ""
 
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "Install an AI agent to create with AI"
+msgstr ""
+
 #. Dialog title — installing the Open Knowledge skill into the Claude Desktop App
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "Install for Claude Chat & Cowork"
@@ -2994,10 +3059,6 @@ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Let Tab leave the source editor instead of indenting."
-msgstr ""
-
-#: src/components/EmptyEditorState.tsx
-msgid "Let's set up your project."
 msgstr ""
 
 #: src/components/settings/SettingsDialogBody.tsx
@@ -3189,6 +3250,10 @@ msgstr ""
 
 #: src/components/settings/AccountSection.tsx
 msgid "Manage the GitHub account Open Knowledge uses to browse and sync your repositories."
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Map the architecture"
 msgstr ""
 
 #: src/editor/slash-command/component-items.tsx
@@ -3401,7 +3466,6 @@ msgid "New"
 msgstr ""
 
 #: src/components/CommandPalette.tsx
-#: src/components/empty-state/CreateView.tsx
 #: src/components/FileSidebar.tsx
 #: src/components/FileTree.tsx
 #: src/components/NewItemDialog.tsx
@@ -4008,8 +4072,13 @@ msgstr ""
 msgid "Opens in a new tab"
 msgstr ""
 
+#: src/components/empty-state/CreateView.tsx
 #: src/components/EmptyEditorState.tsx
-msgid "or start from scratch <0/>"
+msgid "or create a new file <0/>"
+msgstr ""
+
+#: src/components/EmptyEditorState.tsx
+msgid "Or use a starter pack"
 msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
@@ -4018,6 +4087,14 @@ msgstr ""
 
 #: src/editor/slash-command/items.tsx
 msgid "Ordered List"
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Organize my existing specs into a linked index grouped by area, and flag any that have drifted out of sync with the current code."
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Organize specs"
 msgstr ""
 
 #: src/components/GraphPanel.tsx
@@ -4187,10 +4264,6 @@ msgstr ""
 msgid "Pick a name"
 msgstr ""
 
-#: src/components/EmptyEditorState.tsx
-msgid "Pick a starter pack to scaffold folders, templates, and AI-readable rules."
-msgstr ""
-
 #: src/components/ShareReceiveDialog.tsx
 msgid "Pick the folder where you've cloned it."
 msgstr ""
@@ -4352,6 +4425,10 @@ msgstr ""
 
 #: src/components/AuthModal.tsx
 msgid "Re-authenticate with GitHub"
+msgstr ""
+
+#: src/components/empty-state/use-create-suggestions.ts
+msgid "Read through this codebase and draft a technical spec for the most complex module: an overview, the architecture, key files, and open questions, all linked from a specs index page."
 msgstr ""
 
 #: src/editor/slash-command/component-items.tsx
@@ -4745,7 +4822,6 @@ msgid "Scope: "
 msgstr ""
 
 #: src/components/CommandPalette.tsx
-#: src/components/empty-state/KeyboardHintsFooter.tsx
 #: src/components/settings/SettingsDialogShell.tsx
 #: src/components/SidebarSearchBar.tsx
 #: src/lib/keyboard-shortcuts.ts
@@ -5178,10 +5254,6 @@ msgstr ""
 #. Primary button — begins scaffolding the project
 #: src/components/ConsentDialogBody.tsx
 msgid "Start"
-msgstr ""
-
-#: src/components/empty-state/CreateView.tsx
-msgid "Start a blank file, scaffold from a template, or open this folder in your AI editor."
 msgstr ""
 
 #: src/components/NavigatorApp.tsx
@@ -5940,6 +6012,10 @@ msgstr ""
 msgid "Use a folder you already have."
 msgstr ""
 
+#: src/components/EmptyEditorState.tsx
+msgid "Use a starter pack"
+msgstr ""
+
 #: src/components/ShareButton.tsx
 msgid "Use Cmd/Ctrl+C to copy the link below, or open OK in the desktop app."
 msgstr ""
@@ -6041,6 +6117,10 @@ msgstr ""
 msgid "What should the AI do? (optional)"
 msgstr ""
 
+#: src/components/EmptyEditorState.tsx
+msgid "What would you like to create?"
+msgstr ""
+
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "When enabled, the agent opens or refreshes the preview after each edit. Disable if you manage your own preview window (OK Desktop, a browser tab on another display, etc.)."
 msgstr ""
@@ -6071,10 +6151,6 @@ msgstr ""
 
 #: src/components/McpConsentDialogBody.tsx
 msgid "Will replace existing Open Knowledge entry"
-msgstr ""
-
-#: src/components/empty-state/CreateView.tsx
-msgid "With AI"
 msgstr ""
 
 #: src/components/settings/SettingsDialogBody.tsx

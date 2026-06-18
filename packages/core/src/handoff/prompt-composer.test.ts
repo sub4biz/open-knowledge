@@ -3,6 +3,7 @@ import { buildClaudeUrl } from './claude-url.ts';
 import { buildCodexUrl } from './codex-url.ts';
 import { buildCursorUrl } from './cursor-url.ts';
 import {
+  composeCreatePrompt,
   composeEmptySpacePrompt,
   composeFilePrompt,
   composeFolderPrompt,
@@ -137,6 +138,66 @@ test('composeEmptySpacePrompt stays under the 1024-char budget', () => {
 test('composeEmptySpacePrompt is deterministic across calls', () => {
   expect(composeEmptySpacePrompt(true)).toBe(composeEmptySpacePrompt(true));
   expect(composeEmptySpacePrompt(false)).toBe(composeEmptySpacePrompt(false));
+});
+
+test('composeCreatePrompt new-project blockquotes the brief + appends the scaffold directive (autoOpen=true)', () => {
+  expect(composeCreatePrompt('a wiki for my D&D campaign', true, 'new-project')).toBe(
+    "I'm setting up a new Open Knowledge project. Here's what I want to create:\n" +
+      '\n' +
+      '> a wiki for my D&D campaign\n' +
+      '\n' +
+      'Scaffold the folders, templates, and AI-readable rules to match, using Open Knowledge.' +
+      ' Open the OK editor in web view.',
+  );
+});
+
+test('composeCreatePrompt new-project drops the Open-the-OK-editor trailer when autoOpen=false', () => {
+  expect(composeCreatePrompt('a wiki', false, 'new-project')).toBe(
+    "I'm setting up a new Open Knowledge project. Here's what I want to create:\n" +
+      '\n' +
+      '> a wiki\n' +
+      '\n' +
+      'Scaffold the folders, templates, and AI-readable rules to match, using Open Knowledge.',
+  );
+});
+
+test('composeCreatePrompt existing-repo does NOT say "new project" or scaffold from scratch', () => {
+  const out = composeCreatePrompt(
+    'Read through this codebase and draft a technical spec.',
+    true,
+    'existing-repo',
+  );
+  expect(out).toBe(
+    "Here's what I'd like to do in this Open Knowledge project:\n" +
+      '\n' +
+      '> Read through this codebase and draft a technical spec.' +
+      ' Open the OK editor in web view.',
+  );
+  expect(out).not.toContain('new Open Knowledge project');
+  expect(out).not.toContain('Scaffold the folders');
+});
+
+test('composeCreatePrompt blockquotes every line of a multi-line brief', () => {
+  expect(
+    composeCreatePrompt('research notes\nwith weekly reviews', false, 'new-project'),
+  ).toContain('> research notes\n> with weekly reviews');
+});
+
+test('composeCreatePrompt degrades an empty brief to a scenario-appropriate bare directive', () => {
+  const newProjectExpected =
+    "Let's set up a new Open Knowledge project." +
+    ' Scaffold the folders, templates, and AI-readable rules to match, using Open Knowledge.';
+  expect(composeCreatePrompt('', false, 'new-project')).toBe(newProjectExpected);
+  expect(composeCreatePrompt('   \n  ', false, 'new-project')).toBe(newProjectExpected);
+  expect(composeCreatePrompt('', false, 'existing-repo')).toBe(
+    "Let's work on this project using Open Knowledge.",
+  );
+});
+
+test('composeCreatePrompt does NOT sanitize the brief — user input is trusted, not a path', () => {
+  expect(composeCreatePrompt('use `code` fences', false, 'new-project')).toContain(
+    '> use `code` fences',
+  );
 });
 
 test('the three templates emit distinct outputs (no accidental aliasing)', () => {

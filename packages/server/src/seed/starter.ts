@@ -1051,8 +1051,7 @@ export const STARTER_PACKS: Readonly<Record<PackId, StarterPack>> = {
   'knowledge-base': {
     id: 'knowledge-base',
     name: 'Knowledge base',
-    description:
-      'Source-grounded canonical articles. Three layers (sources → research → articles) wired to the ingest / research / consolidate MCP tools.',
+    description: 'Trusted articles from your sources.',
     defaultSubfolder: 'brain',
     folders: KNOWLEDGE_BASE_FOLDERS,
     templates: KNOWLEDGE_BASE_TEMPLATES,
@@ -1061,8 +1060,7 @@ export const STARTER_PACKS: Readonly<Record<PackId, StarterPack>> = {
   'software-lifecycle': {
     id: 'software-lifecycle',
     name: 'Software lifecycle',
-    description:
-      'Proposals, decisions, specs, postmortems, guides. The doc lifecycle for an engineering team or OSS project.',
+    description: 'Proposals, decisions, and specs.',
     defaultSubfolder: 'project-docs',
     folders: SOFTWARE_LIFECYCLE_FOLDERS,
     templates: SOFTWARE_LIFECYCLE_TEMPLATES,
@@ -1070,8 +1068,7 @@ export const STARTER_PACKS: Readonly<Record<PackId, StarterPack>> = {
   'plain-notes': {
     id: 'plain-notes',
     name: 'Plain notes',
-    description:
-      'Just notes/ + daily/. The "I just want to write" escape hatch. No posture imposed, link freely.',
+    description: 'Notes and daily entries.',
     defaultSubfolder: undefined,
     folders: PLAIN_NOTES_FOLDERS,
     templates: PLAIN_NOTES_TEMPLATES,
@@ -1079,8 +1076,7 @@ export const STARTER_PACKS: Readonly<Record<PackId, StarterPack>> = {
   worldbuilding: {
     id: 'worldbuilding',
     name: 'Worldbuilding',
-    description:
-      'Encyclopedia for fiction: characters, settings, themes, factions, lore. The graph is the product; agent excels at auto-stub creation and dead-link cleanup.',
+    description: 'A wiki for your story world.',
     defaultSubfolder: 'world',
     folders: WORLDBUILDING_FOLDERS,
     templates: WORLDBUILDING_TEMPLATES,
@@ -1088,17 +1084,15 @@ export const STARTER_PACKS: Readonly<Record<PackId, StarterPack>> = {
   'writing-pipeline': {
     id: 'writing-pipeline',
     name: 'Writing pipeline',
-    description:
-      'Three-stage drafting flow: ideas → drafts → published. Lean by default; CRDT history covers per-file revisions.',
+    description: 'From first draft to finished piece.',
     defaultSubfolder: 'writing',
     folders: WRITING_PIPELINE_FOLDERS,
     templates: WRITING_PIPELINE_TEMPLATES,
   },
   'entity-vault': {
     id: 'entity-vault',
-    name: 'Entity vault (GBrain-compatible)',
-    description:
-      'Track people, companies, meetings, and concepts with dossiers: rewritable summaries plus append-only evidence timelines. GBrain-compatible Markdown; OK handles editing and review.',
+    name: 'Personal CRM',
+    description: 'Track the people, companies, and meetings.',
     defaultSubfolder: 'vault',
     folders: ENTITY_VAULT_FOLDERS,
     templates: ENTITY_VAULT_TEMPLATES,

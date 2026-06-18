@@ -1,4 +1,6 @@
 import {
+  type CreateScenario,
+  composeCreatePrompt,
   composeEmptySpacePrompt,
   composeFilePrompt,
   composeFolderPrompt,
@@ -45,6 +47,17 @@ export interface HandoffDispatchInput {
    *  it lives in and the user's instruction. Set for selection scope only;
    *  absent for file / folder / project scope. */
   readonly selection?: SelectionContext;
+  /** Create-scope brief — the user's free-form description of the knowledge
+   *  base they want to scaffold, typed into the empty-state "Create with
+   *  <agent>" composer. Set by `buildCreateHandoffInput`; absent for every
+   *  other scope. When present (even as the empty string), `selectScopedPrompt`
+   *  composes via `composeCreatePrompt` instead of the bare project directive. */
+  readonly createDescription?: string;
+  /** Create-scope surface — `new-project` (onboarding) vs `existing-repo`
+   *  (post-init). Selects the `composeCreatePrompt` framing so an existing
+   *  project isn't described as a brand-new one. Set alongside
+   *  `createDescription`; defaults to `new-project` if absent. */
+  readonly createScenario?: CreateScenario;
   readonly projectDir: string;
   readonly docPath: string;
 }
@@ -72,6 +85,25 @@ export function buildProjectScopedHandoffInput(args: {
     projectDir: args.workspace.contentDir,
     docPath: '',
   };
+}
+
+export function buildCreateHandoffInput(args: {
+  readonly workspace: Workspace | null;
+  readonly description: string;
+  readonly scenario: CreateScenario;
+}): HandoffDispatchInput | null {
+  if (!args.workspace?.contentDir) return null;
+  return {
+    docContext: null,
+    createDescription: args.description,
+    createScenario: args.scenario,
+    projectDir: args.workspace.contentDir,
+    docPath: '',
+  };
+}
+
+export function openInstallUrl(target: TargetData): Promise<void> {
+  return defaultOpenExternal(target.installUrl).then(() => undefined);
 }
 
 export function buildFolderHandoffInput(args: {
@@ -117,10 +149,6 @@ export function buildSelectionOrDocHandoffInput(args: {
   readonly selectionMarkdown: string;
 }): HandoffDispatchInput | null {
   return buildSelectionHandoffInput(args) ?? buildHandoffInput(args);
-}
-
-export function openInstallUrl(target: TargetData): Promise<void> {
-  return defaultOpenExternal(target.installUrl).then(() => undefined);
 }
 
 export interface ToastAction {
@@ -192,6 +220,13 @@ export function selectScopedPrompt(
   }
   if (input.folderRelativePath) {
     return composeFolderPrompt(input.folderRelativePath, autoOpen);
+  }
+  if (input.createDescription !== undefined) {
+    return composeCreatePrompt(
+      input.createDescription,
+      autoOpen,
+      input.createScenario ?? 'new-project',
+    );
   }
   return composeEmptySpacePrompt(autoOpen);
 }

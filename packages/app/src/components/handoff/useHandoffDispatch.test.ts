@@ -646,6 +646,52 @@ describe('buildProjectScopedHandoffInput — empty-state cards helper', () => {
   });
 });
 
+describe('buildCreateHandoffInput — empty-state create-composer helper', () => {
+  test('null workspace returns null (composer dispatches disabled while resolving)', async () => {
+    const { buildCreateHandoffInput } = await import('./useHandoffDispatch');
+    expect(
+      buildCreateHandoffInput({ workspace: null, description: 'a wiki', scenario: 'new-project' }),
+    ).toBeNull();
+  });
+
+  test('empty workspace.contentDir returns null (same falsy guard as siblings)', async () => {
+    const { buildCreateHandoffInput } = await import('./useHandoffDispatch');
+    expect(
+      buildCreateHandoffInput({
+        workspace: { contentDir: '', pathSeparator: '/' },
+        description: 'a wiki',
+        scenario: 'new-project',
+      }),
+    ).toBeNull();
+  });
+
+  test('carries the brief + scenario on the create-scope shape (docContext null, empty docPath)', async () => {
+    const { buildCreateHandoffInput } = await import('./useHandoffDispatch');
+    const input = buildCreateHandoffInput({
+      workspace: { contentDir: '/Users/sarah/proj', pathSeparator: '/' },
+      description: 'a research knowledge base',
+      scenario: 'existing-repo',
+    });
+    expect(input).toEqual({
+      docContext: null,
+      createDescription: 'a research knowledge base',
+      createScenario: 'existing-repo',
+      projectDir: '/Users/sarah/proj',
+      docPath: '',
+    });
+  });
+
+  test('empty description is preserved verbatim (composer degrades it, not the builder)', async () => {
+    const { buildCreateHandoffInput } = await import('./useHandoffDispatch');
+    const input = buildCreateHandoffInput({
+      workspace: { contentDir: '/Users/sarah/proj', pathSeparator: '/' },
+      description: '',
+      scenario: 'new-project',
+    });
+    expect(input?.createDescription).toBe('');
+  });
+});
+
 describe('buildFolderHandoffInput — folder-scoped helper (D23 / FR4 / FR14)', () => {
   test('null workspace returns null (submenu renders disabled while resolving)', async () => {
     const { buildFolderHandoffInput } = await import('./useHandoffDispatch');
@@ -821,6 +867,73 @@ describe('selectScopedPrompt — template selection across autoOpen modes', () =
       false,
     );
     expect(out).toBe("Let's work on this project using Open Knowledge.");
+  });
+
+  test('create scope (createDescription set) returns composeCreatePrompt with the scenario', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const { composeCreatePrompt } = await import('@inkeep/open-knowledge-core');
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        createDescription: 'a worldbuilding wiki',
+        createScenario: 'new-project',
+        projectDir: '/proj',
+        docPath: '',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toBe(composeCreatePrompt('a worldbuilding wiki', true, 'new-project'));
+    expect(out).toContain('> a worldbuilding wiki');
+    expect(out).toContain('Open the OK editor in web view.');
+  });
+
+  test('create scope threads existing-repo — no "new project" framing', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        createDescription: 'draft a spec for this codebase',
+        createScenario: 'existing-repo',
+        projectDir: '/proj',
+        docPath: '',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).not.toContain('new Open Knowledge project');
+    expect(out).toContain('> draft a spec for this codebase');
+  });
+
+  test('create scope defaults to new-project when createScenario is absent', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const { composeCreatePrompt } = await import('@inkeep/open-knowledge-core');
+    const out = selectScopedPrompt(
+      { docContext: null, createDescription: 'a wiki', projectDir: '/proj', docPath: '' },
+      'claude-code',
+      false,
+    );
+    expect(out).toBe(composeCreatePrompt('a wiki', false, 'new-project'));
+  });
+
+  test('create scope with empty createDescription routes to the create composer, NOT empty-space', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const { composeCreatePrompt, composeEmptySpacePrompt } = await import(
+      '@inkeep/open-knowledge-core'
+    );
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        createDescription: '',
+        createScenario: 'new-project',
+        projectDir: '/proj',
+        docPath: '',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toBe(composeCreatePrompt('', true, 'new-project'));
+    expect(out).not.toBe(composeEmptySpacePrompt(true));
   });
 
   test('precedence: docContext beats folderRelativePath when both are set (defensive ordering)', async () => {
