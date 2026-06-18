@@ -188,16 +188,21 @@ function ConsentDialogForm({ payload, store, toast }: ConsentDialogFormProps) {
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).querySelector<HTMLElement>('[role="radio"]')?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>
-            <Trans>Open this folder with Open Knowledge</Trans>
+            <Trans>Setup Open Knowledge in this folder?</Trans>
           </DialogTitle>
           <DialogDescription>
             <Trans>
-              Open Knowledge will create a <code>.ok/</code> folder here to track this project's
-              metadata and index the folder's markdown files. Review or change the details under{' '}
-              <strong className="font-semibold">Advanced settings</strong> before you start.
+              Open Knowledge stores its configuration and internal files inside a newly created{' '}
+              <code>.ok</code> directory in your project root folder.
             </Trans>
           </DialogDescription>
         </DialogHeader>
@@ -389,7 +394,7 @@ function ConsentDialogForm({ payload, store, toast }: ConsentDialogFormProps) {
             <Trans>Cancel</Trans>
           </Button>
           <Button type="submit" form={formId} disabled={startDisabled} data-testid="consent-start">
-            <Trans comment="Primary button — begins scaffolding the project">Start</Trans>
+            <Trans comment="Primary button — begins scaffolding the project">Setup</Trans>
           </Button>
         </DialogFooter>
       </DialogContent>

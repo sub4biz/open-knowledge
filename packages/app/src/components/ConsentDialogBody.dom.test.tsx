@@ -102,6 +102,13 @@ describe('ConsentDialogBody runtime form behavior', () => {
     expect(screen.queryByTestId('consent-content-dir')).toBeNull();
   });
 
+  test('config-sharing info tooltip stays closed when the dialog first opens', async () => {
+    renderConsentDialog();
+
+    expect(screen.queryByText(/Setup files include/i)).toBeNull();
+    expect(screen.getByTestId('config-sharing-info')).not.toBe(document.activeElement);
+  });
+
   test('selecting Local only carries through to the confirm payload', async () => {
     const { confirmCalls } = renderConsentDialog();
 

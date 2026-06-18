@@ -867,6 +867,7 @@
     "R65q-K": [
       "A real shell is off for this project. Turning it on runs commands with the full access of your macOS user account."
     ],
+    "RDjuBN": ["Setup"],
     "RDrXh4": ["Configure user, project, and integration settings."],
     "RG4XHV": ["Copy ", ["0"], " prompt"],
     "RGCCrg": ["Copy share link"],
@@ -1200,6 +1201,7 @@
     "c863eW": ["Could not switch to ", ["shareBranch"], ". Try switching manually."],
     "c8iK2Y": ["No templates found."],
     "cEoyWz": ["Add item to ", ["keyName"]],
+    "cEx1UT": ["Setup Open Knowledge in this folder?"],
     "cF9DyA": ["Reconnecting after server restart"],
     "cIptmH": ["In the Claude Desktop App"],
     "cKjLuT": ["(project + user)"],
@@ -1576,9 +1578,6 @@
     "o5gfs1": [
       "This setting is per-machine and isn't shared with collaborators. It needs an API key set with <0>ok embeddings set-key</0>."
     ],
-    "o7htA-": [
-      "Open Knowledge will create a <0>.ok/</0> folder here to track this project's metadata and index the folder's markdown files. Review or change the details under <1>Advanced settings</1> before you start."
-    ],
     "oBXkm2": ["Delete code block"],
     "oCZkaG": ["Copy path"],
     "oJl7eO": ["Unknown component: ", ["componentName"], " — source editable below"],
@@ -1605,7 +1604,6 @@
     "p0Iq25": ["Insert link"],
     "p9sdCy": ["New ignore pattern"],
     "pAgkuZ": ["Reopening \"", ["docName"], "\" with a fresh local collaboration cache."],
-    "pAlxX6": ["Open this folder with Open Knowledge"],
     "pEQFsW": ["No matching projects."],
     "pFagOn": ["Source editing"],
     "pHYP6v": ["Open <0>Customize</0> in the sidebar <1/> <2>Skills</2>."],
@@ -1737,7 +1735,6 @@
     "tP5DDk": ["Apply link"],
     "tUvUfp": ["Use a folder you already have."],
     "tW_yvQ": ["Expand ", ["docName"]],
-    "tXkhj_": ["Start"],
     "t_YqKh": ["Remove"],
     "tfDRzk": ["Save"],
     "tfi40B": ["Failed to create page"],
@@ -1901,6 +1898,9 @@
       " type: ",
       ["typeLabel"],
       " (inherited from folder properties; not editable here)"
+    ],
+    "ygbd_U": [
+      "Open Knowledge stores its configuration and internal files inside a newly created <0>.ok</0> directory in your project root folder."
     ],
     "yjExfe": ["Branch <0>", ["shareBranch"], "</0> is checked out in:"],
     "ylXj1N": ["Selected"],

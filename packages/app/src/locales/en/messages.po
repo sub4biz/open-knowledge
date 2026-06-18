@@ -3945,13 +3945,13 @@ msgstr "Open Knowledge is using this GitHub account."
 msgid "Open Knowledge manages the <0>open-knowledge</0> MCP server name, the <1>open-knowledge-ui</1> launch config, and <2>ok</2> / <3>open-knowledge</3> on PATH (including OK-owned symlinks). Using a custom wrapper? Register it under a different name."
 msgstr "Open Knowledge manages the <0>open-knowledge</0> MCP server name, the <1>open-knowledge-ui</1> launch config, and <2>ok</2> / <3>open-knowledge</3> on PATH (including OK-owned symlinks). Using a custom wrapper? Register it under a different name."
 
+#: src/components/ConsentDialogBody.tsx
+msgid "Open Knowledge stores its configuration and internal files inside a newly created <0>.ok</0> directory in your project root folder."
+msgstr "Open Knowledge stores its configuration and internal files inside a newly created <0>.ok</0> directory in your project root folder."
+
 #: src/components/CreateProjectDialog.tsx
 msgid "Open Knowledge will be initialized at <0>{gitRoot}</0> — the parent of your new folder, because it contains a <1>.git</1> folder (one project per git repo)."
 msgstr "Open Knowledge will be initialized at <0>{gitRoot}</0> — the parent of your new folder, because it contains a <1>.git</1> folder (one project per git repo)."
-
-#: src/components/ConsentDialogBody.tsx
-msgid "Open Knowledge will create a <0>.ok/</0> folder here to track this project's metadata and index the folder's markdown files. Review or change the details under <1>Advanced settings</1> before you start."
-msgstr "Open Knowledge will create a <0>.ok/</0> folder here to track this project's metadata and index the folder's markdown files. Review or change the details under <1>Advanced settings</1> before you start."
 
 #: src/components/AutoSyncEnableWarning.tsx
 msgid "Open Knowledge will create commits and push them to your remote automatically. If you do not want automatic commits in your git history, you should not enable auto-sync."
@@ -4021,10 +4021,6 @@ msgstr "Open the Project Navigator."
 #: src/components/GraphPanel.tsx
 msgid "Open this document in the editor and collapse the graph."
 msgstr "Open this document in the editor and collapse the graph."
-
-#: src/components/ConsentDialogBody.tsx
-msgid "Open this folder with Open Knowledge"
-msgstr "Open this folder with Open Knowledge"
 
 #: src/components/GraphPanel.tsx
 msgid "Open this link in a new tab and collapse the graph."
@@ -5046,9 +5042,18 @@ msgstr "Settings failed to load"
 msgid "Settings sections"
 msgstr "Settings sections"
 
+#. Primary button — begins scaffolding the project
+#: src/components/ConsentDialogBody.tsx
+msgid "Setup"
+msgstr "Setup"
+
 #: src/components/ConfigSharingInfoTooltip.tsx
 msgid "Setup files include: <0>.ok/</0>, AI-tool MCP configs (<1>.mcp.json</1> and per-tool files), project skills, and <2>.claude/launch.json</2>.<3/><4>Shared</4> commits them to git, so anyone who clones the repo gets the same setup. <5/><6>Local only</6> keeps them out of git (via <7>.git/info/exclude</7>)."
 msgstr "Setup files include: <0>.ok/</0>, AI-tool MCP configs (<1>.mcp.json</1> and per-tool files), project skills, and <2>.claude/launch.json</2>.<3/><4>Shared</4> commits them to git, so anyone who clones the repo gets the same setup. <5/><6>Local only</6> keeps them out of git (via <7>.git/info/exclude</7>)."
+
+#: src/components/ConsentDialogBody.tsx
+msgid "Setup Open Knowledge in this folder?"
+msgstr "Setup Open Knowledge in this folder?"
 
 #: src/components/ShareButton.tsx
 msgid "Share"
@@ -5263,11 +5268,6 @@ msgstr "Split diff"
 #: src/lib/keyboard-shortcuts.ts
 msgid "Split list item"
 msgstr "Split list item"
-
-#. Primary button — begins scaffolding the project
-#: src/components/ConsentDialogBody.tsx
-msgid "Start"
-msgstr "Start"
 
 #: src/components/NavigatorApp.tsx
 msgid "Start a new Open Knowledge project."
