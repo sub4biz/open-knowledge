@@ -48,21 +48,26 @@ export function EditWithAiPanel({ installStates, onPick }: EditWithAiPanelProps)
         data-testid="edit-with-ai-instruction"
       />
       {installedTargets.length > 0 ? (
-        <div className="flex flex-col gap-0.5">
-          {installedTargets.map((target) => (
-            <Button
-              key={target.id}
-              type="button"
-              variant="ghost"
-              className="w-full justify-start gap-2"
-              data-testid={`edit-with-ai-target-${target.id}`}
-              onClick={() => onPick(target, instruction)}
-            >
-              <TargetIcon id={target.id} aria-hidden="true" />
-              <span>{target.displayName}</span>
-            </Button>
-          ))}
-        </div>
+        <>
+          <div className="text-muted-foreground text-xs" data-testid="edit-with-ai-send-label">
+            <Trans>Send to</Trans>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {installedTargets.map((target) => (
+              <Button
+                key={target.id}
+                type="button"
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                data-testid={`edit-with-ai-target-${target.id}`}
+                onClick={() => onPick(target, instruction)}
+              >
+                <TargetIcon id={target.id} aria-hidden="true" />
+                <span>{target.displayName}</span>
+              </Button>
+            ))}
+          </div>
+        </>
       ) : (
         <p
           className="text-sm text-muted-foreground"

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import type { TargetData } from '@inkeep/open-knowledge-core';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -48,11 +47,7 @@ mock.module('@/hooks/use-is-embedded', () => ({
 }));
 
 mock.module('./OpenInAgentMenuItem', () => ({
-  OpenInAgentMenuItem: ({ target, onSelect }: { target: TargetData; onSelect: () => void }) => (
-    <button type="button" data-testid={`open-in-agent-row-${target.id}`} onClick={onSelect}>
-      {target.displayName}
-    </button>
-  ),
+  TargetIcon: () => null,
 }));
 
 const input: HandoffDispatchInput = {
@@ -118,13 +113,67 @@ describe('OpenInAgentMenu runtime behavior', () => {
     await openMenu();
 
     expect(refreshCalls).toEqual(['refresh']);
-    expect(screen.getByTestId('open-in-agent-row-claude-code')).toBeTruthy();
-    expect(screen.getByTestId('open-in-agent-row-codex')).toBeTruthy();
-    expect(screen.getByTestId('open-in-agent-row-cursor')).toBeTruthy();
-    expect(screen.queryByTestId('open-in-agent-row-claude-cowork')).toBeNull();
+    expect(screen.getByTestId('open-in-agent-item-claude-code')).toBeTruthy();
+    expect(screen.getByTestId('open-in-agent-item-codex')).toBeTruthy();
+    expect(screen.getByTestId('open-in-agent-item-cursor')).toBeTruthy();
+    expect(screen.queryByTestId('open-in-agent-item-claude-cowork')).toBeNull();
 
-    await userEvent.click(screen.getByTestId('open-in-agent-row-codex'));
-    expect(dispatchCalls).toEqual([{ target: 'codex', input }]);
+    expect(screen.getByTestId('open-in-agent-send-label').textContent).toContain('Send to');
+
+    await userEvent.click(screen.getByTestId('open-in-agent-item-codex'));
+    expect(dispatchCalls).toStrictEqual([{ target: 'codex', input }]);
+  });
+
+  test('typing an instruction threads it onto the dispatched input', async () => {
+    states = {
+      'claude-cowork': { installed: true, lastChecked: 1 },
+      'claude-code': { installed: true, lastChecked: 1 },
+      codex: { installed: true, lastChecked: 1 },
+      cursor: { installed: true, lastChecked: 1 },
+    };
+    await renderMenu();
+    await openMenu();
+
+    await userEvent.type(screen.getByTestId('open-in-agent-instruction'), 'Tighten the intro');
+    await userEvent.click(screen.getByTestId('open-in-agent-item-cursor'));
+
+    expect(dispatchCalls).toStrictEqual([
+      { target: 'cursor', input: { ...input, instruction: 'Tighten the intro' } },
+    ]);
+  });
+
+  test('instruction input resets to empty when the popover is reopened', async () => {
+    states = {
+      'claude-cowork': { installed: true, lastChecked: 1 },
+      'claude-code': { installed: true, lastChecked: 1 },
+      codex: { installed: true, lastChecked: 1 },
+      cursor: { installed: true, lastChecked: 1 },
+    };
+    await renderMenu();
+    await openMenu();
+    await userEvent.type(screen.getByTestId('open-in-agent-instruction'), 'Tighten the intro');
+    await userEvent.click(screen.getByTestId('open-in-agent-item-codex'));
+
+    await userEvent.click(screen.getByTestId('open-in-agent-trigger'));
+    await waitFor(() => {
+      expect(screen.getByTestId('open-in-agent-menu')).toBeTruthy();
+    });
+    expect((screen.getByTestId('open-in-agent-instruction') as HTMLInputElement).value).toBe('');
+  });
+
+  test('a whitespace-only instruction is treated as empty (no instruction key)', async () => {
+    states = {
+      'claude-cowork': { installed: true, lastChecked: 1 },
+      'claude-code': { installed: true, lastChecked: 1 },
+      codex: { installed: true, lastChecked: 1 },
+      cursor: { installed: true, lastChecked: 1 },
+    };
+    await renderMenu();
+    await openMenu();
+
+    await userEvent.type(screen.getByTestId('open-in-agent-instruction'), '   ');
+    await userEvent.click(screen.getByTestId('open-in-agent-item-codex'));
+    expect(dispatchCalls).toStrictEqual([{ target: 'codex', input }]);
   });
 
   test('shows the empty hint (no claude.ai fallback) when nothing is installed', async () => {

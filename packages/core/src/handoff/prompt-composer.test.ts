@@ -140,6 +140,102 @@ test('composeEmptySpacePrompt is deterministic across calls', () => {
   expect(composeEmptySpacePrompt(false)).toBe(composeEmptySpacePrompt(false));
 });
 
+test('composeFilePrompt appends a quoted Instruction block after the directive trailer', () => {
+  expect(composeFilePrompt('foo.md', true, 'Tighten the intro')).toBe(
+    "Let's work on `foo.md` using Open Knowledge. Open the OK editor in web view." +
+      '\n\nInstruction:\n\n> Tighten the intro',
+  );
+});
+
+test('composeFilePrompt with autoOpen=false places the instruction after the bare directive', () => {
+  expect(composeFilePrompt('foo.md', false, 'Tighten the intro')).toBe(
+    "Let's work on `foo.md` using Open Knowledge.\n\nInstruction:\n\n> Tighten the intro",
+  );
+});
+
+test('composeFilePrompt blockquotes every line of a multi-line instruction', () => {
+  expect(composeFilePrompt('foo.md', false, 'line one\nline two')).toBe(
+    "Let's work on `foo.md` using Open Knowledge.\n\nInstruction:\n\n> line one\n> line two",
+  );
+});
+
+test('composeFilePrompt with an empty / whitespace / absent instruction is byte-identical to the path-only form', () => {
+  const bare = composeFilePrompt('foo.md', true);
+  expect(composeFilePrompt('foo.md', true, '')).toBe(bare);
+  expect(composeFilePrompt('foo.md', true, '   ')).toBe(bare);
+  expect(composeFilePrompt('foo.md', true, undefined)).toBe(bare);
+  expect(composeFilePrompt('foo.md', false, '')).toBe(composeFilePrompt('foo.md', false));
+});
+
+test('composeFolderPrompt appends a quoted Instruction block', () => {
+  expect(composeFolderPrompt('specs', true, 'Review the structure')).toBe(
+    "Let's work on the `specs` folder using Open Knowledge. Open the OK editor in web view." +
+      '\n\nInstruction:\n\n> Review the structure',
+  );
+  expect(composeFolderPrompt('specs', true, '  ')).toBe(composeFolderPrompt('specs', true));
+});
+
+test('composeEmptySpacePrompt appends a quoted Instruction block', () => {
+  expect(composeEmptySpacePrompt(true, 'Scaffold the wiki')).toBe(
+    "Let's work on this project using Open Knowledge. Open the OK editor in web view." +
+      '\n\nInstruction:\n\n> Scaffold the wiki',
+  );
+  expect(composeEmptySpacePrompt(true, '')).toBe(composeEmptySpacePrompt(true));
+});
+
+test('composeFolderPrompt blockquotes every line of a multi-line instruction', () => {
+  expect(composeFolderPrompt('specs', false, 'line one\nline two')).toBe(
+    "Let's work on the `specs` folder using Open Knowledge.\n\nInstruction:\n\n> line one\n> line two",
+  );
+});
+
+test('composeEmptySpacePrompt blockquotes every line of a multi-line instruction', () => {
+  expect(composeEmptySpacePrompt(false, 'line one\nline two')).toBe(
+    "Let's work on this project using Open Knowledge.\n\nInstruction:\n\n> line one\n> line two",
+  );
+});
+
+test('directive composers keep the dispatched URL within 4096 chars for an oversized instruction (every target)', () => {
+  const hugeInstruction = 'please tighten this prose for clarity and concision '.repeat(200);
+  const composed = [
+    composeFilePrompt('specs/deep/nested/SPEC.md', true, hugeInstruction),
+    composeFolderPrompt('specs/deep/nested', true, hugeInstruction),
+    composeEmptySpacePrompt(true, hugeInstruction),
+  ];
+  for (const target of ALL_TARGETS) {
+    for (const prompt of composed) {
+      expect(urlForTarget(target, prompt).length).toBeLessThanOrEqual(4096);
+    }
+  }
+});
+
+test('an oversized directive instruction is shortened with the truncation marker, not dropped whole', () => {
+  const hugeInstruction = 'rewrite this section thoroughly '.repeat(200);
+  const prompt = composeFilePrompt('foo.md', true, hugeInstruction);
+  expect(prompt).toContain('…');
+  expect(prompt).not.toContain(hugeInstruction);
+  expect(prompt).toContain("Let's work on `foo.md` using Open Knowledge.");
+});
+
+test('a normal-length directive instruction is never truncated', () => {
+  const instruction =
+    'Tighten the introduction, then add a short summary section at the end. Keep the existing headings.';
+  const prompt = composeFilePrompt('foo.md', true, instruction);
+  expect(prompt).toContain(`> ${instruction}`);
+  expect(prompt).not.toContain('…');
+});
+
+test('shortening an oversized emoji-heavy instruction never splits a surrogate pair', () => {
+  const hugeEmoji = '🎉'.repeat(3000);
+  for (const target of ALL_TARGETS) {
+    let url = '';
+    expect(() => {
+      url = urlForTarget(target, composeFilePrompt('foo.md', true, hugeEmoji));
+    }).not.toThrow();
+    expect(url.length).toBeLessThanOrEqual(4096);
+  }
+});
+
 test('composeCreatePrompt new-project blockquotes the brief + appends the scaffold directive (autoOpen=true)', () => {
   expect(composeCreatePrompt('a wiki for my D&D campaign', true, 'new-project')).toBe(
     "I'm setting up a new Open Knowledge project. Here's what I want to create:\n" +
@@ -396,6 +492,26 @@ test('composeSelectionPrompt shortens an oversized instruction so the locus URL 
     expect(prompt).toContain('Read the full passage');
     expect(prompt).toContain('…');
     expect(prompt).not.toContain(hugeInstruction);
+  }
+});
+
+test('shortening an oversized emoji-heavy instruction never splits a surrogate pair in locus mode', () => {
+  const hugeEmoji = '🎉'.repeat(3000);
+  const hugeSelection = 'lorem ipsum dolor sit amet '.repeat(2000);
+  for (const target of ALL_TARGETS) {
+    let url = '';
+    expect(() => {
+      url = urlForTarget(
+        target,
+        composeSelectionPrompt({
+          relativePath: 'specs/deep/nested/SPEC.md',
+          instruction: hugeEmoji,
+          selectionMarkdown: hugeSelection,
+          target,
+        }),
+      );
+    }).not.toThrow();
+    expect(url.length).toBeLessThanOrEqual(4096);
   }
 });
 

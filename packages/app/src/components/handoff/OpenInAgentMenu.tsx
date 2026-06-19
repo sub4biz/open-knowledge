@@ -1,25 +1,15 @@
-import type {
-  HandoffOutcome,
-  HandoffTarget,
-  InstallState,
-  TargetData,
-} from '@inkeep/open-knowledge-core';
+import type { HandoffTarget, InstallState, TargetData } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Sparkles, SquareTerminal } from 'lucide-react';
-import type { ComponentProps, ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { useIsEmbedded } from '@/hooks/use-is-embedded';
 import { VISIBLE_TARGETS } from '@/lib/handoff/targets';
-import { OpenInAgentMenuItem } from './OpenInAgentMenuItem';
-import { useTerminalLaunch } from './TerminalLaunchContext';
+import { TargetIcon } from './OpenInAgentMenuItem';
+import { type TerminalLaunchContextValue, useTerminalLaunch } from './TerminalLaunchContext';
 import { type HandoffDispatchInput, useHandoffDispatch } from './useHandoffDispatch';
 import { useInstalledAgents } from './useInstalledAgents';
 
@@ -31,109 +21,161 @@ interface OpenInAgentMenuProps {
   readonly onOpenChange?: (open: boolean) => void;
 }
 
-interface OpenInAgentMenuContentProps {
-  readonly input: HandoffDispatchInput | null;
-  readonly states: Record<HandoffTarget, InstallState>;
-  readonly dispatch: (
-    target: HandoffTarget,
-    input: HandoffDispatchInput,
-  ) => Promise<HandoffOutcome>;
-  readonly isElectronHost: boolean;
-  readonly align?: ComponentProps<typeof DropdownMenuContent>['align'];
-  readonly className?: string;
+interface OpenWithAiPanelProps {
+  readonly installStates: Record<HandoffTarget, InstallState>;
+  readonly terminalLaunch: TerminalLaunchContextValue | null;
+  /** Disable every dispatch row — set when there is nothing to dispatch
+   *  (no active doc / workspace not loaded). The trigger is also disabled in
+   *  that state, so this is a defensive guard for the controlled-open path. */
+  readonly disabled: boolean;
+  /** Fired when the user picks an agent; carries the typed instruction — the
+   *  empty string when the user dispatched without typing one. */
+  readonly onPick: (target: TargetData, instruction: string) => void;
+  readonly onLaunchTerminal: (instruction: string) => void;
 }
 
-function OpenInAgentMenuContent({
-  input,
-  states,
-  dispatch,
-  isElectronHost,
-  align = 'end',
-  className = 'min-w-[220px]',
-}: OpenInAgentMenuContentProps): ReactNode {
+function OpenWithAiPanel({
+  installStates,
+  terminalLaunch,
+  disabled,
+  onPick,
+  onLaunchTerminal,
+}: OpenWithAiPanelProps): ReactNode {
   const { t } = useLingui();
-  const terminalLaunch = useTerminalLaunch();
-
-  const handleSelect = (target: TargetData): void => {
-    if (input === null) return;
-    void dispatch(target.id, input);
-  };
+  const [instruction, setInstruction] = useState('');
 
   const installedTargets = VISIBLE_TARGETS.filter(
-    (target) => states[target.id]?.installed === true,
+    (target) => installStates[target.id]?.installed === true,
   );
-  const probePending = VISIBLE_TARGETS.some((target) => states[target.id]?.installed == null);
+  const probePending = VISIBLE_TARGETS.some(
+    (target) => installStates[target.id]?.installed == null,
+  );
 
-  const showEmptyHint = installedTargets.length === 0 && terminalLaunch === null;
+  const hasRows = installedTargets.length > 0 || terminalLaunch !== null;
 
   return (
-    <DropdownMenuContent align={align} className={className} data-testid="open-in-agent-menu">
-      {installedTargets.map((target) => {
-        const installState = states[target.id];
-        return (
-          <OpenInAgentMenuItem
-            key={target.id}
-            target={target}
-            installState={installState}
-            isElectronHost={isElectronHost}
-            onSelect={() => handleSelect(target)}
-          />
-        );
-      })}
-      {showEmptyHint ? (
-        <DropdownMenuItem disabled data-testid="open-in-agent-empty">
+    <div className="flex flex-col gap-3">
+      <Input
+        value={instruction}
+        onChange={(event) => setInstruction(event.target.value)}
+        placeholder={t`What should the AI do? (optional)`}
+        aria-label={t`Instruction for the AI`}
+        data-testid="open-in-agent-instruction"
+      />
+      {hasRows ? (
+        <>
+          <div className="text-muted-foreground text-xs" data-testid="open-in-agent-send-label">
+            <Trans>Send to</Trans>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {installedTargets.map((target) => {
+              const { displayName } = target;
+              return (
+                <Button
+                  key={target.id}
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                  disabled={disabled}
+                  data-testid={`open-in-agent-item-${target.id}`}
+                  aria-label={t`Open with AI ${displayName}`}
+                  onClick={() => onPick(target, instruction)}
+                >
+                  <TargetIcon id={target.id} aria-hidden="true" />
+                  <span>{displayName}</span>
+                </Button>
+              );
+            })}
+            {terminalLaunch !== null ? (
+              <>
+                {installedTargets.length > 0 ? <Separator className="my-1" /> : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                  disabled={disabled}
+                  data-testid="open-in-agent-terminal"
+                  aria-label={t`Claude CLI`}
+                  onClick={() => onLaunchTerminal(instruction)}
+                >
+                  <SquareTerminal className="size-4" aria-hidden="true" />
+                  <span>
+                    <Trans>Claude CLI</Trans>
+                  </span>
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <p
+          className="text-muted-foreground text-sm"
+          data-testid="open-in-agent-empty"
+          aria-live="polite"
+        >
           {probePending ? (
             <Trans>Checking for installed agents</Trans>
           ) : (
             <Trans>No installed agents found</Trans>
           )}
-        </DropdownMenuItem>
-      ) : null}
-      {terminalLaunch !== null ? (
-        <>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => {
-              if (input === null) return;
-              terminalLaunch.launchInTerminal(input);
-            }}
-            disabled={input === null}
-            data-testid="open-in-agent-terminal"
-            aria-label={t`Claude CLI`}
-          >
-            <SquareTerminal className="size-4" aria-hidden="true" />
-            <span className="flex-1">
-              <Trans>Claude CLI</Trans>
-            </span>
-          </DropdownMenuItem>
-        </>
-      ) : null}
-    </DropdownMenuContent>
+        </p>
+      )}
+    </div>
   );
 }
 
 export function OpenInAgentMenu({ input, open, onOpenChange }: OpenInAgentMenuProps): ReactNode {
+  const { t } = useLingui();
   const { states, refresh } = useInstalledAgents();
   const { dispatch } = useHandoffDispatch();
+  const terminalLaunch = useTerminalLaunch();
   const [internalOpen, setInternalOpen] = useState(false);
   const sawPointerDownRef = useRef(false);
   const isEmbedded = useIsEmbedded();
+
+  const menuOpen = open ?? internalOpen;
+
+  const refreshOnOpen = useEffectEvent(() => {
+    void refresh();
+  });
+  useEffect(() => {
+    if (menuOpen) refreshOnOpen();
+  }, [menuOpen]);
+
   if (isEmbedded) return null;
 
   const isElectronHost = typeof window !== 'undefined' && window.okDesktop != null;
-  const menuOpen = open ?? internalOpen;
 
   const handleOpenChange = (next: boolean): void => {
     if (open === undefined) setInternalOpen(next);
     onOpenChange?.(next);
-    if (next) void refresh();
   };
 
   const triggerDisabled = input === null;
 
+  const inputWith = (instruction: string): HandoffDispatchInput | null => {
+    if (input === null) return null;
+    const trimmed = instruction.trim();
+    return trimmed ? { ...input, instruction: trimmed } : input;
+  };
+
+  const handlePick = (target: TargetData, instruction: string): void => {
+    const next = inputWith(instruction);
+    if (next === null) return;
+    void dispatch(target.id, next);
+    handleOpenChange(false);
+  };
+
+  const handleLaunchTerminal = (instruction: string): void => {
+    const next = inputWith(instruction);
+    if (next === null || terminalLaunch === null) return;
+    terminalLaunch.launchInTerminal(next);
+    handleOpenChange(false);
+  };
+
   return (
-    <DropdownMenu open={menuOpen} onOpenChange={handleOpenChange} modal={false}>
-      <DropdownMenuTrigger asChild>
+    <Popover open={menuOpen} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
@@ -162,13 +204,16 @@ export function OpenInAgentMenu({ input, open, onOpenChange }: OpenInAgentMenuPr
           <Sparkles className="size-3.5" aria-hidden="true" />
           <Trans>Open with AI</Trans>
         </Button>
-      </DropdownMenuTrigger>
-      <OpenInAgentMenuContent
-        input={input}
-        states={states}
-        dispatch={dispatch}
-        isElectronHost={isElectronHost}
-      />
-    </DropdownMenu>
+      </PopoverTrigger>
+      <PopoverContent align="end" aria-label={t`Open with AI`} data-testid="open-in-agent-menu">
+        <OpenWithAiPanel
+          installStates={states}
+          terminalLaunch={terminalLaunch}
+          disabled={input === null}
+          onPick={handlePick}
+          onLaunchTerminal={handleLaunchTerminal}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

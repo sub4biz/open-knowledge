@@ -124,7 +124,17 @@ When both are on, **Show all files** supersedes.
 
 The trailing `Open the OK editor in web view.` directive is dropped when the [`appearance.preview.autoOpen`](/docs/reference/configuration) preference is off, so the receiving agent honors the same "leave my preview alone" choice on its first turn; only the `Let's work on … using Open Knowledge.` opener is sent.
 
-The same submenu is mounted on the **sparkle icon** in the editor header; it picks the scope to dispatch from whichever target is currently active in the editor.
+The **sparkle icon** in the editor header opens the same handoff as a popover, picking the scope from whichever target is currently active in the editor. Unlike the right-click submenus — which dispatch in one click — this header popover adds an optional **instruction field** ("What should the AI do?"). When you type one, it's appended to the directive above as a quoted block, so the agent opens the target *and* gets your specific ask in the same prompt:
+
+```text
+Let's work on `<path>` using Open Knowledge. Open the OK editor in web view.
+
+Instruction:
+
+> <your instruction>
+```
+
+The directive line itself varies by scope (file, folder, or whole project); the example shows the file form, and the openers described above list the others. Leaving the field empty dispatches the bare directive unchanged.
 
 **Install detection** filters the submenu to just the agents you have. When the server and your browser are on the same machine (`localhost`), the filter is accurate. When you're running the server elsewhere (a hosted preview, SSH tunnel, remote dev), the submenu lists every supported agent and lets your browser's OS protocol-dispatch dialog be the truth signal.
 

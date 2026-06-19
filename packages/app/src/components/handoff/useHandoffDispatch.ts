@@ -58,6 +58,15 @@ export interface HandoffDispatchInput {
    *  project isn't described as a brand-new one. Set alongside
    *  `createDescription`; defaults to `new-project` if absent. */
   readonly createScenario?: CreateScenario;
+  /** Optional free-text instruction the user typed in the toolbar "Open with
+   *  AI" popover. Orthogonal to scope: it applies to file / folder / project
+   *  (empty-space) dispatch — the three directive composers append it as a
+   *  quoted `Instruction:` block. Unset for the right-click submenus and
+   *  CommandPalette (which dispatch instantly with no prompt box), and for
+   *  selection / create scope (which carry their own free-text via
+   *  `selection.instruction` / `createDescription`). Set at the popover call
+   *  site, not by the shared `build*HandoffInput` helpers. */
+  readonly instruction?: string;
   readonly projectDir: string;
   readonly docPath: string;
 }
@@ -216,10 +225,10 @@ export function selectScopedPrompt(
     return composeSelectionPrompt({ ...input.selection, target });
   }
   if (input.docContext !== null) {
-    return composeFilePrompt(input.docContext.relativePath, autoOpen);
+    return composeFilePrompt(input.docContext.relativePath, autoOpen, input.instruction);
   }
   if (input.folderRelativePath) {
-    return composeFolderPrompt(input.folderRelativePath, autoOpen);
+    return composeFolderPrompt(input.folderRelativePath, autoOpen, input.instruction);
   }
   if (input.createDescription !== undefined) {
     return composeCreatePrompt(
@@ -228,7 +237,7 @@ export function selectScopedPrompt(
       input.createScenario ?? 'new-project',
     );
   }
-  return composeEmptySpacePrompt(autoOpen);
+  return composeEmptySpacePrompt(autoOpen, input.instruction);
 }
 
 export function composeTerminalLaunchPrompt(input: HandoffDispatchInput): string {

@@ -869,6 +869,111 @@ describe('selectScopedPrompt — template selection across autoOpen modes', () =
     expect(out).toBe("Let's work on this project using Open Knowledge.");
   });
 
+  test('file scope threads the toolbar instruction into the directive prompt', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const { composeFilePrompt } = await import('@inkeep/open-knowledge-core');
+    const out = selectScopedPrompt(
+      {
+        docContext: { relativePath: 'notes/today.md' },
+        instruction: 'Tighten the intro',
+        projectDir: '/proj',
+        docPath: '/proj/notes/today.md',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toBe(composeFilePrompt('notes/today.md', true, 'Tighten the intro'));
+    expect(out).toContain('Instruction:\n\n> Tighten the intro');
+  });
+
+  test('folder scope threads the toolbar instruction', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        folderRelativePath: 'notes',
+        instruction: 'Review the structure',
+        projectDir: '/proj',
+        docPath: '',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toContain("Let's work on the `notes` folder using Open Knowledge.");
+    expect(out).toContain('> Review the structure');
+  });
+
+  test('empty-space scope threads the toolbar instruction', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        instruction: 'Scaffold the wiki',
+        projectDir: '/proj',
+        docPath: '',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toContain("Let's work on this project using Open Knowledge.");
+    expect(out).toContain('> Scaffold the wiki');
+  });
+
+  test('selection scope ignores the top-level instruction — selection.instruction wins', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        instruction: 'top-level directive instruction',
+        selection: {
+          relativePath: 'notes/today.md',
+          instruction: 'selection instruction',
+          selectionMarkdown: 'the passage',
+        },
+        projectDir: '/proj',
+        docPath: '/proj/notes/today.md',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toContain('> selection instruction');
+    expect(out).not.toContain('top-level directive instruction');
+  });
+
+  test('create scope ignores the top-level instruction — createDescription is the only free-text', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const out = selectScopedPrompt(
+      {
+        docContext: null,
+        instruction: 'top-level directive instruction',
+        createDescription: 'a worldbuilding wiki',
+        createScenario: 'new-project',
+        projectDir: '/proj',
+        docPath: '',
+      },
+      'claude-code',
+      true,
+    );
+    expect(out).toContain('> a worldbuilding wiki');
+    expect(out).not.toContain('top-level directive instruction');
+  });
+
+  test('file scope threads the instruction even when autoOpen=false (trailer dropped, instruction kept)', async () => {
+    const { selectScopedPrompt } = await import('./useHandoffDispatch');
+    const out = selectScopedPrompt(
+      {
+        docContext: { relativePath: 'notes/today.md' },
+        instruction: 'Fix the intro',
+        projectDir: '/proj',
+        docPath: '/proj/notes/today.md',
+      },
+      'claude-code',
+      false,
+    );
+    expect(out).toContain('> Fix the intro');
+    expect(out).not.toContain('Open the OK editor');
+  });
+
   test('create scope (createDescription set) returns composeCreatePrompt with the scenario', async () => {
     const { selectScopedPrompt } = await import('./useHandoffDispatch');
     const { composeCreatePrompt } = await import('@inkeep/open-knowledge-core');

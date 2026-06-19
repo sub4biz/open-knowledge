@@ -34,21 +34,32 @@ function sanitizePathForAtMention(path: string): string {
   return path.replace(AT_MENTION_PATH_INJECTION_SANITIZE_RE, '_');
 }
 
-export function composeFilePrompt(relativePath: string, autoOpen: boolean): string {
+export function composeFilePrompt(
+  relativePath: string,
+  autoOpen: boolean,
+  instruction?: string,
+): string {
   const safe = sanitizePathForPrompt(relativePath);
   const base = `Let's work on \`${safe}\` using Open Knowledge.`;
-  return autoOpen ? `${base} Open the OK editor in web view.` : base;
+  const directive = autoOpen ? `${base} Open the OK editor in web view.` : base;
+  return appendInstruction(directive, instruction);
 }
 
-export function composeFolderPrompt(relativeFolderPath: string, autoOpen: boolean): string {
+export function composeFolderPrompt(
+  relativeFolderPath: string,
+  autoOpen: boolean,
+  instruction?: string,
+): string {
   const safe = sanitizePathForPrompt(relativeFolderPath);
   const base = `Let's work on the \`${safe}\` folder using Open Knowledge.`;
-  return autoOpen ? `${base} Open the OK editor in web view.` : base;
+  const directive = autoOpen ? `${base} Open the OK editor in web view.` : base;
+  return appendInstruction(directive, instruction);
 }
 
-export function composeEmptySpacePrompt(autoOpen: boolean): string {
+export function composeEmptySpacePrompt(autoOpen: boolean, instruction?: string): string {
   const base = `Let's work on this project using Open Knowledge.`;
-  return autoOpen ? `${base} Open the OK editor in web view.` : base;
+  const directive = autoOpen ? `${base} Open the OK editor in web view.` : base;
+  return appendInstruction(directive, instruction);
 }
 
 export type CreateScenario = 'new-project' | 'existing-repo';
@@ -164,6 +175,47 @@ function instructionLines(instruction: string): readonly string[] {
   return ['Instruction:', '', quoted, ''];
 }
 
+function directiveWithInstruction(directive: string, instruction: string): string {
+  const lines = instructionLines(instruction);
+  return lines.length === 0 ? directive : [directive, '', ...lines].join('\n').trimEnd();
+}
+
+function fitInstruction(
+  compose: (instruction: string) => string,
+  instruction: string,
+  target: HandoffTarget,
+): string {
+  const fits = (instr: string): boolean =>
+    encodedPromptLength(compose(instr), target) <= INLINE_PROMPT_ENCODED_BUDGET;
+  if (fits(instruction)) return instruction;
+  const codePoints = Array.from(instruction);
+  let lo = 0;
+  let hi = codePoints.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = codePoints.slice(0, mid).join('').trimEnd() + INSTRUCTION_TRUNCATION_MARKER;
+    if (fits(candidate)) lo = mid;
+    else hi = mid - 1;
+  }
+  const kept = codePoints.slice(0, lo).join('').trimEnd();
+  return kept === '' ? '' : kept + INSTRUCTION_TRUNCATION_MARKER;
+}
+
+function fitInstructionForDirective(directive: string, instruction: string): string {
+  return fitInstruction(
+    (instr) => directiveWithInstruction(directive, instr),
+    instruction,
+    'cursor',
+  );
+}
+
+function appendInstruction(directive: string, instruction: string | undefined): string {
+  return directiveWithInstruction(
+    directive,
+    fitInstructionForDirective(directive, instruction ?? ''),
+  );
+}
+
 function composeInline(safePath: string, instruction: string, selectionMarkdown: string): string {
   const fence = fenceFor(selectionMarkdown);
   return [
@@ -201,20 +253,11 @@ function fitInstructionForLocus(
   selectionMarkdown: string,
   target: HandoffTarget,
 ): string {
-  const fits = (instr: string): boolean =>
-    encodedPromptLength(composeLocus(safePath, instr, selectionMarkdown), target) <=
-    INLINE_PROMPT_ENCODED_BUDGET;
-  if (fits(instruction)) return instruction;
-  let lo = 0;
-  let hi = instruction.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    const candidate = instruction.slice(0, mid).trimEnd() + INSTRUCTION_TRUNCATION_MARKER;
-    if (fits(candidate)) lo = mid;
-    else hi = mid - 1;
-  }
-  const kept = instruction.slice(0, lo).trimEnd();
-  return kept === '' ? '' : kept + INSTRUCTION_TRUNCATION_MARKER;
+  return fitInstruction(
+    (instr) => composeLocus(safePath, instr, selectionMarkdown),
+    instruction,
+    target,
+  );
 }
 
 export function composeSelectionPrompt(input: SelectionPromptInput): string {
