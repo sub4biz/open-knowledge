@@ -21,17 +21,42 @@ mock.module('@/components/PropertyContext', () => ({
   useProperties: () => ({ requestAddProperty: () => {} }),
 }));
 
+const FOLDER_DOC_CTX = {
+  activeDocName: 'folder/index',
+  activeProvider: null,
+  activeTarget: { kind: 'folder', target: 'folder', folderPath: 'folder' },
+  recycleDocument: () => {},
+  docPanelMode: 'timeline',
+  docPanelAgentId: null,
+  docPanelExpandSignal: 0,
+};
+const EMPTY_DOC_CTX = {
+  activeDocName: null,
+  activeProvider: null,
+  activeTarget: null,
+  recycleDocument: () => {},
+  docPanelMode: 'timeline',
+  docPanelAgentId: null,
+  docPanelExpandSignal: 0,
+};
+let docCtx: typeof FOLDER_DOC_CTX | typeof EMPTY_DOC_CTX = FOLDER_DOC_CTX;
 mock.module('@/editor/DocumentContext', () => ({
-  useDocumentContext: () => ({
-    activeDocName: 'folder/index',
-    activeProvider: null,
-    activeTarget: { kind: 'folder', target: 'folder', folderPath: 'folder' },
-    recycleDocument: () => {},
-    docPanelMode: 'timeline',
-    docPanelAgentId: null,
-    docPanelExpandSignal: 0,
-  }),
+  useDocumentContext: () => docCtx,
   useDocumentTransition: () => ({ openDocumentTransition: null }),
+}));
+
+mock.module('@/components/EmptyEditorState', () => ({
+  EmptyEditorState: ({ terminalVisible }: { terminalVisible?: boolean }) => (
+    <div data-testid="empty-editor-state" data-terminal-visible={String(terminalVisible)} />
+  ),
+}));
+
+mock.module('./TerminalDock', () => ({
+  TerminalDock: ({ children, visible }: { children: ReactNode; visible?: boolean }) => (
+    <div data-testid="terminal-dock" data-visible={String(visible)}>
+      {children}
+    </div>
+  ),
 }));
 
 mock.module('react-resizable-panels', () => ({
@@ -95,6 +120,7 @@ function renderEditorArea() {
 describe('EditorArea SettingsDialogPortal runtime wiring', () => {
   beforeEach(() => {
     cleanup();
+    docCtx = FOLDER_DOC_CTX;
     settingsRouteOpen = false;
     closeSettingsRouteMock = mock(() => {});
     shellProps = [];
@@ -116,5 +142,47 @@ describe('EditorArea SettingsDialogPortal runtime wiring', () => {
       shellProps.at(-1)?.onOpenChange(false);
     });
     expect(closeSettingsRouteMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('EditorArea empty-state terminal host', () => {
+  beforeEach(() => {
+    cleanup();
+    docCtx = EMPTY_DOC_CTX;
+  });
+
+  test('hosts the docked terminal on the empty state when a terminal bridge is present', () => {
+    render(
+      <EditorArea
+        editorMode="wysiwyg"
+        onModeChange={() => {}}
+        activeTab="timeline"
+        onActiveTabChange={() => {}}
+        terminalBridge={{} as never}
+        terminalVisible
+        onTerminalVisibleChange={() => {}}
+        terminalLaunch={null}
+      />,
+    );
+
+    const dock = screen.getByTestId('terminal-dock');
+    expect(dock.getAttribute('data-visible')).toBe('true');
+    const emptyState = dock.querySelector('[data-testid="empty-editor-state"]');
+    expect(emptyState).not.toBeNull();
+    expect(emptyState?.getAttribute('data-terminal-visible')).toBe('true');
+  });
+
+  test('renders the empty state with no terminal dock on the web host (no bridge)', () => {
+    render(
+      <EditorArea
+        editorMode="wysiwyg"
+        onModeChange={() => {}}
+        activeTab="timeline"
+        onActiveTabChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByTestId('terminal-dock')).toBeNull();
+    expect(screen.getByTestId('empty-editor-state')).toBeTruthy();
   });
 });

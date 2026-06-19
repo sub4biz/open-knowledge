@@ -4,7 +4,9 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { Sparkles, SquareTerminal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -56,7 +58,9 @@ export function OpenInAgentContextSubmenu(props: OpenInAgentContextSubmenuProps)
     (target) => installStates[target.id]?.installed == null,
   );
 
-  const showEmptyHint = installedTargets.length === 0 && terminalLaunch === null;
+  const showDesktopSection = installedTargets.length > 0;
+  const showTerminalSection = terminalLaunch !== null;
+  const showEmptyHint = !showDesktopSection && !showTerminalSection;
 
   return (
     <DropdownMenuSub>
@@ -65,33 +69,40 @@ export function OpenInAgentContextSubmenu(props: OpenInAgentContextSubmenuProps)
         <Trans>Open with AI</Trans>
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
-        {installedTargets.map((target) => {
-          const enabled = !inputMissing;
-          const { displayName } = target;
-          const accessibleLabel = hint
-            ? t`Open with AI ${displayName}, ${hint}`
-            : t`Open with AI ${displayName}`;
-          return (
-            <DropdownMenuItem
-              key={target.id}
-              disabled={!enabled}
-              onSelect={() => {
-                if (!input) return;
-                void dispatch(target.id, input);
-              }}
-              data-testid={`file-tree-open-in-${target.id}`}
-              aria-label={accessibleLabel}
-            >
-              <TargetIcon id={target.id} aria-hidden="true" />
-              <span className="flex-1">{target.displayName}</span>
-              {hint ? (
-                <span aria-hidden="true" className="ml-2 text-muted-foreground text-xs">
-                  {hint}
-                </span>
-              ) : null}
-            </DropdownMenuItem>
-          );
-        })}
+        {showDesktopSection ? (
+          <DropdownMenuGroup aria-label={t`Desktop`}>
+            <DropdownMenuLabel>
+              <Trans>Desktop</Trans>
+            </DropdownMenuLabel>
+            {installedTargets.map((target) => {
+              const enabled = !inputMissing;
+              const { displayName } = target;
+              const accessibleLabel = hint
+                ? t`Open with AI ${displayName}, ${hint}`
+                : t`Open with AI ${displayName}`;
+              return (
+                <DropdownMenuItem
+                  key={target.id}
+                  disabled={!enabled}
+                  onSelect={() => {
+                    if (!input) return;
+                    void dispatch(target.id, input);
+                  }}
+                  data-testid={`file-tree-open-in-${target.id}`}
+                  aria-label={accessibleLabel}
+                >
+                  <TargetIcon id={target.id} aria-hidden="true" />
+                  <span className="flex-1">{target.displayName}</span>
+                  {hint ? (
+                    <span aria-hidden="true" className="ml-2 text-muted-foreground text-xs">
+                      {hint}
+                    </span>
+                  ) : null}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuGroup>
+        ) : null}
         {showEmptyHint ? (
           <DropdownMenuItem disabled data-testid="file-tree-open-in-empty">
             {probePending ? (
@@ -101,28 +112,40 @@ export function OpenInAgentContextSubmenu(props: OpenInAgentContextSubmenuProps)
             )}
           </DropdownMenuItem>
         ) : null}
-        {terminalLaunch !== null ? (
+        {showTerminalSection ? (
           <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => {
-                if (input === null) return;
-                terminalLaunch.launchInTerminal(input);
-              }}
-              disabled={inputMissing}
-              data-testid="file-tree-open-in-terminal"
-              aria-label={hint ? t`Claude CLI, ${hint}` : t`Claude CLI`}
-            >
-              <SquareTerminal className="size-4" aria-hidden="true" />
-              <span className="flex-1">
-                <Trans>Claude CLI</Trans>
-              </span>
-              {hint ? (
-                <span aria-hidden="true" className="ml-2 text-muted-foreground text-xs">
-                  {hint}
+            {/* Separator only when a Desktop section sits above this one. */}
+            {showDesktopSection ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuGroup aria-label={t`Terminal`}>
+              <DropdownMenuLabel>
+                <Trans>Terminal</Trans>
+              </DropdownMenuLabel>
+              {/* Launches `claude` in the docked terminal with the right-clicked
+                  node's scope prompt. Visible text is "Claude"; the accessible
+                  name is "Claude CLI" (plus the "No workspace" hint when input is
+                  missing), so it contains the visible label and AT users can tell
+                  it apart from a Desktop "Claude" row (WCAG 2.5.3 — name contains
+                  visible label). */}
+              <DropdownMenuItem
+                onSelect={() => {
+                  if (input === null) return;
+                  terminalLaunch.launchInTerminal(input);
+                }}
+                disabled={inputMissing}
+                data-testid="file-tree-open-in-terminal"
+                aria-label={hint ? t`Claude CLI, ${hint}` : t`Claude CLI`}
+              >
+                <SquareTerminal className="size-4" aria-hidden="true" />
+                <span className="flex-1">
+                  <Trans>Claude</Trans>
                 </span>
-              ) : null}
-            </DropdownMenuItem>
+                {hint ? (
+                  <span aria-hidden="true" className="ml-2 text-muted-foreground text-xs">
+                    {hint}
+                  </span>
+                ) : null}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
           </>
         ) : null}
       </DropdownMenuSubContent>

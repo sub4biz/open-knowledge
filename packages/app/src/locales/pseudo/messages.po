@@ -950,6 +950,14 @@ msgstr ""
 msgid "Choose whether this project's Open Knowledge setup, including its AI-tool connections, is saved with the project so teammates get it too, or kept only on your computer."
 msgstr ""
 
+#: src/components/empty-state/CreatePromptComposer.tsx
+#: src/components/handoff/OpenInAgentContextSubmenu.tsx
+#: src/components/handoff/OpenInAgentEmptySpaceSubmenu.tsx
+#: src/components/handoff/OpenInAgentMenu.tsx
+msgid "Claude"
+msgstr ""
+
+#: src/components/empty-state/CreatePromptComposer.tsx
 #: src/components/handoff/OpenInAgentContextSubmenu.tsx
 #: src/components/handoff/OpenInAgentEmptySpaceSubmenu.tsx
 #: src/components/handoff/OpenInAgentMenu.tsx
@@ -1674,6 +1682,10 @@ msgstr ""
 msgid "Create with {0}"
 msgstr ""
 
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "Create with Claude CLI"
+msgstr ""
+
 #: src/components/FileTree.tsx
 msgid "Create your first file"
 msgstr ""
@@ -1802,6 +1814,13 @@ msgstr ""
 
 #: src/components/PublishToGitHubDialog.tsx
 msgid "Description (optional)"
+msgstr ""
+
+#: src/components/empty-state/CreatePromptComposer.tsx
+#: src/components/handoff/OpenInAgentContextSubmenu.tsx
+#: src/components/handoff/OpenInAgentEmptySpaceSubmenu.tsx
+#: src/components/handoff/OpenInAgentMenu.tsx
+msgid "Desktop"
 msgstr ""
 
 #: src/components/SyncStatusBadge.tsx
@@ -4984,7 +5003,6 @@ msgid "Semantic search is on, but no API key is set — search falls back to key
 msgstr ""
 
 #: src/components/handoff/EditWithAiPopover.tsx
-#: src/components/handoff/OpenInAgentMenu.tsx
 msgid "Send to"
 msgstr ""
 
@@ -5517,6 +5535,10 @@ msgstr ""
 msgid "Templates available"
 msgstr ""
 
+#: src/components/empty-state/CreatePromptComposer.tsx
+#: src/components/handoff/OpenInAgentContextSubmenu.tsx
+#: src/components/handoff/OpenInAgentEmptySpaceSubmenu.tsx
+#: src/components/handoff/OpenInAgentMenu.tsx
 #: src/components/settings/SettingsDialogShell.tsx
 #: src/components/settings/TerminalSection.tsx
 #: src/components/TerminalPanel.tsx

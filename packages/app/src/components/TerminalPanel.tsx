@@ -39,22 +39,21 @@ export function TerminalPanel({
   launch = null,
 }: TerminalPanelProps) {
   const { t } = useLingui();
+  const { resolvedTheme } = useTheme();
   const [restartKey, setRestartKey] = useState(0);
   return (
     <section
       aria-label={t`Terminal`}
-      className={cn(
-        'relative flex h-full w-full flex-col overflow-hidden bg-background',
-        className,
-      )}
+      style={{ backgroundColor: xtermThemeForMode(resolvedTheme).background }}
+      className={cn('relative flex h-full w-full flex-col overflow-hidden', className)}
     >
       {onKill ? (
-        <div className="flex shrink-0 items-center justify-end border-border border-b px-1.5 py-1">
+        <div className="flex shrink-0 items-center justify-end px-1.5 py-1">
           <Button
             size="icon"
             variant="ghost"
             aria-label={t`Kill Terminal`}
-            className="size-6"
+            className="size-6 text-muted-foreground hover:text-foreground"
             onClick={onKill}
           >
             <Trash2 aria-hidden="true" className="size-4" />

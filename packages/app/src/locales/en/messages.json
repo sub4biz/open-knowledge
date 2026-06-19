@@ -420,6 +420,7 @@
       ]
     ],
     "BAH4qX": ["Selected graph item"],
+    "BBqGS9": ["Desktop"],
     "BD0XSC": ["Failed to load project templates"],
     "BEkF-P": [
       ["userName"],
@@ -1298,6 +1299,7 @@
     "fYjgXu": ["Unordered list of items."],
     "fbdLmk": ["Toggle bold formatting."],
     "fbsiBw": ["Something went wrong starting the terminal."],
+    "fcgvCA": ["Claude"],
     "fiMNLl": ["Sync settings not yet loaded — try again in a moment"],
     "fqSfXY": ["Replace"],
     "fwhX-N": ["Indent or outdent source"],
@@ -1365,6 +1367,7 @@
     "haHgQj": ["Copied relative path"],
     "he3ygx": ["Copy"],
     "hjO0Mq": ["Add tab"],
+    "hozzkE": ["Create with Claude CLI"],
     "hpDtUm": ["External wiki link"],
     "hwFOFD": ["Settings failed to load"],
     "hxBHxQ": ["A line with a footnote<0><1>[1]</1></0> and a definition shown below."],

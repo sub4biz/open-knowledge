@@ -15,6 +15,10 @@ interface OkBlobProps {
   trackMouse?: boolean;
   variant?: 'default' | 'sleeping';
   celebrateSignal?: number;
+  /** Fixed gaze direction. `'down'` holds a "peering down" pose (head tilts
+   *  forward, eyes drop) instead of tracking the cursor — used when the mascot
+   *  sits above the docked terminal on the empty state. */
+  gaze?: 'cursor' | 'down';
 }
 
 const MAX_EYE_OFFSET = 1.8;
@@ -84,6 +88,7 @@ export function OkBlob({
   trackMouse = true,
   variant = 'default',
   celebrateSignal = 0,
+  gaze = 'cursor',
 }: OkBlobProps) {
   const wrapperRef = useRef<HTMLSpanElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -132,6 +137,7 @@ export function OkBlob({
 
   useEffect(() => {
     if (!trackMouse || isSleeping) return;
+    const gazeDown = gaze === 'down';
 
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mq.matches) return;
@@ -177,17 +183,24 @@ export function OkBlob({
       const dy = mouseY - centerY;
       const dist = Math.hypot(dx, dy);
 
-      const normX = Math.max(-1, Math.min(1, dx / HEAD_DIST_SCALE));
-      const normY = Math.max(-1, Math.min(1, dy / HEAD_DIST_SCALE));
-      const targetRotY = normX * MAX_HEAD_ROTATION;
-      const targetRotX = -normY * MAX_HEAD_ROTATION;
-
+      let targetRotX: number;
+      let targetRotY: number;
       let targetEyeX = 0;
       let targetEyeY = 0;
-      if (dist >= 1) {
-        const scale = Math.min(dist / EYE_DIST_SCALE, 1) * MAX_EYE_OFFSET;
-        targetEyeX = (dx / dist) * scale;
-        targetEyeY = (dy / dist) * scale;
+      if (gazeDown) {
+        targetRotY = 0;
+        targetRotX = -MAX_HEAD_ROTATION * 0.8;
+        targetEyeY = MAX_EYE_OFFSET;
+      } else {
+        const normX = Math.max(-1, Math.min(1, dx / HEAD_DIST_SCALE));
+        const normY = Math.max(-1, Math.min(1, dy / HEAD_DIST_SCALE));
+        targetRotY = normX * MAX_HEAD_ROTATION;
+        targetRotX = -normY * MAX_HEAD_ROTATION;
+        if (dist >= 1) {
+          const scale = Math.min(dist / EYE_DIST_SCALE, 1) * MAX_EYE_OFFSET;
+          targetEyeX = (dx / dist) * scale;
+          targetEyeY = (dy / dist) * scale;
+        }
       }
 
       const settled =
@@ -226,7 +239,7 @@ export function OkBlob({
       eyeOffsetRef.current = { x: 0, y: 0 };
       eyesGroupRef.current?.removeAttribute('transform');
     };
-  }, [trackMouse, isSleeping]);
+  }, [trackMouse, isSleeping, gaze]);
 
   useLayoutEffect(() => {
     const g = eyesGroupRef.current;

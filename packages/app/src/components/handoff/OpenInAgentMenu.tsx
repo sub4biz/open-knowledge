@@ -51,7 +51,9 @@ function OpenWithAiPanel({
     (target) => installStates[target.id]?.installed == null,
   );
 
-  const hasRows = installedTargets.length > 0 || terminalLaunch !== null;
+  const showDesktopSection = installedTargets.length > 0;
+  const showTerminalSection = terminalLaunch !== null;
+  const hasRows = showDesktopSection || showTerminalSection;
 
   return (
     <div className="flex flex-col gap-3">
@@ -63,32 +65,45 @@ function OpenWithAiPanel({
         data-testid="open-in-agent-instruction"
       />
       {hasRows ? (
-        <>
-          <div className="text-muted-foreground text-xs" data-testid="open-in-agent-send-label">
-            <Trans>Send to</Trans>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            {installedTargets.map((target) => {
-              const { displayName } = target;
-              return (
-                <Button
-                  key={target.id}
-                  type="button"
-                  variant="ghost"
-                  className="w-full justify-start gap-2"
-                  disabled={disabled}
-                  data-testid={`open-in-agent-item-${target.id}`}
-                  aria-label={t`Open with AI ${displayName}`}
-                  onClick={() => onPick(target, instruction)}
+        <div className="flex flex-col gap-0.5">
+          {showDesktopSection ? (
+            <fieldset className="m-0 flex min-w-0 flex-col gap-0.5 border-0 p-0">
+              <legend
+                className="text-muted-foreground text-xs"
+                data-testid="open-in-agent-desktop-label"
+              >
+                <Trans>Desktop</Trans>
+              </legend>
+              {installedTargets.map((target) => {
+                const { displayName } = target;
+                return (
+                  <Button
+                    key={target.id}
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-start gap-2"
+                    disabled={disabled}
+                    data-testid={`open-in-agent-item-${target.id}`}
+                    aria-label={t`Open with AI ${displayName}`}
+                    onClick={() => onPick(target, instruction)}
+                  >
+                    <TargetIcon id={target.id} aria-hidden="true" />
+                    <span>{displayName}</span>
+                  </Button>
+                );
+              })}
+            </fieldset>
+          ) : null}
+          {showTerminalSection ? (
+            <>
+              {showDesktopSection ? <Separator className="my-1" /> : null}
+              <fieldset className="m-0 flex min-w-0 flex-col gap-0.5 border-0 p-0">
+                <legend
+                  className="text-muted-foreground text-xs"
+                  data-testid="open-in-agent-terminal-label"
                 >
-                  <TargetIcon id={target.id} aria-hidden="true" />
-                  <span>{displayName}</span>
-                </Button>
-              );
-            })}
-            {terminalLaunch !== null ? (
-              <>
-                {installedTargets.length > 0 ? <Separator className="my-1" /> : null}
+                  <Trans>Terminal</Trans>
+                </legend>
                 <Button
                   type="button"
                   variant="ghost"
@@ -100,13 +115,13 @@ function OpenWithAiPanel({
                 >
                   <SquareTerminal className="size-4" aria-hidden="true" />
                   <span>
-                    <Trans>Claude CLI</Trans>
+                    <Trans>Claude</Trans>
                   </span>
                 </Button>
-              </>
-            ) : null}
-          </div>
-        </>
+              </fieldset>
+            </>
+          ) : null}
+        </div>
       ) : (
         <p
           className="text-muted-foreground text-sm"

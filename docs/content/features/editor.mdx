@@ -142,9 +142,13 @@ The Claude **claude.ai** web fallback row appears on file-scope dispatches only;
 
 See the [per-integration pages](/docs/integrations/claude-code) for what each agent receives once dispatched.
 
+The menu is organized into two sections. **Desktop** lists the installed agent apps (Claude, Codex, Cursor); selecting one launches it via its deep link. **Terminal** (desktop app only) adds a single **Claude** row that runs the `claude` CLI in Open Knowledge's docked terminal with the same scoped prompt. Both a Desktop **Claude** (the app) and a Terminal **Claude** (the CLI) can therefore appear; screen readers tell them apart by the Terminal row's "Claude CLI" accessible name. Each section renders only when it has something to launch.
+
+The empty-state create composer on a fresh project carries the same Desktop / Terminal split: its Desktop rows pick the default agent the **Create** button uses, while its Terminal **Claude** row (desktop only, disabled until the workspace resolves) launches the `claude` CLI with the brief you typed.
+
 ### Open in Terminal
 
-Spawns `open -a Terminal.app <dir>` at the right path: the folder for a folder row, the file's parent for a file row, the project root for the empty-space menu, the parent dir for an asset row. Terminal.app is hardcoded for v1; user-configurable terminal preference is on the roadmap.
+Spawns `open -a Terminal.app <dir>` at the right path: the folder for a folder row, the file's parent for a file row, the project root for the empty-space menu, the parent dir for an asset row. Terminal.app is hardcoded for v1; user-configurable terminal preference is on the roadmap. This is distinct from the **Terminal** section inside **Open with AI**, which runs the `claude` CLI in Open Knowledge's docked terminal rather than opening Terminal.app.
 
 ## Sidebars and window width
 

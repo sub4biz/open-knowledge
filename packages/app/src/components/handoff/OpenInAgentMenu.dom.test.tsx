@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { TerminalLaunchProvider } from './TerminalLaunchContext';
 import type { HandoffDispatchInput } from './useHandoffDispatch';
 
 mock.module('@lingui/react/macro', () => ({
@@ -15,6 +16,7 @@ mock.module('@lingui/react/macro', () => ({
 
 const refreshCalls: string[] = [];
 const dispatchCalls: Array<{ target: string; input: HandoffDispatchInput }> = [];
+const launchCalls: HandoffDispatchInput[] = [];
 let states: Record<string, { installed: boolean | null; lastChecked?: number }> = {};
 
 mock.module('./useInstalledAgents', () => ({
@@ -65,6 +67,17 @@ async function renderMenu(menuInput: HandoffDispatchInput | null = input) {
   );
 }
 
+async function renderMenuWithTerminal(menuInput: HandoffDispatchInput | null = input) {
+  const { OpenInAgentMenu } = await import('./OpenInAgentMenu');
+  render(
+    <TooltipProvider>
+      <TerminalLaunchProvider value={{ launchInTerminal: (i) => launchCalls.push(i) }}>
+        <OpenInAgentMenu input={menuInput} />
+      </TerminalLaunchProvider>
+    </TooltipProvider>,
+  );
+}
+
 async function openMenu() {
   await userEvent.click(screen.getByTestId('open-in-agent-trigger'));
   await waitFor(() => {
@@ -77,6 +90,7 @@ describe('OpenInAgentMenu runtime behavior', () => {
     cleanup();
     refreshCalls.length = 0;
     dispatchCalls.length = 0;
+    launchCalls.length = 0;
     states = {};
   });
 
@@ -118,7 +132,7 @@ describe('OpenInAgentMenu runtime behavior', () => {
     expect(screen.getByTestId('open-in-agent-item-cursor')).toBeTruthy();
     expect(screen.queryByTestId('open-in-agent-item-claude-cowork')).toBeNull();
 
-    expect(screen.getByTestId('open-in-agent-send-label').textContent).toContain('Send to');
+    expect(screen.getByTestId('open-in-agent-desktop-label').textContent).toContain('Desktop');
 
     await userEvent.click(screen.getByTestId('open-in-agent-item-codex'));
     expect(dispatchCalls).toStrictEqual([{ target: 'codex', input }]);
@@ -203,5 +217,41 @@ describe('OpenInAgentMenu runtime behavior', () => {
 
     const empty = screen.getByTestId('open-in-agent-empty');
     expect(empty.textContent).toContain('Checking for installed agents');
+  });
+
+  test('groups installed agents under Desktop and the CLI launch under Terminal', async () => {
+    states = {
+      'claude-code': { installed: true, lastChecked: 1 },
+      codex: { installed: true, lastChecked: 1 },
+      cursor: { installed: true, lastChecked: 1 },
+    };
+    await renderMenuWithTerminal();
+    await openMenu();
+
+    expect(screen.getByText('Desktop')).toBeTruthy();
+    expect(screen.getByText('Terminal')).toBeTruthy();
+    expect(screen.getByTestId('open-in-agent-terminal')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Desktop' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Terminal' })).toBeTruthy();
+  });
+
+  test('terminal row launches via the terminal launcher with the menu input', async () => {
+    states = { 'claude-code': { installed: true, lastChecked: 1 } };
+    await renderMenuWithTerminal();
+    await openMenu();
+
+    await userEvent.click(screen.getByTestId('open-in-agent-terminal'));
+    expect(launchCalls).toEqual([input]);
+    expect(dispatchCalls).toEqual([]);
+  });
+
+  test('omits the Terminal section but keeps Desktop when no terminal launcher is present', async () => {
+    states = { 'claude-code': { installed: true, lastChecked: 1 } };
+    await renderMenu();
+    await openMenu();
+
+    expect(screen.getByText('Desktop')).toBeTruthy();
+    expect(screen.queryByText('Terminal')).toBeNull();
+    expect(screen.queryByTestId('open-in-agent-terminal')).toBeNull();
   });
 });

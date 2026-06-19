@@ -7,6 +7,7 @@ import { CreatePromptComposer } from '@/components/empty-state/CreatePromptCompo
 import { CreateView } from '@/components/empty-state/CreateView';
 import { EmptyStateHeader } from '@/components/empty-state/EmptyStateHeader';
 import { filterVisibleEntries } from '@/components/file-tree-utils';
+import { OkBlob } from '@/components/OkBlob';
 import { PackCardGrid } from '@/components/PackCardGrid';
 import { SeedDialog } from '@/components/SeedDialog';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { emitCreateTopLevelFile } from '@/lib/create-file-events';
 import type { OkPackId } from '@/lib/desktop-bridge-types';
 import { subscribeToDocumentsChanged } from '@/lib/documents-events';
 
-export function EmptyEditorState() {
+export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?: boolean }) {
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [seedDialogInitialPackId, setSeedDialogInitialPackId] = useState<OkPackId | undefined>(
     undefined,
@@ -82,6 +83,14 @@ export function EmptyEditorState() {
   function handleDialogOpenChange(next: boolean) {
     setSeedDialogOpen(next);
     if (!next) setSeedDialogInitialPackId(undefined);
+  }
+
+  if (terminalVisible) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-end px-6 pb-8 pt-10">
+        <OkBlob size={64} gaze="down" />
+      </div>
+    );
   }
 
   return (

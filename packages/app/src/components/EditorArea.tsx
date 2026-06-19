@@ -368,6 +368,18 @@ function EditorAreaInner({
     if (hashDoc !== null) {
       return <EditorSkeleton />;
     }
+    if (terminalBridge != null) {
+      return (
+        <TerminalDock
+          bridge={terminalBridge}
+          visible={terminalVisible}
+          onVisibleChange={onTerminalVisibleChange ?? (() => {})}
+          launch={terminalLaunch}
+        >
+          <EmptyEditorState terminalVisible={terminalVisible} />
+        </TerminalDock>
+      );
+    }
     return <EmptyEditorState />;
   }
 

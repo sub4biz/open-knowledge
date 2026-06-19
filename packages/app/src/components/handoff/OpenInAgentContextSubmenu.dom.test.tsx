@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { DropdownMenu, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { renderLinguiTemplate } from '@/test-utils/lingui-mock';
+import { TerminalLaunchProvider } from './TerminalLaunchContext';
 import type { HandoffDispatchInput } from './useHandoffDispatch';
 
 mock.module('@lingui/core/macro', () => ({
@@ -45,6 +46,8 @@ const readyInput: HandoffDispatchInput = {
   projectDir: '/project',
 };
 
+const launchCalls: HandoffDispatchInput[] = [];
+
 function installStates(
   overrides: Partial<Record<HandoffTarget, InstallState>> = {},
 ): Record<HandoffTarget, InstallState> {
@@ -60,9 +63,11 @@ function installStates(
 async function renderSubmenu({
   input = readyInput,
   states = installStates(),
+  withTerminal = false,
 }: {
   input?: HandoffDispatchInput | null;
   states?: Record<HandoffTarget, InstallState>;
+  withTerminal?: boolean;
 } = {}) {
   const { OpenInAgentContextSubmenu } = await import('./OpenInAgentContextSubmenu');
   const dispatchCalls: Array<{ input: HandoffDispatchInput; target: HandoffTarget }> = [];
@@ -71,7 +76,7 @@ async function renderSubmenu({
     return { ok: true as const };
   });
 
-  render(
+  const submenu = (
     <DropdownMenu open={true}>
       <DropdownMenuContent forceMount={true}>
         <OpenInAgentContextSubmenu
@@ -81,7 +86,17 @@ async function renderSubmenu({
           isElectronHost={true}
         />
       </DropdownMenuContent>
-    </DropdownMenu>,
+    </DropdownMenu>
+  );
+
+  render(
+    withTerminal ? (
+      <TerminalLaunchProvider value={{ launchInTerminal: (i) => launchCalls.push(i) }}>
+        {submenu}
+      </TerminalLaunchProvider>
+    ) : (
+      submenu
+    ),
   );
 
   const trigger = screen.getByRole('menuitem', { name: 'Open with AI' });
@@ -94,7 +109,10 @@ async function renderSubmenu({
 }
 
 describe('OpenInAgentContextSubmenu runtime behavior', () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    launchCalls.length = 0;
+  });
 
   test('renders only installed visible targets and dispatches the selected row', async () => {
     const { dispatchCalls } = await renderSubmenu();
@@ -157,5 +175,63 @@ describe('OpenInAgentContextSubmenu runtime behavior', () => {
     });
     const empty = screen.getByTestId('file-tree-open-in-empty');
     expect(empty.textContent).toContain('Checking for installed agents');
+  });
+
+  test('groups installed agents under Desktop and the CLI launch under Terminal', async () => {
+    await renderSubmenu({ withTerminal: true });
+
+    expect(screen.getByText('Desktop')).toBeTruthy();
+    expect(screen.getByText('Terminal')).toBeTruthy();
+    expect(document.querySelector('[data-slot="dropdown-menu-separator"]')).toBeTruthy();
+
+    const terminalRow = screen.getByTestId('file-tree-open-in-terminal');
+    expect(terminalRow.textContent).toContain('Claude');
+    expect(terminalRow.textContent).not.toContain('CLI');
+    expect(terminalRow.getAttribute('aria-label')).toBe('Claude CLI');
+  });
+
+  test('terminal row launches via the terminal launcher and does not app-dispatch', async () => {
+    const { dispatch } = await renderSubmenu({ withTerminal: true });
+
+    await userEvent.click(screen.getByTestId('file-tree-open-in-terminal'));
+
+    expect(launchCalls).toEqual([readyInput]);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  test('terminal row appends the No workspace hint to its accessible name and stays inert while input is missing', async () => {
+    await renderSubmenu({ input: null, withTerminal: true });
+
+    const terminalRow = screen.getByTestId('file-tree-open-in-terminal');
+    expect(terminalRow.getAttribute('aria-label')).toBe('Claude CLI, No workspace');
+    expect(terminalRow.getAttribute('data-disabled')).toBe('');
+
+    await userEvent.click(terminalRow);
+    expect(launchCalls).toEqual([]);
+  });
+
+  test('omits the Terminal section but keeps Desktop when no terminal launcher is present', async () => {
+    await renderSubmenu();
+
+    expect(screen.getByText('Desktop')).toBeTruthy();
+    expect(screen.queryByText('Terminal')).toBeNull();
+    expect(screen.queryByTestId('file-tree-open-in-terminal')).toBeNull();
+  });
+
+  test('renders only the Terminal section (no Desktop label, no separator) when no agents are installed', async () => {
+    await renderSubmenu({
+      withTerminal: true,
+      states: installStates({
+        'claude-code': { installed: false, lastChecked: 1 },
+        'claude-cowork': { installed: false, lastChecked: 1 },
+        codex: { installed: false, lastChecked: 1 },
+        cursor: { installed: false, lastChecked: 1 },
+      }),
+    });
+
+    expect(screen.getByText('Terminal')).toBeTruthy();
+    expect(screen.queryByText('Desktop')).toBeNull();
+    expect(screen.getByTestId('file-tree-open-in-terminal')).toBeTruthy();
+    expect(document.querySelector('[data-slot="dropdown-menu-separator"]')).toBeNull();
   });
 });

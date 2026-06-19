@@ -1,12 +1,13 @@
 import type { HandoffTarget } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { ArrowUpRight, Check, ChevronDown, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, Sparkles, SquareTerminal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   type CreateScenario,
   useCreateSuggestions,
 } from '@/components/empty-state/use-create-suggestions';
 import { TargetIcon } from '@/components/handoff/OpenInAgentMenuItem';
+import { useTerminalLaunch } from '@/components/handoff/TerminalLaunchContext';
 import {
   buildCreateHandoffInput,
   getDisplayNameDefault,
@@ -19,7 +20,10 @@ import { ButtonGroup } from '@/components/ui/button-group';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,12 +46,15 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
   const { states, refresh } = useInstalledAgents();
   const { dispatch } = useHandoffDispatch();
   const workspace = useWorkspace();
+  const terminalLaunch = useTerminalLaunch();
 
   const [description, setDescription] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState<HandoffTarget | null>(() =>
     readPreferredAgent(),
   );
   const userPickedRef = useRef(false);
+  const [cliMode, setCliMode] = useState(false);
+  const cliSelected = cliMode && terminalLaunch !== null;
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -67,8 +74,21 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
 
   function chooseAgent(targetId: HandoffTarget) {
     userPickedRef.current = true;
+    setCliMode(false);
     setSelectedAgentId(targetId);
     writePreferredAgent(targetId);
+  }
+
+  function chooseCli() {
+    userPickedRef.current = true;
+    setCliMode(true);
+  }
+
+  function launchCli() {
+    if (terminalLaunch === null) return;
+    const input = buildCreateHandoffInput({ workspace, description: description.trim(), scenario });
+    if (input === null) return; // Workspace not resolved yet — disabled-trigger contract.
+    terminalLaunch.launchInTerminal(input);
   }
 
   function handleCreate(targetId: HandoffTarget) {
@@ -82,7 +102,11 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
       event.preventDefault();
-      if (selectedAgentId !== null) handleCreate(selectedAgentId);
+      if (cliSelected) {
+        launchCli();
+      } else if (selectedAgentId !== null) {
+        handleCreate(selectedAgentId);
+      }
     }
   }
 
@@ -126,6 +150,9 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
       </div>
     );
   }
+
+  const showDesktopSection = selectableTargets.length > 0;
+  const showTerminalSection = terminalLaunch !== null;
 
   return (
     <div
@@ -184,13 +211,22 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
           <ButtonGroup>
             <Button
               type="button"
-              onClick={() => handleCreate(selectedAgentId)}
+              onClick={() => (cliSelected ? launchCli() : handleCreate(selectedAgentId))}
               variant="outline"
               className="gap-1.5"
               data-testid="create-with-agent"
             >
-              <TargetIcon id={selectedAgentId} aria-hidden="true" className="size-3.5" />
-              <Trans>Create with {getDisplayNameDefault(selectedAgentId)}</Trans>
+              {cliSelected ? (
+                <>
+                  <SquareTerminal aria-hidden="true" className="size-3.5" />
+                  <Trans>Create with Claude CLI</Trans>
+                </>
+              ) : (
+                <>
+                  <TargetIcon id={selectedAgentId} aria-hidden="true" className="size-3.5" />
+                  <Trans>Create with {getDisplayNameDefault(selectedAgentId)}</Trans>
+                </>
+              )}
             </Button>
             <DropdownMenu
               onOpenChange={(open) => {
@@ -209,19 +245,54 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[200px]">
-                {selectableTargets.map((target) => (
-                  <DropdownMenuItem
-                    key={target.id}
-                    onSelect={() => chooseAgent(target.id)}
-                    data-testid={`create-agent-option-${target.id}`}
-                  >
-                    <TargetIcon id={target.id} aria-hidden="true" className="size-4" />
-                    <span className="flex-1">{target.displayName}</span>
-                    {target.id === selectedAgentId ? (
-                      <Check aria-hidden="true" className="size-4 text-muted-foreground" />
-                    ) : null}
-                  </DropdownMenuItem>
-                ))}
+                {showDesktopSection ? (
+                  <DropdownMenuGroup aria-label={t`Desktop`}>
+                    <DropdownMenuLabel>
+                      <Trans>Desktop</Trans>
+                    </DropdownMenuLabel>
+                    {selectableTargets.map((target) => (
+                      <DropdownMenuItem
+                        key={target.id}
+                        onSelect={() => chooseAgent(target.id)}
+                        data-testid={`create-agent-option-${target.id}`}
+                      >
+                        <TargetIcon id={target.id} aria-hidden="true" className="size-4" />
+                        <span className="flex-1">{target.displayName}</span>
+                        {!cliSelected && target.id === selectedAgentId ? (
+                          <Check aria-hidden="true" className="size-4 text-muted-foreground" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                ) : null}
+                {showTerminalSection ? (
+                  <>
+                    {showDesktopSection ? <DropdownMenuSeparator /> : null}
+                    <DropdownMenuGroup aria-label={t`Terminal`}>
+                      <DropdownMenuLabel>
+                        <Trans>Terminal</Trans>
+                      </DropdownMenuLabel>
+                      {/* Selects the docked-terminal Claude CLI as the create target
+                          (the Create button performs the launch). Visible text is
+                          "Claude" while the accessible name stays "Claude CLI" so AT
+                          users can tell it apart from the Desktop "Claude" (WCAG
+                          2.5.3 — the name contains the visible label). */}
+                      <DropdownMenuItem
+                        onSelect={() => chooseCli()}
+                        data-testid="create-with-claude-cli"
+                        aria-label={t`Claude CLI`}
+                      >
+                        <SquareTerminal className="size-4" aria-hidden="true" />
+                        <span className="flex-1">
+                          <Trans>Claude</Trans>
+                        </span>
+                        {cliSelected ? (
+                          <Check aria-hidden="true" className="size-4 text-muted-foreground" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </ButtonGroup>
