@@ -6,6 +6,8 @@ export type OracleEOp =
   | { kind: 'agent-undo' }
   | { kind: 'external-change'; marker: string }
   | { kind: 'chunked-source-paste'; marker: string }
+  | { kind: 'jsx-block'; marker: string }
+  | { kind: 'large-embed'; marker: string }
   | { kind: 'sync-pause' }
   | { kind: 'sync-resume' }
   | { kind: 'wait' };

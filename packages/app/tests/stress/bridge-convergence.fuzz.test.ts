@@ -115,6 +115,8 @@ type Op =
       text: string;
       marker: string;
     }
+  | { kind: 'jsx-block'; text: string; marker: string }
+  | { kind: 'large-embed'; text: string; marker: string }
   | { kind: 'sync-pause'; clientIdx: number }
   | { kind: 'sync-resume'; clientIdx: number }
   | { kind: 'wait'; ms: number };
@@ -165,7 +167,15 @@ function generateOps(rng: Rng, clientCount: number, opCount: number): Op[] {
       const text = `${marker}\n\n${filler}\n`;
       ops.push({ kind: 'chunked-source-paste', clientIdx, text, marker });
       ops.push({ kind: 'wait', ms: 500 });
+    } else if (roll < 0.8) {
+      const marker = `M${markerIdx++}-jsx-${randomShortText(rng)}`;
+      const text = `<Steps>\n\n<Step>\n\n${marker} step body.\n\n</Step>\n\n</Steps>`;
+      ops.push({ kind: 'jsx-block', text, marker });
     } else if (roll < 0.83) {
+      const marker = `M${markerIdx++}-embed-${randomShortText(rng)}`;
+      const text = `\`\`\`html h=300px preview\n<script>\nconst EMBED_DATA = {"m": "${marker}"};\n</script>\n\`\`\``;
+      ops.push({ kind: 'large-embed', text, marker });
+    } else if (roll < 0.89) {
       if (paused.size < clientCount - 1) {
         const target = clientIdx % clientCount;
         if (!paused.has(target)) {
@@ -177,7 +187,7 @@ function generateOps(rng: Rng, clientCount: number, opCount: number): Op[] {
       } else {
         ops.push({ kind: 'wait', ms: rng.nextInt(40) + 20 });
       }
-    } else if (roll < 0.95) {
+    } else if (roll < 0.97) {
       if (paused.size > 0) {
         const target = rng.pick([...paused]);
         paused.delete(target);
@@ -242,6 +252,16 @@ async function applyOp(
         await agentWriteMd(server.port, `${op.text}\n`, { docName, position: op.position });
       } catch {
         return false;
+      }
+      break;
+    }
+    case 'jsx-block':
+    case 'large-embed': {
+      try {
+        await agentWriteMd(server.port, `\n\n${op.text}\n`, { docName, position: 'append' });
+      } catch (err) {
+        if ((err as { status?: number })?.status === 409) return false;
+        throw err;
       }
       break;
     }
@@ -383,6 +403,8 @@ const ALL_OP_KINDS = [
   'agent-undo',
   'external-change',
   'chunked-source-paste',
+  'jsx-block',
+  'large-embed',
   'sync-pause',
   'sync-resume',
   'wait',
@@ -397,6 +419,8 @@ const WRITE_SURFACE_TO_OP_KIND: Record<string, readonly string[]> = {
   'observer-b-sync': ['source-type'],
   'file-watcher': ['external-change'],
   'chunked-source-paste': ['chunked-source-paste'],
+  'indented-jsx-construct': ['jsx-block'],
+  'large-embed-construct': ['large-embed'],
   rollback: ['agent-write', 'agent-patch'],
 };
 
@@ -520,6 +544,7 @@ describe('bridge-convergence fuzzer (FR-17)', () => {
       const livePrefixes = new Set<string>();
 
       let expectedBody = 'seed paragraph'; // post-seed, pre-op initial state
+      let authoredBytes = Buffer.byteLength('seed paragraph');
       const updateExpectedBody = (op: Op): void => {
         switch (op.kind) {
           case 'wysiwyg-type':
@@ -588,6 +613,9 @@ describe('bridge-convergence fuzzer (FR-17)', () => {
           }
 
           updateExpectedBody(op);
+
+          if ('text' in op) authoredBytes += Buffer.byteLength(op.text);
+          else if (op.kind === 'external-change') authoredBytes += Buffer.byteLength(op.newContent);
         }
 
         for (const c of clients) {
@@ -610,6 +638,14 @@ describe('bridge-convergence fuzzer (FR-17)', () => {
 
         for (const c of clients) {
           assertBridgeInvariant(c.ytext, c.fragment);
+          const bytes = Buffer.byteLength(c.ytext.toString());
+          const budget = authoredBytes * 3 + 4096;
+          if (bytes > budget) {
+            throw new Error(
+              `O1 byte-budget violated: converged ${bytes}B > budget ${budget}B ` +
+                `(cumulative authored ${authoredBytes}B x3 + 4096 slack) — the unbounded-growth amplifier signature.`,
+            );
+          }
         }
 
         for (const probe of agentProbes) {

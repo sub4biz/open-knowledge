@@ -506,7 +506,11 @@ export async function agentWriteMd(
       colorSeed: opts?.colorSeed,
     }),
   });
-  if (!res.ok) throw new Error(`agent-write-md failed: ${res.status}`);
+  if (!res.ok) {
+    const err: Error & { status?: number } = new Error(`agent-write-md failed: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
 }
 
 /** POST to agent-patch endpoint (find-and-replace).
