@@ -146,6 +146,7 @@ describe('TerminalPanel', () => {
     expect(lastTerm?.options.screenReaderMode).toBe(true);
     expect(lastTerm?.options.minimumContrastRatio).toBe(4.5);
     expect(lastTerm?.unicode.activeVersion).toBe('11');
+    expect(lastTerm?.options.scrollback).toBe(10000);
 
     await waitFor(() => expect(terminal.create).toHaveBeenCalledTimes(1));
     expect(terminal.create).toHaveBeenCalledWith({ cols: 80, rows: 24 });
@@ -441,23 +442,6 @@ describe('TerminalPanel', () => {
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 
-  test('renders a kill control with an accessible name that invokes onKill when clicked', async () => {
-    const onKill = mock(() => {});
-    const { bridge } = makeBridge({ ok: true, ptyId: 'pty-1' });
-    render(<TerminalPanel bridge={bridge} onKill={onKill} />);
-
-    const kill = await screen.findByRole('button', { name: 'Kill Terminal' });
-    fireEvent.click(kill);
-    expect(onKill).toHaveBeenCalledTimes(1);
-  });
-
-  test('omits the kill control when no onKill is provided', async () => {
-    const { bridge } = makeBridge({ ok: true, ptyId: 'pty-1' });
-    render(<TerminalPanel bridge={bridge} />);
-    await waitFor(() => expect(lastTerm).not.toBeNull());
-    expect(screen.queryByRole('button', { name: 'Kill Terminal' })).toBeNull();
-  });
-
   test('constructs xterm with the palette for the resolved app theme', async () => {
     mockResolvedTheme = 'light';
     const { bridge } = makeBridge({ ok: true, ptyId: 'pty-1' });
@@ -491,5 +475,53 @@ describe('TerminalPanel', () => {
     expect(term?.dispose).not.toHaveBeenCalled();
     expect(terminal.create).toHaveBeenCalledTimes(1);
     expect(terminal.kill).not.toHaveBeenCalled();
+  });
+
+  test('restarting one session spawns a fresh PTY for it without disturbing a sibling', async () => {
+    const exitSubs: Array<(m: OkPtyExit) => void> = [];
+    let created = 0;
+    const create = mock(async () => {
+      created += 1;
+      return { ok: true as const, ptyId: `pty-${created}` };
+    });
+    const kill = mock(async (_id: string) => {});
+    const terminal = {
+      create,
+      input: mock(() => {}),
+      resize: mock(() => {}),
+      kill,
+      drain: mock(() => {}),
+      onData: mock(() => mock(() => {})),
+      onExit: mock((cb: (m: OkPtyExit) => void) => {
+        exitSubs.push(cb);
+        return mock(() => {});
+      }),
+      claudePreflight: mock(async () => WIRED),
+      rewireClaudeMcp: mock(async () => WIRED),
+    };
+    const bridge = {
+      terminal,
+      shell: { openExternal: mock(async () => {}) },
+    } as unknown as OkDesktopBridge;
+    const pushExit = (m: OkPtyExit) => {
+      for (const f of exitSubs) f(m);
+    };
+
+    render(
+      <>
+        <TerminalPanel bridge={bridge} />
+        <TerminalPanel bridge={bridge} />
+      </>,
+    );
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+
+    act(() => pushExit({ ptyId: 'pty-1', exitCode: 1, signal: null }));
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restart terminal' }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
+
+    expect(kill).not.toHaveBeenCalledWith('pty-2');
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   });
 });

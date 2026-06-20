@@ -60,6 +60,8 @@ function assert(condition: boolean, message: string): void {
 class InProcessBridge implements PtyUtilityLike {
   pauseCount = 0;
   resumeCount = 0;
+  private readonly pausesByPty = new Map<string, number>();
+  private readonly resumesByPty = new Map<string, number>();
   private hostHandler: ((event: { data: unknown }) => void) | null = null;
   private readonly msgSubs: Array<(message: unknown) => void> = [];
   private readonly exitSubs: Array<(code: number | null) => void> = [];
@@ -81,9 +83,22 @@ class InProcessBridge implements PtyUtilityLike {
   }
 
   postMessage(message: PtyHostIncomingMessage): void {
-    if (message.type === 'pause') this.pauseCount += 1;
-    else if (message.type === 'resume') this.resumeCount += 1;
+    if (message.type === 'pause') {
+      this.pauseCount += 1;
+      this.pausesByPty.set(message.ptyId, (this.pausesByPty.get(message.ptyId) ?? 0) + 1);
+    } else if (message.type === 'resume') {
+      this.resumeCount += 1;
+      this.resumesByPty.set(message.ptyId, (this.resumesByPty.get(message.ptyId) ?? 0) + 1);
+    }
     this.hostHandler?.({ data: message });
+  }
+
+  pauseCountFor(ptyId: string): number {
+    return this.pausesByPty.get(ptyId) ?? 0;
+  }
+
+  resumeCountFor(ptyId: string): number {
+    return this.resumesByPty.get(ptyId) ?? 0;
   }
 
   on(event: 'message', cb: (message: unknown) => void): void;
@@ -268,6 +283,349 @@ const MAX_HEARTBEAT_GAP_MS = (() => {
   return Number.isFinite(override) && override > 0 ? override : 500;
 })();
 
+const UNIT_A = '日本語🎉αβγ';
+const UNIT_B = '한국어🚀ΔΣΩ';
+const UNIT_ACTIVE = '中文🌟λμν';
+const SENTINEL_A = '__OKFLOOD_A_42__';
+const SENTINEL_A_CMD = '__OKFLOOD_A_$((6*7))__';
+const SENTINEL_B = '__OKFLOOD_B_42__';
+const SENTINEL_B_CMD = '__OKFLOOD_B_$((6*7))__';
+const SENTINEL_ACTIVE = '__OKFLOOD_ACTIVE_42__';
+const SENTINEL_ACTIVE_CMD = '__OKFLOOD_ACTIVE_$((6*7))__';
+const HIDDEN_MARKER = 'HIDDEN_FLOOD_LINE';
+
+interface SessionRuntime {
+  readonly ptyId: string;
+  readonly sentinel: string;
+  readonly accumulate: boolean;
+  readonly drainMode: 'immediate' | 'metered';
+  readonly meterUnitsPerTick: number;
+  drainEnabled: boolean;
+  readonly chunks: string[];
+  totalPushed: number;
+  totalAcked: number;
+  pushCount: number;
+  tail: string;
+  sawFirstByte: boolean;
+  sawSentinel: boolean;
+}
+
+interface AddSessionSpec {
+  sentinel: string;
+  drainMode: 'immediate' | 'metered';
+  /** Keep the full received stream (default true). Hidden floods set false so an
+   *  unbounded `yes` stream doesn't accumulate gigabytes of chunks. */
+  accumulate?: boolean;
+  meterUnitsPerTick?: number;
+}
+
+interface MultiSessionRig {
+  readonly bridge: InProcessBridge;
+  readonly tmp: string;
+  addSession(spec: AddSessionSpec): SessionRuntime;
+  input(session: SessionRuntime, data: string): void;
+  inFlight(session: SessionRuntime): number;
+  received(session: SessionRuntime): string;
+  cleanup(): void;
+}
+
+const activeRigCleanups = new Set<() => void>();
+
+function reapActiveRigs(): void {
+  for (const cleanup of activeRigCleanups) {
+    try {
+      cleanup();
+    } catch {}
+  }
+}
+
+function writeFloodFile(tmp: string, name: string, unit: string, units: number): string {
+  const file = join(tmp, name);
+  writeFileSync(file, unit.repeat(units), 'utf8');
+  return file;
+}
+
+function createMultiSessionRig(opts: {
+  highWaterBytes: number;
+  lowWaterBytes: number;
+  meterTickMs?: number;
+}): MultiSessionRig {
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'ok-pty-multi-')));
+  const bridge = new InProcessBridge(spawn, { ...process.env });
+  const sessions = new Map<string, SessionRuntime>();
+  const webContents: SendableWebContents = { send: () => {}, isDestroyed: () => false };
+  let idCounter = 0;
+
+  let manager!: TerminalManager;
+  const ackBytes = (session: SessionRuntime, n: number): void => {
+    session.totalAcked += n;
+    manager.drain({ windowId: 1, ptyId: session.ptyId, bytes: n });
+  };
+
+  manager = createTerminalManager({
+    forkPtyHost: () => bridge,
+    sendData: (_wc, payload) => {
+      const session = sessions.get(payload.ptyId);
+      if (!session) return;
+      session.totalPushed += payload.data.length;
+      session.pushCount += 1;
+      session.sawFirstByte = true;
+      if (session.accumulate) {
+        session.chunks.push(payload.data);
+        session.tail = (session.tail + payload.data).slice(-256);
+        if (
+          !session.sawSentinel &&
+          session.sentinel.length > 0 &&
+          session.tail.includes(session.sentinel)
+        ) {
+          session.sawSentinel = true;
+        }
+      }
+      if (session.drainEnabled && session.drainMode === 'immediate') {
+        const n = payload.data.length;
+        queueMicrotask(() => ackBytes(session, n));
+      }
+    },
+    sendExit: () => {},
+    newPtyId: () => `mpty-${idCounter++}`,
+    setTimer: (cb, ms) => setTimeout(cb, ms),
+    clearTimer: (t) => clearTimeout(t as ReturnType<typeof setTimeout>),
+    coalesceMs: COALESCE_MS,
+    highWaterBytes: opts.highWaterBytes,
+    lowWaterBytes: opts.lowWaterBytes,
+  });
+
+  const meterMs = opts.meterTickMs ?? 20;
+  const pump = setInterval(() => {
+    for (const session of sessions.values()) {
+      if (session.drainMode !== 'metered' || !session.drainEnabled) continue;
+      const available = session.totalPushed - session.totalAcked;
+      if (available <= 0) continue;
+      ackBytes(session, Math.min(session.meterUnitsPerTick, available));
+    }
+  }, meterMs);
+
+  let cleaned = false;
+  const cleanup = (): void => {
+    if (cleaned) return;
+    cleaned = true;
+    clearInterval(pump);
+    for (const session of sessions.values()) {
+      try {
+        manager.kill({ windowId: 1, ptyId: session.ptyId });
+      } catch {}
+    }
+    bridge.reap();
+    activeRigCleanups.delete(cleanup);
+    try {
+      rmSync(tmp, { recursive: true, force: true });
+    } catch {}
+  };
+  activeRigCleanups.add(cleanup);
+
+  return {
+    bridge,
+    tmp,
+    addSession(spec): SessionRuntime {
+      const result = manager.create({
+        windowId: 1,
+        webContents,
+        projectRoot: tmp,
+        cols: 80,
+        rows: 24,
+      });
+      if (!result.ok) throw new Error(`create rejected: ${result.reason}`);
+      const session: SessionRuntime = {
+        ptyId: result.ptyId,
+        sentinel: spec.sentinel,
+        accumulate: spec.accumulate ?? true,
+        drainMode: spec.drainMode,
+        meterUnitsPerTick: spec.meterUnitsPerTick ?? 131072,
+        drainEnabled: spec.drainMode === 'immediate',
+        chunks: [],
+        totalPushed: 0,
+        totalAcked: 0,
+        pushCount: 0,
+        tail: '',
+        sawFirstByte: false,
+        sawSentinel: false,
+      };
+      sessions.set(session.ptyId, session);
+      return session;
+    },
+    input(session, data): void {
+      manager.input({ windowId: 1, ptyId: session.ptyId, data });
+    },
+    inFlight(session): number {
+      return session.totalPushed - session.totalAcked;
+    },
+    received(session): string {
+      return session.chunks.join('');
+    },
+    cleanup,
+  };
+}
+
+async function runTwoSessionIsolation(): Promise<void> {
+  const UNITS_A = 200_000;
+  const UNITS_B = 20_000;
+  const highWater = 256 * 1024;
+  const rig = createMultiSessionRig({ highWaterBytes: highWater, lowWaterBytes: 64 * 1024 });
+  try {
+    const fileA = writeFloodFile(rig.tmp, 'flood-a.txt', UNIT_A, UNITS_A);
+    const fileB = writeFloodFile(rig.tmp, 'flood-b.txt', UNIT_B, UNITS_B);
+    const a = rig.addSession({ sentinel: SENTINEL_A, drainMode: 'metered' });
+    const b = rig.addSession({ sentinel: SENTINEL_B, drainMode: 'immediate' });
+
+    await waitFor(() => a.sawFirstByte && b.sawFirstByte, 'both shell prompts', 15000);
+
+    rig.input(a, `cat '${fileA}'; echo ${SENTINEL_A_CMD}\r`);
+    await waitFor(() => rig.bridge.pauseCountFor(a.ptyId) > 0, "A's backpressure to engage", 20000);
+
+    rig.input(b, `cat '${fileB}'; echo ${SENTINEL_B_CMD}\r`);
+    await waitFor(() => b.sawSentinel, 'B to complete while A is held paused', 60000);
+
+    assert(
+      rig.bridge.resumeCountFor(a.ptyId) === 0,
+      'A resumed before being drained — its backpressure did not actually hold',
+    );
+    const bPauses = rig.bridge.pauseCountFor(b.ptyId);
+    assert(
+      bPauses === 0,
+      `pause state leaked across sessions: B paused ${bPauses}x under A's flood`,
+    );
+
+    const bRecv = rig.received(b);
+    const bUnits = countOccurrences(bRecv, UNIT_B);
+    assert(bUnits === UNITS_B, `B byte corruption: ${bUnits} units delivered, expected ${UNITS_B}`);
+    assert(!bRecv.includes('�'), 'U+FFFD in session B (split multibyte sequence)');
+    assert(
+      countOccurrences(bRecv, UNIT_A) === 0,
+      "cross-session interleave: A's content reached B",
+    );
+
+    a.drainEnabled = true;
+    await waitFor(() => a.sawSentinel, 'A to complete after draining', 60000);
+    const aRecv = rig.received(a);
+    const aUnits = countOccurrences(aRecv, UNIT_A);
+    assert(aUnits === UNITS_A, `A byte corruption: ${aUnits} units delivered, expected ${UNITS_A}`);
+    assert(!aRecv.includes('�'), 'U+FFFD in session A (split multibyte sequence)');
+    assert(
+      countOccurrences(aRecv, UNIT_B) === 0,
+      "cross-session interleave: B's content reached A",
+    );
+    assert(rig.bridge.resumeCountFor(a.ptyId) >= 1, 'A never resumed after draining');
+    console.log(
+      `  A: units=${UNITS_A} pauses=${rig.bridge.pauseCountFor(a.ptyId)} resumes=${rig.bridge.resumeCountFor(a.ptyId)} | B: units=${UNITS_B} pauses=${bPauses} (done while A paused)`,
+    );
+  } finally {
+    rig.cleanup();
+  }
+}
+
+async function runNWayAggregate(): Promise<void> {
+  const HIDDEN_COUNT = 3;
+  const ACTIVE_UNITS = 20_000; // < high-water: the active tab must never self-pause
+  const highWater = 256 * 1024;
+  const rig = createMultiSessionRig({ highWaterBytes: highWater, lowWaterBytes: 64 * 1024 });
+
+  let lastBeat = 0;
+  let maxGap = 0;
+  let beats = 0;
+  let measuring = false;
+  const heartbeat = setInterval(() => {
+    const now = Date.now();
+    if (measuring && lastBeat > 0) {
+      const gap = now - lastBeat;
+      if (gap > maxGap) maxGap = gap;
+      beats += 1;
+    }
+    lastBeat = now;
+  }, 10);
+
+  try {
+    const activeFile = writeFloodFile(rig.tmp, 'active.txt', UNIT_ACTIVE, ACTIVE_UNITS);
+    const active = rig.addSession({ sentinel: SENTINEL_ACTIVE, drainMode: 'immediate' });
+    const hidden: SessionRuntime[] = [];
+    for (let i = 0; i < HIDDEN_COUNT; i += 1) {
+      hidden.push(rig.addSession({ sentinel: '', drainMode: 'immediate', accumulate: false }));
+    }
+
+    await waitFor(
+      () => active.sawFirstByte && hidden.every((h) => h.sawFirstByte),
+      'all shell prompts',
+      15000,
+    );
+
+    for (const h of hidden) rig.input(h, `yes '${HIDDEN_MARKER}'\r`);
+    await sleep(250); // let the hidden floods ramp to steady state
+
+    lastBeat = Date.now();
+    measuring = true;
+    rig.input(active, `cat '${activeFile}'; echo ${SENTINEL_ACTIVE_CMD}\r`);
+    await waitFor(() => active.sawSentinel, 'active flood completion under aggregate load', 30000);
+    await sleep(1000); // keep sampling the sustained aggregate after the round-trip
+    measuring = false;
+    const maxGapUnderLoad = maxGap;
+
+    const activeRecv = rig.received(active);
+    const activeUnits = countOccurrences(activeRecv, UNIT_ACTIVE);
+    assert(
+      activeUnits === ACTIVE_UNITS,
+      `active byte corruption: ${activeUnits} units delivered, expected ${ACTIVE_UNITS}`,
+    );
+    assert(!activeRecv.includes('�'), 'U+FFFD in the active stream under aggregate load');
+    assert(
+      !activeRecv.includes(HIDDEN_MARKER),
+      'cross-session interleave: a hidden flood reached the active stream',
+    );
+    assert(beats > 0, 'event loop frozen under aggregate hidden floods');
+    assert(
+      rig.bridge.pauseCountFor(active.ptyId) === 0,
+      'the active tab self-paused — pause state may be shared, or its flood exceeded high-water',
+    );
+    assert(
+      maxGapUnderLoad < MAX_HEARTBEAT_GAP_MS,
+      `active starved: max heartbeat gap ${maxGapUnderLoad}ms >= ${MAX_HEARTBEAT_GAP_MS}ms under ${HIDDEN_COUNT} hidden floods`,
+    );
+
+    for (const h of hidden) h.drainEnabled = false;
+    await waitFor(
+      () => hidden.every((h) => rig.bridge.pauseCountFor(h.ptyId) > 0),
+      'every hidden flood to pause under the fallback',
+      20000,
+    );
+    await sleep(300); // let in-flight coalesce buffers drain after the pause
+    const pushedAfterPause = new Map(hidden.map((h) => [h.ptyId, h.totalPushed]));
+    await sleep(400);
+    let idx = 0;
+    for (const h of hidden) {
+      const delta = h.totalPushed - (pushedAfterPause.get(h.ptyId) ?? 0);
+      assert(
+        delta < highWater,
+        `fallback did not stop hidden session ${idx}: +${delta} code units after pausing`,
+      );
+      const inFlight = rig.inFlight(h);
+      assert(
+        inFlight < 4 * 1024 * 1024,
+        `hidden session ${idx} in-flight unbounded after pause: ${inFlight} code units`,
+      );
+      idx += 1;
+    }
+    assert(
+      rig.bridge.pauseCountFor(active.ptyId) === 0,
+      'the active tab paused when only hidden tabs were throttled',
+    );
+    const aggregateInFlight = hidden.reduce((sum, h) => sum + rig.inFlight(h), 0);
+    console.log(
+      `  hidden=${HIDDEN_COUNT} active=${ACTIVE_UNITS} maxGapUnderLoad=${maxGapUnderLoad}ms beats=${beats} aggregateInFlight=${aggregateInFlight}`,
+    );
+  } finally {
+    clearInterval(heartbeat);
+    rig.cleanup();
+  }
+}
+
 async function main(): Promise<void> {
   ensureSpawnHelperExecutable();
 
@@ -327,18 +685,28 @@ async function main(): Promise<void> {
     );
   });
 
+  await scenario('two concurrent sessions isolate backpressure and bytes', runTwoSessionIsolation);
+  await scenario(
+    'hidden floods stay bounded and keep the active session responsive',
+    runNWayAggregate,
+  );
+
   const failed = results.filter((r) => !r.ok).length;
   console.log(`HARNESS_RESULT ok=${results.length - failed} fail=${failed}`);
   process.exit(failed === 0 ? 0 : 1);
 }
 
 const hardTimeout = setTimeout(() => {
+  reapActiveRigs();
   console.log('HARNESS_RESULT ok=0 fail=1 :: hard timeout');
   process.exit(1);
 }, 120000);
 hardTimeout.unref();
 
+process.on('exit', reapActiveRigs);
+
 void main().catch((err) => {
+  reapActiveRigs();
   console.log(`HARNESS_RESULT ok=0 fail=1 :: ${(err as Error).message}`);
   process.exit(1);
 });

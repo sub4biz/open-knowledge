@@ -200,6 +200,20 @@ describe('setupPtyHost — streaming', () => {
     expect(pty.killCount).toBe(1);
   });
 
+  test('logs a reap-failed warning when kill throws a non-ESRCH error', () => {
+    const pty = makeFakePty();
+    pty.kill = () => {
+      throw Object.assign(new Error('kill EPERM'), { code: 'EPERM' });
+    };
+    const warnings: Record<string, unknown>[] = [];
+    const h = makeHarness({ pty, logger: { warn: (o) => warnings.push(o) } });
+    h.fire(CREATE());
+    expect(() => h.fire({ type: 'kill', ptyId: 'p1' })).not.toThrow();
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ event: 'pty-host-reap-failed', code: 'EPERM' }),
+    );
+  });
+
   test('routes pause/resume backpressure to the active pty', () => {
     const pty = makeFakePty();
     const h = makeHarness({ pty });
@@ -246,6 +260,17 @@ describe('setupPtyHost — containment (AC5: host survives a PTY failure)', () =
     };
     const h = makeHarness({ spawn });
     expect(() => h.fire(CREATE())).not.toThrow();
+    expect(h.posted).toEqual([
+      { type: 'spawn-error', ptyId: 'p1', message: 'EMFILE: too many open files' },
+    ]);
+  });
+
+  test('a non-Error spawn throw still surfaces a string spawn-error message', () => {
+    const spawn: SpawnPty = () => {
+      throw 'EMFILE: too many open files';
+    };
+    const h = makeHarness({ spawn });
+    h.fire(CREATE());
     expect(h.posted).toEqual([
       { type: 'spawn-error', ptyId: 'p1', message: 'EMFILE: too many open files' },
     ]);
@@ -303,7 +328,7 @@ describe('setupPtyHost — addressing', () => {
     expect(pty.killCount).toBe(1);
   });
 
-  test('a second create kills the prior live pty before spawning (supersede/reap)', () => {
+  test('a create reusing a live ptyId reaps the stale shell before replacing it (no orphan)', () => {
     const first = makeFakePty();
     const second = makeFakePty();
     const ptys = [first, second];
@@ -311,17 +336,125 @@ describe('setupPtyHost — addressing', () => {
     const spawn: SpawnPty = () => ptys[n++] ?? makeFakePty();
     const h = makeHarness({ spawn });
 
-    h.fire(CREATE({ ptyId: 'first' }));
+    h.fire(CREATE({ ptyId: 'dup' }));
     expect(first.killCount).toBe(0);
-
-    h.fire(CREATE({ ptyId: 'second' }));
+    h.fire(CREATE({ ptyId: 'dup' }));
     expect(first.killCount).toBe(1);
 
     second.emitData('alive');
-    expect(h.posted).toContainEqual({ type: 'data', ptyId: 'second', data: 'alive' });
+    expect(h.posted).toContainEqual({ type: 'data', ptyId: 'dup', data: 'alive' });
     const before = h.posted.length;
     first.emitData('orphan');
     expect(h.posted.length).toBe(before);
+  });
+});
+
+describe('setupPtyHost — concurrent sessions', () => {
+  function makeMultiHarness(ptys: FakePty[]): Harness {
+    let n = 0;
+    const spawn: SpawnPty = () => ptys[n++] ?? makeFakePty();
+    return makeHarness({ spawn });
+  }
+
+  test('a second create with a new id adds a session and leaves the first running', () => {
+    const a = makeFakePty();
+    const b = makeFakePty();
+    const h = makeMultiHarness([a, b]);
+    h.fire(CREATE({ ptyId: 'a' }));
+    h.fire(CREATE({ ptyId: 'b' }));
+    expect(a.killCount).toBe(0);
+    expect(b.killCount).toBe(0);
+    a.emitData('a-still-here');
+    expect(h.posted).toContainEqual({ type: 'data', ptyId: 'a', data: 'a-still-here' });
+  });
+
+  test('both sessions stream concurrently, each tagged with its own ptyId', () => {
+    const a = makeFakePty();
+    const b = makeFakePty();
+    const h = makeMultiHarness([a, b]);
+    h.fire(CREATE({ ptyId: 'a' }));
+    h.fire(CREATE({ ptyId: 'b' }));
+    a.emitData('from-a');
+    b.emitData('from-b');
+    expect(h.posted).toContainEqual({ type: 'data', ptyId: 'a', data: 'from-a' });
+    expect(h.posted).toContainEqual({ type: 'data', ptyId: 'b', data: 'from-b' });
+  });
+
+  test('input/resize/kill/pause/resume each act only on the addressed session', () => {
+    const a = makeFakePty();
+    const b = makeFakePty();
+    const h = makeMultiHarness([a, b]);
+    h.fire(CREATE({ ptyId: 'a' }));
+    h.fire(CREATE({ ptyId: 'b' }));
+
+    h.fire({ type: 'input', ptyId: 'a', data: 'ls\r' });
+    h.fire({ type: 'resize', ptyId: 'b', cols: 100, rows: 30 });
+    h.fire({ type: 'pause', ptyId: 'a' });
+    h.fire({ type: 'resume', ptyId: 'b' });
+    h.fire({ type: 'kill', ptyId: 'a' });
+
+    expect(a.writes).toEqual(['ls\r']);
+    expect(b.writes).toEqual([]);
+    expect(b.resizes).toEqual([[100, 30]]);
+    expect(a.resizes).toEqual([]);
+    expect(a.pauseCount).toBe(1);
+    expect(b.pauseCount).toBe(0);
+    expect(b.resumeCount).toBe(1);
+    expect(a.resumeCount).toBe(0);
+    expect(a.killCount).toBe(1);
+    expect(b.killCount).toBe(0);
+  });
+
+  test('one session exiting removes only its entry and leaves the other running', () => {
+    const a = makeFakePty();
+    const b = makeFakePty();
+    const h = makeMultiHarness([a, b]);
+    h.fire(CREATE({ ptyId: 'a' }));
+    h.fire(CREATE({ ptyId: 'b' }));
+
+    a.emitExit({ exitCode: 0 });
+    expect(h.posted).toContainEqual({ type: 'exit', ptyId: 'a', exitCode: 0, signal: null });
+
+    const before = h.posted.length;
+    a.emitData('straggler');
+    expect(h.posted.length).toBe(before);
+    b.emitData('still-alive');
+    expect(h.posted).toContainEqual({ type: 'data', ptyId: 'b', data: 'still-alive' });
+
+    h.fire({ type: 'input', ptyId: 'b', data: 'x' });
+    expect(b.writes).toEqual(['x']);
+  });
+
+  test('killActive reaps every session in the map (window/quit reap)', () => {
+    const a = makeFakePty();
+    const b = makeFakePty();
+    const c = makeFakePty();
+    const h = makeMultiHarness([a, b, c]);
+    h.fire(CREATE({ ptyId: 'a' }));
+    h.fire(CREATE({ ptyId: 'b' }));
+    h.fire(CREATE({ ptyId: 'c' }));
+
+    h.handle.killActive();
+    expect(a.killCount).toBe(1);
+    expect(b.killCount).toBe(1);
+    expect(c.killCount).toBe(1);
+
+    h.handle.killActive();
+    expect(a.killCount).toBe(1);
+    expect(b.killCount).toBe(1);
+    expect(c.killCount).toBe(1);
+  });
+
+  test('killActive keeps reaping after one session throws ESRCH (already exited)', () => {
+    const a = makeFakePty();
+    a.killThrows = true;
+    const b = makeFakePty();
+    const h = makeMultiHarness([a, b]);
+    h.fire(CREATE({ ptyId: 'a' }));
+    h.fire(CREATE({ ptyId: 'b' }));
+    expect(() => h.handle.killActive()).not.toThrow();
+    expect(a.killCount).toBe(1);
+    expect(b.killCount).toBe(1);
   });
 });
 

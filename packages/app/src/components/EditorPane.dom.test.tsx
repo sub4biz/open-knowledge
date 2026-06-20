@@ -240,6 +240,24 @@ describe('EditorPane terminal dock wiring', () => {
     expect(dock().getAttribute('data-launch-nonce')).toBe('none');
   });
 
+  test('desktop: a distinct Open-in-terminal after a hide gets a fresh, monotonic nonce', async () => {
+    const desk = makeOkDesktopStub();
+    (window as { okDesktop?: unknown }).okDesktop = desk.stub;
+    const { requestTerminalLaunch } = await import('./handoff/terminal-launch-events');
+    await renderEditorPane();
+
+    const dock = () => screen.getByTestId('terminal-dock');
+
+    act(() => requestTerminalLaunch('first'));
+    expect(dock().getAttribute('data-launch-nonce')).toBe('1');
+
+    act(() => desk.dispatchMenuAction('toggle-terminal'));
+    expect(dock().getAttribute('data-launch-nonce')).toBe('none');
+
+    act(() => requestTerminalLaunch('second'));
+    expect(dock().getAttribute('data-launch-nonce')).toBe('2');
+  });
+
   test('desktop: new-terminal menu action opens the dock and stays open on repeat (not a toggle)', async () => {
     const desk = makeOkDesktopStub();
     (window as { okDesktop?: unknown }).okDesktop = desk.stub;

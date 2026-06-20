@@ -1072,6 +1072,11 @@ msgstr "Cloning..."
 msgid "Close"
 msgstr "Close"
 
+#. placeholder {0}: session.label
+#: src/components/TerminalTabStrip.tsx
+msgid "Close {0}"
+msgstr "Close {0}"
+
 #: src/components/EditorTabs.tsx
 msgid "Close {accessibleLabel}"
 msgstr "Close {accessibleLabel}"
@@ -3062,10 +3067,6 @@ msgstr "Key ending in {keyHint}"
 msgid "Keyboard shortcuts available in the editor and workspace."
 msgstr "Keyboard shortcuts available in the editor and workspace."
 
-#: src/components/TerminalPanel.tsx
-msgid "Kill Terminal"
-msgstr "Kill Terminal"
-
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "Label <0>(optional display text)</0>"
 msgstr "Label <0>(optional display text)</0>"
@@ -3544,6 +3545,10 @@ msgstr "New tab"
 #: src/components/TemplatesCard.tsx
 msgid "New template"
 msgstr "New template"
+
+#: src/components/TerminalTabStrip.tsx
+msgid "New Terminal"
+msgstr "New Terminal"
 
 #: src/editor/find-replace/FindReplaceBar.tsx
 msgid "Next match"
@@ -5550,6 +5555,11 @@ msgstr "Templates available"
 msgid "Terminal"
 msgstr "Terminal"
 
+#. placeholder {0}: index + 1
+#: src/components/TerminalDock.tsx
+msgid "Terminal {0}"
+msgstr "Terminal {0}"
+
 #: src/components/TerminalRefusalNotice.tsx
 msgid "Terminal access isn't enabled for this project."
 msgstr "Terminal access isn't enabled for this project."
@@ -5561,6 +5571,10 @@ msgstr "Terminal disabled"
 #: src/components/TerminalGate.tsx
 msgid "Terminal failed to load"
 msgstr "Terminal failed to load"
+
+#: src/components/TerminalTabStrip.tsx
+msgid "Terminal sessions"
+msgstr "Terminal sessions"
 
 #: src/components/settings/TerminalSection.tsx
 #: src/components/TerminalGate.tsx

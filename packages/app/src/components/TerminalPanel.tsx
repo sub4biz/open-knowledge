@@ -7,10 +7,8 @@ import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
-import { Trash2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import type { ClaudeReadiness, OkDesktopBridge } from '@/lib/desktop-bridge-types';
 import { cn } from '@/lib/utils';
 import { ClaudeReadinessBanner } from './ClaudeReadinessBanner';
@@ -25,7 +23,6 @@ interface TerminalPanelProps {
   readonly bridge: OkDesktopBridge;
   readonly className?: string;
   readonly onClose?: () => void;
-  readonly onKill?: () => void;
   readonly onExit?: (info: { readonly exitCode: number; readonly signal: number | null }) => void;
   readonly launch?: TerminalLaunchIntent | null;
 }
@@ -34,7 +31,6 @@ export function TerminalPanel({
   bridge,
   className,
   onClose,
-  onKill,
   onExit,
   launch = null,
 }: TerminalPanelProps) {
@@ -47,21 +43,8 @@ export function TerminalPanel({
       style={{ backgroundColor: xtermThemeForMode(resolvedTheme).background }}
       className={cn('relative flex h-full w-full flex-col overflow-hidden', className)}
     >
-      {onKill ? (
-        <div className="flex shrink-0 items-center justify-end px-1.5 py-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={t`Kill Terminal`}
-            className="size-6 text-muted-foreground hover:text-foreground"
-            onClick={onKill}
-          >
-            <Trash2 aria-hidden="true" className="size-4" />
-          </Button>
-        </div>
-      ) : null}
       {/* Positioning context for the session's absolute exit/refusal notices, so
-          they cover the canvas area and not the kill control above. */}
+          they cover the canvas area. */}
       <div className="relative min-h-0 flex-1">
         <TerminalSession
           key={restartKey}
@@ -127,6 +110,7 @@ function TerminalSession({
       cursorBlink: true,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
       fontSize: 13,
+      scrollback: 10000,
       theme: xtermThemeForMode(initialResolvedThemeRef.current),
     });
     termRef.current = term;
@@ -139,9 +123,16 @@ function TerminalSession({
     term.open(container);
 
     try {
-      term.loadAddon(new WebglAddon());
+      const webgl = new WebglAddon();
+      webgl.onContextLoss(() => {
+        console.warn('[terminal] WebGL context lost, falling back to DOM renderer');
+        webgl.dispose();
+      });
+      term.loadAddon(webgl);
     } catch (err) {
-      console.warn('[terminal] WebGL addon failed, using DOM renderer:', err);
+      const expected = err instanceof Error && /webgl2?|context/i.test(err.message);
+      const log = expected ? console.warn : console.error;
+      log('[terminal] WebGL addon failed, using DOM renderer:', err);
     }
 
     fit.fit();
@@ -151,6 +142,7 @@ function TerminalSession({
       try {
         result = await bridge.terminal.create({ cols: term.cols, rows: term.rows });
       } catch (err) {
+        console.error('[terminal] create() failed:', err);
         if (cancelled) return;
         setExitInfo({
           exitCode: 1,

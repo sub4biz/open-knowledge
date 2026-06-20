@@ -219,7 +219,11 @@ import {
   DEFAULT_PTY_ROWS,
   type PtyUtilityLike,
 } from './terminal-manager.ts';
-import { recordShellExit, recordTerminalSession } from './terminal-telemetry.ts';
+import {
+  recordConcurrentSessions,
+  recordShellExit,
+  recordTerminalSession,
+} from './terminal-telemetry.ts';
 import { applyThemeApplied } from './theme-applied-handler.ts';
 import { applyThemeSource, isOkThemeSource } from './theme-handler.ts';
 import {
@@ -1489,6 +1493,7 @@ function registerIpcHandlers() {
     logger: { warn: (data) => getLogger('terminal').warn(data, 'unexpected pty-host message') },
     recordShellExit,
     recordTerminalSession,
+    recordConcurrentSessions,
   });
   terminalReaper = terminalManager;
 

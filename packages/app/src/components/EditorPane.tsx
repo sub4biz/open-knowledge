@@ -1,5 +1,5 @@
 import { useLingui } from '@lingui/react/macro';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { TagDialog } from '@/editor/components/TagDialog';
 import { useDocumentContext } from '@/editor/DocumentContext';
@@ -51,6 +51,7 @@ export function EditorPane({ onOpenSearch }: EditorPaneProps = {}) {
   const desktopBridge = typeof window !== 'undefined' ? (window.okDesktop ?? null) : null;
   const [terminalVisible, setTerminalVisible] = useState(false);
   const [terminalLaunch, setTerminalLaunch] = useState<TerminalLaunchIntent | null>(null);
+  const launchNonceRef = useRef(0);
 
   const syncStatus = useGitSyncStatus();
   const { projectLocalConfig, projectLocalSynced } = useConfigContext();
@@ -105,7 +106,8 @@ export function EditorPane({ onOpenSearch }: EditorPaneProps = {}) {
   useEffect(() => {
     return subscribeToTerminalLaunchRequests((prompt) => {
       setTerminalVisible(true);
-      setTerminalLaunch((prev) => ({ prompt, nonce: (prev?.nonce ?? 0) + 1 }));
+      launchNonceRef.current += 1;
+      setTerminalLaunch({ prompt, nonce: launchNonceRef.current });
     });
   }, []);
 

@@ -1067,6 +1067,11 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
+#. placeholder {0}: session.label
+#: src/components/TerminalTabStrip.tsx
+msgid "Close {0}"
+msgstr ""
+
 #: src/components/EditorTabs.tsx
 msgid "Close {accessibleLabel}"
 msgstr ""
@@ -3057,10 +3062,6 @@ msgstr ""
 msgid "Keyboard shortcuts available in the editor and workspace."
 msgstr ""
 
-#: src/components/TerminalPanel.tsx
-msgid "Kill Terminal"
-msgstr ""
-
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "Label <0>(optional display text)</0>"
 msgstr ""
@@ -3538,6 +3539,10 @@ msgstr ""
 #: src/components/settings/TemplatesManagerSection.tsx
 #: src/components/TemplatesCard.tsx
 msgid "New template"
+msgstr ""
+
+#: src/components/TerminalTabStrip.tsx
+msgid "New Terminal"
 msgstr ""
 
 #: src/editor/find-replace/FindReplaceBar.tsx
@@ -5545,6 +5550,11 @@ msgstr ""
 msgid "Terminal"
 msgstr ""
 
+#. placeholder {0}: index + 1
+#: src/components/TerminalDock.tsx
+msgid "Terminal {0}"
+msgstr ""
+
 #: src/components/TerminalRefusalNotice.tsx
 msgid "Terminal access isn't enabled for this project."
 msgstr ""
@@ -5555,6 +5565,10 @@ msgstr ""
 
 #: src/components/TerminalGate.tsx
 msgid "Terminal failed to load"
+msgstr ""
+
+#: src/components/TerminalTabStrip.tsx
+msgid "Terminal sessions"
 msgstr ""
 
 #: src/components/settings/TerminalSection.tsx

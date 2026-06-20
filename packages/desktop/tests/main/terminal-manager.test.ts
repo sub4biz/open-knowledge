@@ -340,6 +340,21 @@ describe('createTerminalManager — exit + crash surfacing', () => {
     expect(h.forked).toHaveLength(2);
   });
 
+  test('flushes a session buffered output before its exit on a host crash', () => {
+    const h = makeManager();
+    h.mgr.create({
+      windowId: 1,
+      webContents: makeWebContents(),
+      projectRoot: PROJECT,
+      cols: 80,
+      rows: 24,
+    });
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-1', data: 'last gasp' });
+    h.forked[0]?.emitExit(1);
+    expect(h.sent.map((s) => s.channel)).toEqual(['ok:pty:data', 'ok:pty:exit']);
+    expect(h.dataPayloads()).toEqual(['last gasp']);
+  });
+
   test('ignores a malformed host message without crashing or sending', () => {
     const h = makeManager();
     h.mgr.create({
@@ -437,7 +452,7 @@ describe('createTerminalManager — destroyed-window guard', () => {
   });
 });
 
-describe('createTerminalManager — lifecycle reap (US-005 hooks)', () => {
+describe('createTerminalManager — lifecycle reap', () => {
   test('killForWindow kills the host, deletes it, and silences its exit event', () => {
     const h = makeManager();
     h.mgr.create({
@@ -564,13 +579,15 @@ class ThrowingUtility {
   }
 }
 
-describe('createTerminalManager — telemetry (US-013)', () => {
+describe('createTerminalManager — telemetry', () => {
   function makeTelemetryManager() {
     const shellExits: Array<{ crashed: boolean }> = [];
     const sessions: true[] = [];
+    const concurrent: Array<{ count: number }> = [];
     const h = makeManager({
       recordShellExit: (info) => shellExits.push(info),
       recordTerminalSession: () => sessions.push(true),
+      recordConcurrentSessions: (info) => concurrent.push(info),
     });
     const start = (windowId: number): void => {
       h.mgr.create({
@@ -581,7 +598,7 @@ describe('createTerminalManager — telemetry (US-013)', () => {
         rows: 24,
       });
     };
-    return { ...h, shellExits, sessions, start };
+    return { ...h, shellExits, sessions, concurrent, start };
   }
 
   test('a clean shell exit emits a non-crash shell-exit; no session without a command', () => {
@@ -671,6 +688,236 @@ describe('createTerminalManager — telemetry (US-013)', () => {
     h.forked[0]?.emitMessage({ type: 'exit', ptyId: 'pty-2', exitCode: 0, signal: null });
     expect(h.sessions).toHaveLength(1);
     expect(h.shellExits).toEqual([{ crashed: false }, { crashed: false }]);
+  });
+
+  test('a window-close reap counts every concurrent session that ran a command', () => {
+    const h = makeTelemetryManager();
+    h.start(1); // pty-1
+    h.mgr.create({
+      windowId: 1,
+      webContents: makeWebContents(),
+      projectRoot: PROJECT,
+      cols: 80,
+      rows: 24,
+    }); // pty-2
+    h.mgr.input({ windowId: 1, ptyId: 'pty-1', data: 'a\r' });
+    h.mgr.input({ windowId: 1, ptyId: 'pty-2', data: 'b\r' });
+    h.mgr.killForWindow(1);
+    expect(h.sessions).toHaveLength(2);
+    expect(h.shellExits).toEqual([]);
+  });
+
+  test('a host crash emits a crashed shell-exit per session and counts only the ones that ran a command', () => {
+    const h = makeTelemetryManager();
+    h.start(1); // pty-1
+    h.mgr.create({
+      windowId: 1,
+      webContents: makeWebContents(),
+      projectRoot: PROJECT,
+      cols: 80,
+      rows: 24,
+    }); // pty-2
+    h.mgr.input({ windowId: 1, ptyId: 'pty-1', data: 'a\r' }); // only pty-1 ran a command
+    h.forked[0]?.emitExit(1);
+    expect(h.shellExits).toEqual([{ crashed: true }, { crashed: true }]);
+    expect(h.sessions).toHaveLength(1);
+  });
+
+  test('each create emits the concurrency signal with the window’s live session count', () => {
+    const h = makeTelemetryManager();
+    h.start(1); // window 1 now has 1 session
+    h.start(1); // window 1 now has 2 sessions
+    expect(h.concurrent.map((c) => c.count)).toEqual([1, 2]);
+  });
+
+  test('concurrency is counted per window independently', () => {
+    const h = makeTelemetryManager();
+    h.start(1); // w1 -> 1
+    h.start(1); // w1 -> 2
+    h.start(2); // w2 -> 1 (a separate window's host, not the running total)
+    expect(h.concurrent.map((c) => c.count)).toEqual([1, 2, 1]);
+  });
+
+  test('a create reaching a concurrency level again after an exit re-emits that level', () => {
+    const h = makeTelemetryManager();
+    h.start(1); // -> 1
+    h.start(1); // -> 2
+    h.forked[0]?.emitMessage({ type: 'exit', ptyId: 'pty-1', exitCode: 0, signal: null }); // back to 1
+    h.start(1); // a fresh tab brings the window back to 2 concurrent
+    expect(h.concurrent.map((c) => c.count)).toEqual([1, 2, 2]);
+  });
+
+  test('a refused create (no project) emits no concurrency signal', () => {
+    const h = makeTelemetryManager();
+    h.mgr.create({
+      windowId: 1,
+      webContents: makeWebContents(),
+      projectRoot: null,
+      cols: 80,
+      rows: 24,
+    });
+    expect(h.concurrent).toEqual([]);
+  });
+
+  test('a session exit does not emit a concurrency signal (it marks concurrency reached on open)', () => {
+    const h = makeTelemetryManager();
+    h.start(1);
+    h.start(1);
+    h.forked[0]?.emitMessage({ type: 'exit', ptyId: 'pty-1', exitCode: 0, signal: null });
+    h.mgr.killForWindow(1);
+    expect(h.concurrent.map((c) => c.count)).toEqual([1, 2]);
+  });
+
+  test('the concurrency signal carries only the bounded count — command input never leaks into it', () => {
+    const h = makeTelemetryManager();
+    h.start(1);
+    h.mgr.input({ windowId: 1, ptyId: 'pty-1', data: 'secret --token=abc\r' });
+    h.start(1);
+    expect(h.concurrent.every((c) => Object.keys(c).join(',') === 'count')).toBe(true);
+    expect(h.concurrent.map((c) => c.count)).toEqual([1, 2]);
+  });
+});
+
+describe('createTerminalManager — concurrent sessions', () => {
+  function twoSessions(over?: Partial<TerminalManagerDeps>) {
+    const h = makeManager({ highWaterBytes: 100, lowWaterBytes: 20, ...over });
+    const wc = makeWebContents();
+    const a = h.mgr.create({
+      windowId: 1,
+      webContents: wc,
+      projectRoot: PROJECT,
+      cols: 80,
+      rows: 24,
+    });
+    const b = h.mgr.create({
+      windowId: 1,
+      webContents: wc,
+      projectRoot: PROJECT,
+      cols: 80,
+      rows: 24,
+    });
+    return { h, a, b };
+  }
+  const dataFor = (h: ReturnType<typeof makeManager>, ptyId: string): string[] =>
+    h.sent
+      .filter((s) => s.channel === 'ok:pty:data' && s.payload.ptyId === ptyId)
+      .map((s) => s.payload.data as string);
+
+  test('a second create adds a session over the same host without killing the first', () => {
+    const { h, a, b } = twoSessions();
+    expect(a).toEqual({ ok: true, ptyId: 'pty-1' });
+    expect(b).toEqual({ ok: true, ptyId: 'pty-2' });
+    expect(h.forked).toHaveLength(1);
+    const posted = h.forked[0]?.posted ?? [];
+    expect(posted).toContainEqual({
+      type: 'create',
+      ptyId: 'pty-1',
+      cwd: PROJECT,
+      cols: 80,
+      rows: 24,
+    });
+    expect(posted).toContainEqual({
+      type: 'create',
+      ptyId: 'pty-2',
+      cwd: PROJECT,
+      cols: 80,
+      rows: 24,
+    });
+    expect(posted.filter((m) => m.type === 'kill')).toEqual([]);
+  });
+
+  test('input routes to the addressed session only', () => {
+    const { h } = twoSessions();
+    h.mgr.input({ windowId: 1, ptyId: 'pty-1', data: 'in-A\r' });
+    h.mgr.input({ windowId: 1, ptyId: 'pty-2', data: 'in-B\r' });
+    const posted = h.forked[0]?.posted ?? [];
+    expect(posted).toContainEqual({ type: 'input', ptyId: 'pty-1', data: 'in-A\r' });
+    expect(posted).toContainEqual({ type: 'input', ptyId: 'pty-2', data: 'in-B\r' });
+  });
+
+  test("each session's output renders only in its own tab", () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-1', data: 'alpha' });
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-2', data: 'beta' });
+    h.runTimers();
+    expect(dataFor(h, 'pty-1')).toEqual(['alpha']);
+    expect(dataFor(h, 'pty-2')).toEqual(['beta']);
+  });
+
+  test('a flood in one session pauses only that session; the other keeps flushing', () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-1', data: 'x'.repeat(150) });
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-2', data: 'y'.repeat(10) });
+    h.runTimers();
+    const posted = h.forked[0]?.posted ?? [];
+    expect(posted).toContainEqual({ type: 'pause', ptyId: 'pty-1' });
+    expect(posted).not.toContainEqual({ type: 'pause', ptyId: 'pty-2' });
+    expect(dataFor(h, 'pty-2')).toEqual(['y'.repeat(10)]);
+  });
+
+  test('drain resumes only the session that fell below the low-water mark', () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-1', data: 'x'.repeat(150) });
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-2', data: 'y'.repeat(150) });
+    h.runTimers();
+    expect(h.forked[0]?.posted).toContainEqual({ type: 'pause', ptyId: 'pty-1' });
+    expect(h.forked[0]?.posted).toContainEqual({ type: 'pause', ptyId: 'pty-2' });
+    h.mgr.drain({ windowId: 1, ptyId: 'pty-1', bytes: 140 }); // 150 - 140 = 10 < 20
+    expect(h.forked[0]?.posted).toContainEqual({ type: 'resume', ptyId: 'pty-1' });
+    expect(h.forked[0]?.posted).not.toContainEqual({ type: 'resume', ptyId: 'pty-2' });
+  });
+
+  test('a paused session never leaks its pause latch to a sibling', () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-1', data: 'x'.repeat(150) });
+    h.runTimers(); // pty-1 pauses; pty-2 was never paused
+    h.mgr.drain({ windowId: 1, ptyId: 'pty-2', bytes: 5 });
+    expect(h.forked[0]?.posted).not.toContainEqual({ type: 'resume', ptyId: 'pty-2' });
+  });
+
+  test('an exit in one session leaves the other running', () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitMessage({ type: 'exit', ptyId: 'pty-1', exitCode: 0, signal: null });
+    expect(h.exits()).toContainEqual({ ptyId: 'pty-1', exitCode: 0, signal: null });
+    const before = h.forked[0]?.posted.length ?? 0;
+    h.mgr.input({ windowId: 1, ptyId: 'pty-2', data: 'alive\r' });
+    h.mgr.input({ windowId: 1, ptyId: 'pty-1', data: 'ghost\r' });
+    expect(h.forked[0]?.posted.length).toBe(before + 1);
+    expect(h.forked[0]?.posted).toContainEqual({ type: 'input', ptyId: 'pty-2', data: 'alive\r' });
+  });
+
+  test("one session's flood and pause do not disturb a sibling's exit accounting", () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitMessage({ type: 'data', ptyId: 'pty-1', data: 'x'.repeat(150) });
+    h.runTimers(); // pty-1 paused
+    h.forked[0]?.emitMessage({ type: 'exit', ptyId: 'pty-2', exitCode: 0, signal: null });
+    expect(h.exits()).toContainEqual({ ptyId: 'pty-2', exitCode: 0, signal: null });
+    h.mgr.drain({ windowId: 1, ptyId: 'pty-1', bytes: 150 });
+    expect(h.forked[0]?.posted).toContainEqual({ type: 'resume', ptyId: 'pty-1' });
+  });
+
+  test('a host crash surfaces an exit on every live session in the window', () => {
+    const { h } = twoSessions();
+    h.forked[0]?.emitExit(7);
+    expect(h.exits()).toContainEqual({
+      ptyId: 'pty-1',
+      exitCode: 7,
+      signal: null,
+      error: 'terminal host exited',
+    });
+    expect(h.exits()).toContainEqual({
+      ptyId: 'pty-2',
+      exitCode: 7,
+      signal: null,
+      error: 'terminal host exited',
+    });
+  });
+
+  test('killForWindow reaps a multi-session window with a single host kill', () => {
+    const { h } = twoSessions();
+    h.mgr.killForWindow(1);
+    expect(h.forked).toHaveLength(1);
+    expect(h.forked[0]?.killed).toBe(1);
   });
 });
 

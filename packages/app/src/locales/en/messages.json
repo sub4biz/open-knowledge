@@ -70,6 +70,7 @@
     "1EcCom": [["keyName"], " value"],
     "1GhYxC": ["of ", ["totalPages"]],
     "1HBhDS": ["Checking out files"],
+    "1MGRQl": ["Terminal sessions"],
     "1QfxQT": ["Dismiss"],
     "1RluQD": ["Show replace"],
     "1TNIig": ["Open"],
@@ -197,7 +198,6 @@
     "5Tk8Fb": ["Loading files"],
     "5WDhAk": ["Link to a page or external URL."],
     "5ZB7XC": ["File drop zone"],
-    "5_j-DA": ["Kill Terminal"],
     "5gr_ev": [
       "Becomes the document's content when someone creates a doc from this template. Type <0>",
       ["dateToken"],
@@ -803,6 +803,7 @@
     "ONPvOb": ["Loading agent activity"],
     "ONgEZF": ["Loading headings for ", ["pageTarget"]],
     "OTF92M": ["Label <0>(optional display text)</0>"],
+    "OVjNeX": ["Terminal ", ["0"]],
     "OX2Neh": ["Inline code"],
     "OYnx7O": ["Path cannot start with \"/\""],
     "OdmsFg": ["Failed to delete item"],
@@ -1099,6 +1100,7 @@
       "). Other files and writers are unaffected."
     ],
     "ZBt4rI": ["Instruction for the AI"],
+    "ZBxvV3": ["New Terminal"],
     "ZLQol-": ["You can turn this on later in <0>Settings → Sync</0>."],
     "ZNK2Tq": ["root"],
     "ZQLDTl": ["created folder"],
@@ -1581,6 +1583,7 @@
       "Git identity isn't set — commits use a default author. Set yours so teammates see your name."
     ],
     "nskygk": ["Choose agent"],
+    "nzHlj8": ["Close ", ["0"]],
     "nzaV6Q": ["Page thumbnails"],
     "o2yoFu": ["Reveal in Finder, No workspace"],
     "o49mDZ": ["Loading timeline history"],

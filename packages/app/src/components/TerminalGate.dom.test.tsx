@@ -70,15 +70,13 @@ describe('TerminalGate', () => {
     expect(notice()).toBeNull();
   });
 
-  test('forwards onClose, onKill, and the launch intent to the mounted terminal panel', async () => {
+  test('forwards onClose and the launch intent to the mounted terminal panel', async () => {
     const onClose = mock(() => {});
-    const onKill = mock(() => {});
     const launch = { prompt: 'work on docs/notes', nonce: 1 };
     consentState = { enabled: null, synced: true };
-    render(<TerminalGate bridge={bridge} onClose={onClose} onKill={onKill} launch={launch} />);
+    render(<TerminalGate bridge={bridge} onClose={onClose} launch={launch} />);
     await screen.findByTestId('terminal-panel');
     expect(lastPanelProps?.onClose).toBe(onClose);
-    expect(lastPanelProps?.onKill).toBe(onKill);
     expect(lastPanelProps?.launch).toBe(launch);
   });
 

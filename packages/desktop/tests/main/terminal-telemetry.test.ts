@@ -18,7 +18,7 @@ mock.module('@inkeep/open-knowledge-server', () => ({
   },
 }));
 
-const { recordShellExit, recordTerminalSession } = await import(
+const { recordConcurrentSessions, recordShellExit, recordTerminalSession } = await import(
   '../../src/main/terminal-telemetry.ts'
 );
 
@@ -57,5 +57,24 @@ describe('recordTerminalSession — count-only marker', () => {
     expect(capturedCalls).toHaveLength(1);
     expect(capturedCalls[0]?.name).toBe('ok.desktop.terminalSession');
     expect(capturedCalls[0]?.options?.attributes ?? {}).toEqual({});
+  });
+});
+
+describe('recordConcurrentSessions — count-only concurrency signal', () => {
+  beforeEach(() => {
+    capturedCalls.length = 0;
+  });
+
+  test('emits ok.desktop.terminalConcurrentSessions carrying the live session count', () => {
+    recordConcurrentSessions({ count: 3 });
+    expect(capturedCalls).toHaveLength(1);
+    expect(capturedCalls[0]?.name).toBe('ok.desktop.terminalConcurrentSessions');
+    expect(capturedCalls[0]?.options?.attributes).toEqual({ 'ok.desktop.concurrent_sessions': 3 });
+  });
+
+  test('the only attribute is the bounded count — no ptyId / path / command content leaks', () => {
+    recordConcurrentSessions({ count: 2 });
+    const attrs = capturedCalls[0]?.options?.attributes ?? {};
+    expect(Object.keys(attrs)).toEqual(['ok.desktop.concurrent_sessions']);
   });
 });

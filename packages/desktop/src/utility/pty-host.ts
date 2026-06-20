@@ -99,10 +99,27 @@ export interface SetupPtyHostDeps {
 
 function asIncomingMessage(raw: unknown): PtyHostIncomingMessage | null {
   if (typeof raw !== 'object' || raw === null) return null;
-  const { type, ptyId } = raw as { type?: unknown; ptyId?: unknown };
-  if (typeof type !== 'string') return null;
-  if (typeof ptyId !== 'string' || ptyId.length === 0) return null;
-  return raw as PtyHostIncomingMessage;
+  const m = raw as Record<string, unknown>;
+  if (typeof m.type !== 'string') return null;
+  if (typeof m.ptyId !== 'string' || m.ptyId.length === 0) return null;
+  switch (m.type) {
+    case 'create':
+      return typeof m.cwd === 'string' && typeof m.cols === 'number' && typeof m.rows === 'number'
+        ? (raw as PtyHostIncomingMessage)
+        : null;
+    case 'input':
+      return typeof m.data === 'string' ? (raw as PtyHostIncomingMessage) : null;
+    case 'resize':
+      return typeof m.cols === 'number' && typeof m.rows === 'number'
+        ? (raw as PtyHostIncomingMessage)
+        : null;
+    case 'kill':
+    case 'pause':
+    case 'resume':
+      return raw as PtyHostIncomingMessage;
+    default:
+      return null;
+  }
 }
 
 export interface PtyHostHandle {
@@ -130,7 +147,7 @@ export function buildShellEnv(
 
 export function setupPtyHost(deps: SetupPtyHostDeps): PtyHostHandle {
   const env = deps.env ?? (process.env as Record<string, string | undefined>);
-  let active: { ptyId: string; pty: PtyProcessLike } | null = null;
+  const sessions = new Map<string, PtyProcessLike>();
 
   function post(message: PtyHostOutgoingMessage): void {
     deps.parentPort?.postMessage(message);
@@ -139,13 +156,20 @@ export function setupPtyHost(deps: SetupPtyHostDeps): PtyHostHandle {
   function safeKill(pty: PtyProcessLike): void {
     try {
       pty.kill();
-    } catch {}
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code;
+      if (code !== 'ESRCH') {
+        deps.logger?.warn({ event: 'pty-host-reap-failed', code: code ?? 'unknown' });
+      }
+    }
   }
 
   function handleCreate(message: PtyCreateMessage): void {
-    if (active) {
-      safeKill(active.pty);
-      active = null;
+    const { ptyId } = message;
+    const stale = sessions.get(ptyId);
+    if (stale) {
+      safeKill(stale);
+      sessions.delete(ptyId);
     }
     const shell = resolveShell(env, message.shell);
     const shellEnv = buildShellEnv(env);
@@ -160,38 +184,39 @@ export function setupPtyHost(deps: SetupPtyHostDeps): PtyHostHandle {
         encoding: 'utf8',
       });
     } catch (err) {
-      post({ type: 'spawn-error', ptyId: message.ptyId, message: (err as Error).message });
+      const message = err instanceof Error ? err.message : String(err);
+      post({ type: 'spawn-error', ptyId, message });
       return;
     }
-    const { ptyId } = message;
-    active = { ptyId, pty };
+    sessions.set(ptyId, pty);
     pty.onData((data) => {
-      if (active?.ptyId === ptyId) post({ type: 'data', ptyId, data });
+      if (sessions.get(ptyId) === pty) post({ type: 'data', ptyId, data });
     });
     pty.onExit(({ exitCode, signal }) => {
-      if (active?.ptyId === ptyId) active = null;
+      if (sessions.get(ptyId) === pty) sessions.delete(ptyId);
       post({ type: 'exit', ptyId, exitCode, signal: signal ?? null });
     });
   }
 
   function handleInput(message: PtyInputMessage): void {
-    if (active?.ptyId === message.ptyId) active.pty.write(message.data);
+    sessions.get(message.ptyId)?.write(message.data);
   }
 
   function handleResize(message: PtyResizeMessage): void {
-    if (active?.ptyId === message.ptyId) active.pty.resize(message.cols, message.rows);
+    sessions.get(message.ptyId)?.resize(message.cols, message.rows);
   }
 
   function handleKill(message: PtyKillMessage): void {
-    if (active?.ptyId === message.ptyId) safeKill(active.pty);
+    const pty = sessions.get(message.ptyId);
+    if (pty) safeKill(pty);
   }
 
   function handlePause(message: PtyPauseMessage): void {
-    if (active?.ptyId === message.ptyId) active.pty.pause();
+    sessions.get(message.ptyId)?.pause();
   }
 
   function handleResume(message: PtyResumeMessage): void {
-    if (active?.ptyId === message.ptyId) active.pty.resume();
+    sessions.get(message.ptyId)?.resume();
   }
 
   deps.parentPort?.on('message', (event) => {
@@ -230,10 +255,8 @@ export function setupPtyHost(deps: SetupPtyHostDeps): PtyHostHandle {
 
   return {
     killActive(): void {
-      if (active) {
-        safeKill(active.pty);
-        active = null;
-      }
+      for (const pty of sessions.values()) safeKill(pty);
+      sessions.clear();
     },
   };
 }
@@ -269,7 +292,7 @@ if ((process as NodeJS.Process & { parentPort?: unknown }).parentPort) {
     try {
       ({ spawn } = await import('node-pty'));
     } catch (err) {
-      const message = (err as Error).message;
+      const message = err instanceof Error ? err.message : String(err);
       parentPort.on('message', (event) => {
         const msg = asIncomingMessage(event.data);
         if (msg?.type === 'create') {

@@ -1,13 +1,41 @@
+import { useLingui } from '@lingui/react/macro';
+import { useTheme } from 'next-themes';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { TabsContent } from '@/components/ui/tabs';
 import type { OkDesktopBridge } from '@/lib/desktop-bridge-types';
 import { getInitialTerminalHeight, writeTerminalHeight } from '@/lib/terminal-height-store';
 import { cn } from '@/lib/utils';
 import type { TerminalLaunchIntent } from './EditorPane';
 import { TerminalGate } from './TerminalGate';
+import { TerminalTabStrip } from './TerminalTabStrip';
+import { xtermThemeForMode } from './terminal-theme';
 
 const TERMINAL_PANEL_ID = 'terminal-dock-panel';
+
+/** A concurrent terminal session the dock hosts as a tab. `id` is a stable
+ *  client-side identity (not the async PTY id — the session resolves its own PTY
+ *  on mount). `launch` is the one-shot intent the session writes once it is live;
+ *  sessions opened from the tab strip carry none. */
+interface TerminalSessionDescriptor {
+  readonly id: string;
+  readonly launch: TerminalLaunchIntent | null;
+}
+
+function makeSessionId(counter: number): string {
+  return `terminal-session-${counter}`;
+}
+
+/** Move focus into a session's terminal. xterm routes keystrokes through its
+ *  helper textarea, so focusing it is equivalent to term.focus(). No-ops when
+ *  the textarea has not mounted yet (xterm mounts asynchronously). */
+function focusTerminalSession(id: string) {
+  if (id === '') return;
+  document
+    .querySelector<HTMLElement>(`[data-terminal-session="${id}"] .xterm-helper-textarea`)
+    ?.focus();
+}
 
 interface TerminalDockProps {
   readonly bridge: OkDesktopBridge;
@@ -24,10 +52,57 @@ export function TerminalDock({
   onVisibleChange,
   launch = null,
 }: TerminalDockProps) {
+  const { t } = useLingui();
+  const { resolvedTheme } = useTheme();
   const panelRef = usePanelRef();
   const editorRegionRef = useRef<HTMLDivElement | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(!visible);
-  const [mounted, setMounted] = useState(visible);
+
+  const [sessions, setSessions] = useState<readonly TerminalSessionDescriptor[]>(() =>
+    visible ? [{ id: makeSessionId(1), launch }] : [],
+  );
+  const [activeSessionId, setActiveSessionId] = useState(() => (visible ? makeSessionId(1) : ''));
+  const activeSessionIdRef = useRef(activeSessionId);
+  const sessionsRef = useRef(sessions);
+  const sessionCounterRef = useRef(visible ? 1 : 0);
+  const lastHandledLaunchNonceRef = useRef<number | null>(visible && launch ? launch.nonce : null);
+  const prevVisibleRef = useRef(visible);
+
+  function openSession(launchForSession: TerminalLaunchIntent | null) {
+    sessionCounterRef.current += 1;
+    const id = makeSessionId(sessionCounterRef.current);
+    setSessions((prev) => [...prev, { id, launch: launchForSession }]);
+    setActiveSessionId(id);
+  }
+  const openSessionRef = useRef(openSession);
+
+  function closeSession(id: string) {
+    const current = sessionsRef.current;
+    const index = current.findIndex((session) => session.id === id);
+    if (index === -1) return;
+    const next = current.filter((session) => session.id !== id);
+    if (id === activeSessionId) {
+      const neighbor = current[index - 1] ?? current[index + 1];
+      const neighborId = neighbor?.id ?? '';
+      setActiveSessionId(neighborId);
+      if (neighborId !== '') queueMicrotask(() => focusTerminalSession(neighborId));
+    }
+    setSessions(next);
+    if (next.length === 0) {
+      onVisibleChange(false);
+      editorRegionRef.current?.focus();
+    }
+  }
+  const closeActiveRef = useRef(() => {});
+
+  useEffect(() => {
+    openSessionRef.current = openSession;
+    activeSessionIdRef.current = activeSessionId;
+    sessionsRef.current = sessions;
+    closeActiveRef.current = () => {
+      if (activeSessionId !== '') closeSession(activeSessionId);
+    };
+  });
 
   const [initialHeightPx] = useState(() => getInitialTerminalHeight());
   const heightPxRef = useRef(initialHeightPx);
@@ -56,29 +131,46 @@ export function TerminalDock({
   );
 
   useEffect(() => {
-    if (visible) setMounted(true);
-  }, [visible]);
+    const wasVisible = prevVisibleRef.current;
+    prevVisibleRef.current = visible;
 
-  function killTerminal() {
-    setMounted(false);
-    onVisibleChange(false);
-    editorRegionRef.current?.focus();
-  }
-
-  const killTerminalRef = useRef(killTerminal);
-  useEffect(() => {
-    killTerminalRef.current = killTerminal;
-  });
+    if (launch != null && launch.nonce !== lastHandledLaunchNonceRef.current) {
+      lastHandledLaunchNonceRef.current = launch.nonce;
+      openSessionRef.current(launch);
+      return;
+    }
+    if (visible && !wasVisible && sessions.length === 0) {
+      openSessionRef.current(null);
+    }
+  }, [visible, launch, sessions.length]);
 
   useEffect(() => {
     return bridge.onMenuAction((action) => {
-      if (action === 'kill-terminal') killTerminalRef.current();
+      if (action === 'new-terminal') openSessionRef.current(null);
+      else if (action === 'kill-terminal') closeActiveRef.current();
     });
   }, [bridge]);
 
   useEffect(() => {
-    bridge.editor.notifyViewMenuStateChanged({ terminalLive: mounted });
-  }, [bridge, mounted]);
+    function onKeyDown(event: KeyboardEvent) {
+      if (!event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (!/^[1-9]$/.test(event.key)) return;
+      const panelEl = document.getElementById(TERMINAL_PANEL_ID);
+      if (!panelEl?.contains(document.activeElement)) return;
+      const target = sessionsRef.current[Number(event.key) - 1];
+      if (target == null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setActiveSessionId(target.id);
+      queueMicrotask(() => focusTerminalSession(target.id));
+    }
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, []);
+
+  useEffect(() => {
+    bridge.editor.notifyViewMenuStateChanged({ terminalLive: sessions.length > 0 });
+  }, [bridge, sessions.length]);
 
   useEffect(() => {
     const panel = panelRef.current;
@@ -97,11 +189,15 @@ export function TerminalDock({
     editorRegionRef.current?.focus();
   }, [isCollapsed]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (isCollapsed) return;
-    const panelEl = document.getElementById(TERMINAL_PANEL_ID);
-    panelEl?.querySelector<HTMLElement>('.xterm-helper-textarea')?.focus();
+    focusTerminalSession(activeSessionIdRef.current);
   }, [isCollapsed]);
+
+  const tabDescriptors = sessions.map((session, index) => ({
+    id: session.id,
+    label: t`Terminal ${index + 1}`,
+  }));
 
   return (
     <ResizablePanelGroup
@@ -137,6 +233,7 @@ export function TerminalDock({
       />
       <ResizablePanel
         id={TERMINAL_PANEL_ID}
+        style={{ backgroundColor: xtermThemeForMode(resolvedTheme).background }}
         panelRef={panelRef}
         defaultSize={visible ? `${initialHeightPx}px` : 0}
         minSize="120px"
@@ -162,16 +259,32 @@ export function TerminalDock({
             'transition-[flex-grow] duration-150 ease-out motion-reduce:transition-none motion-reduce:duration-0',
         )}
       >
-        {mounted ? (
-          <TerminalGate
-            bridge={bridge}
-            launch={launch}
-            onClose={() => {
-              onVisibleChange(false);
-              editorRegionRef.current?.focus();
-            }}
-            onKill={killTerminal}
-          />
+        {sessions.length > 0 ? (
+          <TerminalTabStrip
+            sessions={tabDescriptors}
+            activeSessionId={activeSessionId}
+            onSelect={setActiveSessionId}
+            onTabActivate={(id) => queueMicrotask(() => focusTerminalSession(id))}
+            onNew={() => openSession(null)}
+            onClose={closeSession}
+            className="h-full"
+          >
+            {sessions.map((session) => (
+              <TabsContent
+                key={session.id}
+                value={session.id}
+                forceMount
+                data-terminal-session={session.id}
+                className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
+              >
+                <TerminalGate
+                  bridge={bridge}
+                  launch={session.launch}
+                  onClose={() => closeSession(session.id)}
+                />
+              </TabsContent>
+            ))}
+          </TerminalTabStrip>
         ) : null}
       </ResizablePanel>
     </ResizablePanelGroup>

@@ -14,11 +14,10 @@ const TerminalPanel = lazy(() =>
 interface TerminalGateProps {
   readonly bridge: OkDesktopBridge;
   readonly onClose?: () => void;
-  readonly onKill?: () => void;
   readonly launch?: TerminalLaunchIntent | null;
 }
 
-export function TerminalGate({ bridge, onClose, onKill, launch = null }: TerminalGateProps) {
+export function TerminalGate({ bridge, onClose, launch = null }: TerminalGateProps) {
   const { enabled, synced } = useTerminalConsentState();
   const writer = useTerminalEnabledWriter();
   const { t } = useLingui();
@@ -47,13 +46,7 @@ export function TerminalGate({ bridge, onClose, onKill, launch = null }: Termina
         }}
       >
         <Suspense fallback={<div className="h-full w-full bg-background" aria-hidden="true" />}>
-          <TerminalPanel
-            bridge={bridge}
-            className="h-full"
-            onClose={onClose}
-            onKill={onKill}
-            launch={launch}
-          />
+          <TerminalPanel bridge={bridge} className="h-full" onClose={onClose} launch={launch} />
         </Suspense>
       </ErrorBoundary>
     );
