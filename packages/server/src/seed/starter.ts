@@ -61,6 +61,7 @@ title: External Source
 description: Capture a URL or article text verbatim as raw reference material. For binary files (PDFs, images, audio), use the \`ingest\` tool instead — this \`clip\` template is for text sources only.
 ---
 ---
+type: source
 source_url:
 date_fetched: {{date}}
 preservation: text-extracted
@@ -78,6 +79,7 @@ title: Research Log
 description: Provisional analysis synthesizing external sources. Every factual claim cites a doc in external-sources/. Promoted to articles/ via consolidate once findings are stable.
 ---
 ---
+type: research-note
 status: provisional
 sources: []
 created: {{date}}
@@ -98,6 +100,7 @@ title: Canonical Article
 description: Canonical knowledge committed after a team decision. Carries status:canonical plus a supersedes chain tying back to the research/ docs it replaces. Source-of-truth for the domain.
 ---
 ---
+type: article
 status: canonical
 supersedes: []
 authored: {{date}}
@@ -174,6 +177,7 @@ title: Proposal Title
 description: One-line summary of the proposal.
 ---
 ---
+type: proposal
 status: draft
 authors: [{{user}}]
 created: {{date}}
@@ -195,6 +199,7 @@ title: Decision Title
 description: One-line decision summary.
 ---
 ---
+type: decision
 status: proposed
 date: {{date}}
 deciders: [{{user}}]
@@ -213,6 +218,7 @@ title: Spec Title
 description: One-line description of what's being built.
 ---
 ---
+type: spec
 status: draft
 owner: {{user}}
 target_release:
@@ -236,6 +242,7 @@ title: 'Plan: <Spec Title>'
 description: Implementation plan derived from the parent spec. Pairs with spec.md and tasks.md (github/spec-kit triple shape).
 ---
 ---
+type: spec-plan
 parent_spec:
 created: {{date}}
 author: {{user}}
@@ -257,6 +264,7 @@ title: 'Tasks: <Spec Title>'
 description: Task checklist for the parent spec. Pairs with spec.md and plan.md (github/spec-kit triple shape).
 ---
 ---
+type: spec-tasks
 parent_spec:
 created: {{date}}
 author: {{user}}
@@ -278,6 +286,7 @@ title: '<Topic>: <Action>'
 description: One-line summary of what the reader will accomplish.
 ---
 ---
+type: guide
 category: how-to
 last_verified: {{date}}
 tags: [guide]
@@ -296,6 +305,7 @@ title: 'Onboarding: <Audience>'
 description: First-N-days setup path for <audience> (e.g. new engineer, new contributor, new oncall).
 ---
 ---
+type: guide
 category: onboarding
 audience:
 last_verified: {{date}}
@@ -319,6 +329,7 @@ title: '<Service>: <Symptom>'
 description: Oncall procedure for diagnosing and remediating <symptom> in <service>.
 ---
 ---
+type: guide
 category: runbook
 service:
 severity:
@@ -341,6 +352,7 @@ title: 'Incident: <short name>'
 description: Blameless postmortem for <incident>.
 ---
 ---
+type: postmortem
 severity:
 duration:
 services: []
@@ -387,6 +399,7 @@ title: Note title
 description: One-line summary.
 ---
 ---
+type: note
 created: {{date}}
 author: {{user}}
 tags: []
@@ -397,6 +410,7 @@ title: Daily entry
 description: Daily journal entry.
 ---
 ---
+type: daily-note
 title: {{date}}
 date: {{date}}
 author: {{user}}
@@ -707,6 +721,7 @@ title: Idea title
 description: One-line hook.
 ---
 ---
+type: idea
 captured_at: {{date}}
 hook:
 tags: [idea]
@@ -719,6 +734,7 @@ title: Draft title
 description: What's this piece about?
 ---
 ---
+type: draft
 status: drafting
 target_form:
 target_words:
@@ -734,6 +750,7 @@ title: Published title
 description: One-line summary.
 ---
 ---
+type: publication
 status: published
 published_at:
 canonical_url:

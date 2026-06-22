@@ -8,6 +8,7 @@ import {
   stripFrontmatter,
   unwrapFrontmatterFences,
 } from '@inkeep/open-knowledge-core';
+import { parse as parseYaml } from 'yaml';
 import { applySubstitution } from '../content/substitution.ts';
 import { applySeed } from './apply.ts';
 import { planSeed } from './plan.ts';
@@ -199,6 +200,44 @@ describe('okf pack — OKF §9 conformance by construction', () => {
       }
     } finally {
       await rm(projectDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('all starter packs — OKF §9 rule 2 (every template instantiates a typed doc)', () => {
+  test('every template in every pack carries a non-empty type in its instantiated (block-2) frontmatter', () => {
+    const packs = Object.values(STARTER_PACKS);
+    expect(packs.length).toBeGreaterThanOrEqual(7);
+
+    for (const pack of packs) {
+      const templates = Object.entries(pack.templates);
+      expect(templates.length, `${pack.id}: pack defines no templates`).toBeGreaterThan(0);
+
+      for (const [name, body] of templates) {
+        const relPath = `${pack.id}/.ok/templates/${name}.md`;
+        const yaml = consumerFrontmatterYaml(relPath, body);
+        expect(
+          yaml,
+          `${pack.id}/${name}: rule 1 — no parseable instantiated frontmatter`,
+        ).not.toBeNull();
+
+        let map: unknown;
+        try {
+          map = parseYaml(yaml ?? '');
+        } catch (err) {
+          throw new Error(`${pack.id}/${name}: rule 1 — frontmatter is not valid YAML: ${err}`);
+        }
+        expect(
+          map !== null && typeof map === 'object',
+          `${pack.id}/${name}: rule 1 — frontmatter did not parse to a map`,
+        ).toBe(true);
+
+        const type = (map as Record<string, unknown>).type;
+        expect(
+          typeof type === 'string' && type.trim().length > 0,
+          `${pack.id}/${name}: rule 2 — \`type\` must be a non-empty string, got ${JSON.stringify(type)}`,
+        ).toBe(true);
+      }
     }
   });
 });
