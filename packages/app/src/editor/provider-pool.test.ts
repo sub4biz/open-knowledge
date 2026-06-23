@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as wait } from 'node:timers/promises';
+import { Compartment } from '@codemirror/state';
 import { PROTOCOL_VERSION } from '@inkeep/open-knowledge-core';
 import { parseHocuspocusAuthToken } from '@inkeep/open-knowledge-server';
 import * as Y from 'yjs';
@@ -2196,7 +2197,15 @@ describe('ProviderPool → V2 editor cache eviction coupling (Critical #2)', () 
     cacheModule.mountCmEditor({
       docName: 'doc-eviction-regression',
       container: makeFakeNode() as unknown as HTMLElement,
-      factory: () => ({ view: fakeView, ydoc: fakeYDoc, ytext: fakeYText, provider: makeProv() }),
+      factory: () => ({
+        view: fakeView,
+        ydoc: fakeYDoc,
+        ytext: fakeYText,
+        provider: makeProv(),
+        themeCompartment: new Compartment(),
+        wordWrapCompartment: new Compartment(),
+        placeholderCompartment: new Compartment(),
+      }),
     });
     expect(cacheModule.peekTiptap('doc-eviction-regression')).toBeDefined();
     expect(cacheModule.__peekCm('doc-eviction-regression')).toBeDefined();
@@ -2247,7 +2256,15 @@ describe('ProviderPool → V2 editor cache eviction coupling (Critical #2)', () 
     cacheModule.mountCmEditor({
       docName: 'doc-recycle-regression',
       container: makeFakeNode() as unknown as HTMLElement,
-      factory: () => ({ view: fakeView, ydoc: fakeYDoc, ytext: fakeYText, provider: makeProv() }),
+      factory: () => ({
+        view: fakeView,
+        ydoc: fakeYDoc,
+        ytext: fakeYText,
+        provider: makeProv(),
+        themeCompartment: new Compartment(),
+        wordWrapCompartment: new Compartment(),
+        placeholderCompartment: new Compartment(),
+      }),
     });
 
     pool = new ProviderPool(3, DUMMY_WS);

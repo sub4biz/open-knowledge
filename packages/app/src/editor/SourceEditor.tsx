@@ -104,9 +104,6 @@ export function SourceEditor({
 }: SourceEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const themeCompartmentRef = useRef(new Compartment());
-  const placeholderCompartmentRef = useRef(new Compartment());
-  const wordWrapCompartmentRef = useRef(new Compartment());
   const [mountError, setMountError] = useState<Error | null>(null);
   if (mountError) throw mountError;
   const { resolvedTheme } = useTheme();
@@ -148,6 +145,9 @@ export function SourceEditor({
             ydoc: provider.document,
             ytext,
           });
+          const themeCompartment = new Compartment();
+          const wordWrapCompartment = new Compartment();
+          const placeholderCompartment = new Compartment();
           const state = EditorState.create({
             doc: ytext.toString(),
             extensions: [
@@ -155,10 +155,10 @@ export function SourceEditor({
               keymap.of([indentWithTab]),
               yCollab(ytext, provider.awareness),
               ...createNestedCMExtensions({
-                themeCompartment: themeCompartmentRef.current,
+                themeCompartment,
                 resolvedTheme,
                 ydoc: provider.document,
-                wordWrapCompartment: wordWrapCompartmentRef.current,
+                wordWrapCompartment,
                 wordWrap,
               }),
               createSourcePolishExtension(),
@@ -191,7 +191,7 @@ export function SourceEditor({
                   return true;
                 },
               }),
-              placeholderCompartmentRef.current.of(cmPlaceholder(placeholder ?? '')),
+              placeholderCompartment.of(cmPlaceholder(placeholder ?? '')),
               EditorView.theme({
                 '&': {
                   height: '100%',
@@ -212,6 +212,9 @@ export function SourceEditor({
             ydoc: provider.document,
             ytext,
             provider,
+            themeCompartment,
+            wordWrapCompartment,
+            placeholderCompartment,
           };
         },
       });
@@ -264,25 +267,28 @@ export function SourceEditor({
   }, [docName]);
 
   useEffect(() => {
-    if (!viewRef.current) return;
-    viewRef.current.dispatch({
-      effects: themeCompartmentRef.current.reconfigure(
+    const entry = cmEntryRef.current;
+    if (!entry) return;
+    entry.view.dispatch({
+      effects: entry.themeCompartment.reconfigure(
         resolvedTheme === 'dark' ? darkTheme : lightTheme,
       ),
     });
   }, [resolvedTheme]);
 
   useEffect(() => {
-    if (!viewRef.current) return;
-    viewRef.current.dispatch({
-      effects: wordWrapCompartmentRef.current.reconfigure(wordWrap ? EditorView.lineWrapping : []),
+    const entry = cmEntryRef.current;
+    if (!entry) return;
+    entry.view.dispatch({
+      effects: entry.wordWrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []),
     });
   }, [wordWrap]);
 
   useEffect(() => {
-    if (!viewRef.current) return;
-    viewRef.current.dispatch({
-      effects: placeholderCompartmentRef.current.reconfigure(cmPlaceholder(placeholder ?? '')),
+    const entry = cmEntryRef.current;
+    if (!entry) return;
+    entry.view.dispatch({
+      effects: entry.placeholderCompartment.reconfigure(cmPlaceholder(placeholder ?? '')),
     });
   }, [placeholder]);
 
