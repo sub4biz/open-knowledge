@@ -10488,12 +10488,19 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     };
   }
 
+  function entrySearchKey(entry: FileIndexEntry): string {
+    return `${entry.modified}\0${entry.size}\0${entry.canonicalPath}\0${entry.inode}\0${entry.aliases.join('\0')}`;
+  }
+
+  const pageDocCache = new Map<string, { key: string; doc: WorkspaceSearchDocument }>();
+
   async function buildWorkspaceSearchDocumentsFromIndex(): Promise<{
     documents: WorkspaceSearchDocument[];
     truncated: boolean;
   }> {
     const pages: WorkspaceSearchDocument[] = [];
     const files: WorkspaceSearchDocument[] = [];
+    const seenPages: Set<string> = new Set();
     for (const [docName, entry] of getAllFilesIndex()) {
       if (isSystemDoc(docName) || isConfigDoc(docName)) continue;
       if (entry.kind === 'file') {
@@ -10507,24 +10514,42 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
         );
         continue;
       }
+      seenPages.add(docName);
+      const entryKey = entrySearchKey(entry);
+      const cached = pageDocCache.get(docName);
+      if (cached && cached.key === entryKey) {
+        pages.push(cached.doc);
+        continue;
+      }
       let content = '';
       let title = docName;
+      let readFailed = false;
       try {
         content = await readFile(entry.canonicalPath, 'utf-8');
-        title = extractPageTitle(content, docName);
       } catch (err) {
-        console.warn(`[search] Failed to index ${docName}:`, err);
+        readFailed = true;
+        console.warn(`[search] Failed to read ${docName}:`, err);
       }
-      pages.push(
-        createWorkspaceSearchDocument({
-          kind: 'page',
-          path: docName,
-          title,
-          content,
-          modifiedTs: Date.parse(entry.modified),
-          aliases: entry.aliases,
-        }),
-      );
+      if (!readFailed) {
+        try {
+          title = extractPageTitle(content, docName);
+        } catch (err) {
+          console.warn(`[search] Failed to extract title for ${docName}:`, err);
+        }
+      }
+      const doc = createWorkspaceSearchDocument({
+        kind: 'page',
+        path: docName,
+        title,
+        content,
+        modifiedTs: Date.parse(entry.modified),
+        aliases: entry.aliases,
+      });
+      if (!readFailed) pageDocCache.set(docName, { key: entryKey, doc });
+      pages.push(doc);
+    }
+    for (const docName of pageDocCache.keys()) {
+      if (!seenPages.has(docName)) pageDocCache.delete(docName);
     }
     const maxFiles = getSearchMaxEntries();
     let admittedFiles = files;
@@ -10563,10 +10588,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     return [...getAllFilesIndex()]
       .filter(([docName]) => !isSystemDoc(docName) && !isConfigDoc(docName))
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([docName, entry]) =>
-          `${docName} ${entry.modified} ${entry.size} ${entry.canonicalPath} ${entry.inode} ${entry.aliases.join(',')}`,
-      )
+      .map(([docName, entry]) => `${docName}\0${entrySearchKey(entry)}`)
       .join('');
   }
 

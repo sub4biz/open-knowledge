@@ -816,3 +816,95 @@ describe('GET /api/search — cold-start readiness', () => {
     }
   });
 });
+
+describe('GET /api/search — incremental corpus (per-page document cache)', () => {
+  async function onRequest(ext: ReturnType<typeof createApiExtension>, url: string) {
+    const req = makeReq('GET', url);
+    const { res, captured } = makeRes();
+    await (
+      ext as {
+        onRequest: (ctx: { request: IncomingMessage; response: ServerResponse }) => Promise<void>;
+      }
+    ).onRequest({ request: req, response: res });
+    return captured;
+  }
+
+  test('reuses an unchanged page across rebuilds, re-reads a changed entry, and prunes deletes', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ok-search-incremental-'));
+    try {
+      const alphaPath = join(dir, 'alpha.md');
+      const betaPath = join(dir, 'beta.md');
+      writeFileSync(alphaPath, '# Alpha\n\nalphaversionone\n', 'utf-8');
+      const alphaV1 = indexEntry(alphaPath, 'markdown');
+      const index = new Map<string, FileIndexEntry>([['alpha', alphaV1]]);
+      const ext = createApiExtension({
+        hocuspocus: {} as unknown as Parameters<typeof createApiExtension>[0]['hocuspocus'],
+        sessionManager: {} as unknown as Parameters<typeof createApiExtension>[0]['sessionManager'],
+        contentDir: dir,
+        serverInstanceId: 'test-server',
+        getFileIndex: () => index,
+        getAllFilesIndex: () => index,
+      });
+      const run = (q: string) => onRequest(ext, `/api/search?query=${q}&intent=full_text`);
+      const paths = (c: CapturedResponse) =>
+        (JSON.parse(c.body) as { results?: Array<{ path: string }> }).results?.map((r) => r.path) ??
+        [];
+
+      expect(paths(await run('alphaversionone'))).toContain('alpha');
+
+      writeFileSync(alphaPath, '# Alpha\n\nalphaversiontwo-now-longer\n', 'utf-8');
+      writeFileSync(betaPath, '# Beta\n\nbetafreshbody\n', 'utf-8');
+      index.set('beta', indexEntry(betaPath, 'markdown'));
+
+      expect(paths(await run('alphaversiontwo'))).not.toContain('alpha');
+      expect(paths(await run('alphaversionone'))).toContain('alpha');
+      expect(paths(await run('betafreshbody'))).toContain('beta');
+
+      index.set('alpha', indexEntry(alphaPath, 'markdown'));
+      expect(paths(await run('alphaversiontwo'))).toContain('alpha');
+
+      index.delete('beta');
+      expect(paths(await run('betafreshbody'))).not.toContain('beta');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('a failed read is NOT cached — the page self-heals on the next rebuild', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ok-search-readfail-'));
+    try {
+      const alphaPath = join(dir, 'alpha.md');
+      const alphaEntry: FileIndexEntry = {
+        size: 0,
+        modified: new Date(0).toISOString(),
+        canonicalPath: alphaPath,
+        inode: 424242,
+        aliases: [],
+        kind: 'markdown',
+      };
+      const index = new Map<string, FileIndexEntry>([['alpha', alphaEntry]]);
+      const ext = createApiExtension({
+        hocuspocus: {} as unknown as Parameters<typeof createApiExtension>[0]['hocuspocus'],
+        sessionManager: {} as unknown as Parameters<typeof createApiExtension>[0]['sessionManager'],
+        contentDir: dir,
+        serverInstanceId: 'test-server',
+        getFileIndex: () => index,
+        getAllFilesIndex: () => index,
+      });
+      const run = (q: string) => onRequest(ext, `/api/search?query=${q}&intent=full_text`);
+      const paths = (c: CapturedResponse) =>
+        (JSON.parse(c.body) as { results?: Array<{ path: string }> }).results?.map((r) => r.path) ??
+        [];
+
+      expect(paths(await run('healedtoken'))).not.toContain('alpha');
+
+      writeFileSync(alphaPath, '# Alpha\n\nhealedtoken body\n', 'utf-8');
+      writeFileSync(join(dir, 'beta.md'), '# Beta\n\nbetabody\n', 'utf-8');
+      index.set('beta', indexEntry(join(dir, 'beta.md'), 'markdown'));
+
+      expect(paths(await run('healedtoken'))).toContain('alpha');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
