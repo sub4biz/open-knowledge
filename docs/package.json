@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@inkeep/cxkit-react": "^0.5.117",
+    "@radix-ui/react-popover": "^1.1.17",
     "@types/mdx": "^2.0.13",
     "clsx": "^2.1.1",
     "fumadocs-core": "~16.1.0",

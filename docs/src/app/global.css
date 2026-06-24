@@ -84,6 +84,10 @@
   }
 }
 
+.subtle-scrollbar {
+  @apply scrollbar-thin scrollbar-track-transparent scrollbar-thumb-fd-muted-foreground/30 dark:scrollbar-thumb-fd-muted-foreground/50;
+}
+
 /* Home-route nav polish: match the page background, give the bar
    more vertical room than Fumadocs' default h-14, and render the
    theme-toggle icons as stroke-only Lucide (Fumadocs hardcodes
