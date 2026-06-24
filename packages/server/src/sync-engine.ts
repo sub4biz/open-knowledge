@@ -31,6 +31,7 @@ import {
   type PushPermission,
 } from './github-permissions.ts';
 import { getLogger } from './logger.ts';
+import { toPosix } from './path-utils.ts';
 import {
   readOriginGitHubRepo,
   readSyncRemoteInfo,
@@ -1023,7 +1024,7 @@ export class SyncEngine {
               changedProjectRelPaths.push(projRelPath);
               const contentRelPath =
                 contentFileByProjRel.get(projRelPath) ??
-                relative(this.contentDir, join(this.projectDir, projRelPath));
+                toPosix(relative(this.contentDir, join(this.projectDir, projRelPath)));
               if (contentRelPath && !contentRelPath.startsWith('..')) {
                 changedContentRelPaths.push(contentRelPath);
               }
@@ -1310,14 +1311,14 @@ export class SyncEngine {
       for (const entry of entries) {
         const fullPath = join(dir, entry.name);
         if (entry.isDirectory()) {
-          const dirRelPath = relative(this.contentDir, fullPath);
+          const dirRelPath = toPosix(relative(this.contentDir, fullPath));
           if (!dirRelPath.startsWith('..') && this.contentFilter.isDirExcluded(dirRelPath))
             continue;
           walk(fullPath);
         } else if (entry.isFile()) {
-          const contentRelPath = relative(this.contentDir, fullPath);
+          const contentRelPath = toPosix(relative(this.contentDir, fullPath));
           if (!contentRelPath.startsWith('..') && !this.contentFilter.isExcluded(contentRelPath)) {
-            const projectRelPath = relative(this.projectDir, fullPath);
+            const projectRelPath = toPosix(relative(this.projectDir, fullPath));
             results.push({ contentRelPath, projectRelPath });
           }
         }
@@ -1338,7 +1339,7 @@ export class SyncEngine {
         const projRelPath = line.trim();
         if (!projRelPath) continue;
         const absPath = join(this.projectDir, projRelPath);
-        const contentRelPath = relative(this.contentDir, absPath);
+        const contentRelPath = toPosix(relative(this.contentDir, absPath));
         if (!contentRelPath.startsWith('..') && !this.contentFilter.isExcluded(contentRelPath)) {
           paths.add(projRelPath);
         }
@@ -1414,7 +1415,7 @@ export class SyncEngine {
 
     for (const file of conflictedFiles) {
       const absPath = join(this.projectDir, file);
-      const contentRelPath = relative(this.contentDir, absPath);
+      const contentRelPath = toPosix(relative(this.contentDir, absPath));
       if (
         !contentRelPath.startsWith('..') &&
         isSupportedDocFile(contentRelPath) &&

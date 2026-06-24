@@ -19,7 +19,7 @@ import {
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { homedir } from 'node:os';
-import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as wait } from 'node:timers/promises';
 import type { Document, Extension, Hocuspocus } from '@hocuspocus/server';
@@ -418,6 +418,7 @@ import {
   incrementSummariesProvided,
   incrementSummariesTruncated,
 } from './metrics.ts';
+import { isWithinDir, toPosix } from './path-utils.ts';
 import {
   deleteReconciledBase,
   getActiveBranch,
@@ -856,7 +857,7 @@ function readUploadBody(req: IncomingMessage, projectDir: string): Promise<Uploa
 
 export function safeSubdir(baseDir: string, subdir: string): string {
   const resolved = resolve(baseDir, subdir);
-  if (resolved !== baseDir && !resolved.startsWith(`${baseDir}/`)) {
+  if (!isWithinDir(resolved, baseDir)) {
     throw new Error(`Invalid directory: ${subdir}`);
   }
   return resolved;
@@ -935,10 +936,8 @@ export async function* streamShowAllEntries(
   } catch {
     contentDirCanonical = contentDir;
   }
-  const isInsideContentDir = (resolved: string): boolean => {
-    if (resolved === contentDirCanonical) return true;
-    return resolved.startsWith(`${contentDirCanonical}/`);
-  };
+  const isInsideContentDir = (resolved: string): boolean =>
+    isWithinDir(resolved, contentDirCanonical);
 
   async function probeHasChildren(absDir: string, relDir: string): Promise<boolean> {
     let entries: import('node:fs').Dirent[];
@@ -953,7 +952,7 @@ export async function* streamShowAllEntries(
       if (entry.isDirectory()) {
         if (contentFilter.isDirExcluded(relPath, { bypassFilters: true })) continue;
         try {
-          const childCanonical = await realpath(`${absDir}/${entry.name}`);
+          const childCanonical = await realpath(join(absDir, entry.name));
           if (!isInsideContentDir(childCanonical)) continue;
         } catch (err) {
           console.warn(
@@ -1007,7 +1006,7 @@ export async function* streamShowAllEntries(
         if (entry.isDirectory()) {
           if (contentFilter.isDirExcluded(relPath, { bypassFilters: true })) continue;
 
-          const dirAbsRaw = `${absDir}/${entry.name}`;
+          const dirAbsRaw = join(absDir, entry.name);
           let dirCanonical: string;
           try {
             dirCanonical = await realpath(dirAbsRaw);
@@ -1054,7 +1053,7 @@ export async function* streamShowAllEntries(
         }
 
         if (entry.isSymbolicLink()) {
-          const linkAbs = `${absDir}/${entry.name}`;
+          const linkAbs = join(absDir, entry.name);
           let canonical: string;
           try {
             canonical = await realpath(linkAbs);
@@ -1078,7 +1077,7 @@ export async function* streamShowAllEntries(
             );
             continue;
           }
-          const targetRel = relative(contentDir, canonical);
+          const targetRel = toPosix(relative(contentDir, canonical));
           if (canonStat.isDirectory()) {
             if (contentFilter.isDirExcluded(relPath, { bypassFilters: true })) continue;
             if (!passesDirFilter(relPath)) continue;
@@ -1138,7 +1137,7 @@ export async function* streamShowAllEntries(
 
         let fileStat: import('node:fs').Stats | null = null;
         try {
-          fileStat = await stat(`${absDir}/${entry.name}`);
+          fileStat = await stat(join(absDir, entry.name));
         } catch (err) {
           console.warn(`[document-list][showAll] stat failed for ${absDir}/${entry.name}:`, err);
           continue;
@@ -1182,7 +1181,7 @@ export async function* streamShowAllEntries(
     }
   }
 
-  const startAbs = dirFilter ? `${contentDir}/${dirFilter}` : contentDir;
+  const startAbs = dirFilter ? join(contentDir, dirFilter) : contentDir;
   const startRel = dirFilter ?? '';
   yield* walk(startAbs, startRel, 1);
   if (aborted) showAllWalkAborts += 1;
@@ -1886,7 +1885,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     if (!isSafeDocName(docName)) return null;
     const resolvedContentDir = resolve(contentDir);
     const filePath = resolve(resolvedContentDir, `${docName}${getDocExtension(docName)}`);
-    if (!filePath.startsWith(`${resolvedContentDir}/`) && filePath !== resolvedContentDir) {
+    if (!isWithinDir(filePath, resolvedContentDir)) {
       return null;
     }
     return filePath;
@@ -4264,7 +4263,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
 
             for (const alias of entry.aliases) {
               if (dir && !alias.startsWith(`${dir}/`) && alias !== dir) continue;
-              const targetRelPath = relative(contentDir, entry.canonicalPath);
+              const targetRelPath = toPosix(relative(contentDir, entry.canonicalPath));
               documents.push({
                 kind: 'document',
                 docName: alias,
@@ -4298,7 +4297,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
           for (const alias of entry.aliases) {
             const aliasPassesDir = !dir || alias === dir || alias.startsWith(`${dir}/`);
             if (!aliasPassesDir || assetPaths.has(alias)) continue;
-            const targetRelPath = relative(contentDir, entry.canonicalPath);
+            const targetRelPath = toPosix(relative(contentDir, entry.canonicalPath));
             const assetExt = synthesizeShowAllAssetExt(alias);
             documents.push({
               kind: 'file',
@@ -4328,7 +4327,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
           for (const [canonicalPrefix, aliasPrefixes] of aliasesByCanonical) {
             const canonRoot = folderIndex.get(canonicalPrefix);
             const rootTarget = canonRoot
-              ? relative(contentDir, canonRoot.canonicalPath)
+              ? toPosix(relative(contentDir, canonRoot.canonicalPath))
               : canonicalPrefix;
             for (const aliasPrefix of aliasPrefixes) {
               if (!passesDirFilter(aliasPrefix)) continue;
@@ -4369,13 +4368,13 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
                 docExt: '.md',
                 isSymlink: true,
                 canonicalDocName: folderPath,
-                targetPath: relative(contentDir, fEntry.canonicalPath),
+                targetPath: toPosix(relative(contentDir, fEntry.canonicalPath)),
               });
             });
           }
           for (const [docName, dEntry] of allFiles) {
             projectChild(docName, (aliasName) => {
-              const targetRelPath = relative(contentDir, dEntry.canonicalPath);
+              const targetRelPath = toPosix(relative(contentDir, dEntry.canonicalPath));
               if (dEntry.kind === 'markdown') {
                 documents.push({
                   kind: 'document',
@@ -6625,7 +6624,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
         }
         const resolvedContentDir = resolve(contentDir);
         const fullPath = resolve(resolvedContentDir, filePath);
-        if (!fullPath.startsWith(`${resolvedContentDir}/`) && fullPath !== resolvedContentDir) {
+        if (!isWithinDir(fullPath, resolvedContentDir)) {
           errorResponse(
             res,
             400,
@@ -8097,7 +8096,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
       const existing = await findDuplicateAsset(destDir, sha, byteLength);
       if (existing) {
         cleanupTempfile();
-        const relPath = relative(contentDir, resolve(destDir, existing));
+        const relPath = toPosix(relative(contentDir, resolve(destDir, existing)));
         log.info(
           {
             event: 'upload',
@@ -8141,7 +8140,7 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
 
     try {
       const destFilename = linkTempToFinalWithCollisionRetry(tempPath, destDir, finalFilename);
-      const relPath = relative(contentDir, resolve(destDir, destFilename));
+      const relPath = toPosix(relative(contentDir, resolve(destDir, destFilename)));
       log.info(
         {
           event: 'upload',

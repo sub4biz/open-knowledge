@@ -97,6 +97,7 @@ import {
   incrementUpstreamImport,
   setRecentlyRemovedDocsSize,
 } from './metrics.ts';
+import { isWithinDir, toPosix } from './path-utils.ts';
 import {
   createPersistenceExtension,
   deleteReconciledBase,
@@ -305,7 +306,7 @@ export function createServer(options: ServerOptions): ServerInstance {
     if (!candidatePath) return null;
     const fullPath = resolve(contentDir, candidatePath);
     const contentDirAbs = resolve(contentDir);
-    if (fullPath !== contentDirAbs && !fullPath.startsWith(`${contentDirAbs}/`)) {
+    if (!isWithinDir(fullPath, contentDirAbs)) {
       return null;
     }
     try {
@@ -637,7 +638,7 @@ export function createServer(options: ServerOptions): ServerInstance {
     function resolveDocFilePath(docName: string): string | null {
       if (!isSafeDocName(docName)) return null;
       const filePath = resolve(resolvedContentDir, `${docName}${getDocExtension(docName)}`);
-      if (!filePath.startsWith(`${resolvedContentDir}/`) && filePath !== resolvedContentDir) {
+      if (!isWithinDir(filePath, resolvedContentDir)) {
         return null;
       }
       return filePath;
@@ -770,7 +771,7 @@ export function createServer(options: ServerOptions): ServerInstance {
   function safeRescuePath(shadowGitDir: string, docName: string): string | null {
     const rescueBase = resolve(shadowGitDir, 'rescue');
     const filePath = resolve(rescueBase, `${docName}${getDocExtension(docName)}`);
-    if (!filePath.startsWith(`${rescueBase}/`)) return null;
+    if (!isWithinDir(filePath, rescueBase)) return null;
     return filePath;
   }
 
@@ -2260,7 +2261,7 @@ export function createServer(options: ServerOptions): ServerInstance {
       for (const file of files) {
         try {
           const absPath = join(projectDir, file);
-          const contentRelPath = relative(contentDir, absPath);
+          const contentRelPath = toPosix(relative(contentDir, absPath));
           if (contentRelPath.startsWith('..')) continue;
           const docName = stripDocExtension(contentRelPath);
           const document = hocuspocus.documents.get(docName);

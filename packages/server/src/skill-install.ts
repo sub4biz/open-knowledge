@@ -32,6 +32,7 @@ export interface InstallUserSkillOptions {
   spawn?: SpawnLike;
   timeoutMs?: number;
   surface?: SkillStateSurface;
+  platform?: NodeJS.Platform;
 }
 
 export type InstallUserSkillResult = 'installed' | 'skip-current' | 'failed';
@@ -66,19 +67,27 @@ interface SpawnOutcome {
   error?: Error;
 }
 
+export function quoteForWindowsShell(arg: string): string {
+  return /\s/.test(arg) ? `"${arg.replaceAll('"', '\\"')}"` : arg;
+}
+
 function runSpawn(
   spawnFn: SpawnLike,
   command: string,
   args: readonly string[],
   env: NodeJS.ProcessEnv,
   timeoutMs: number,
+  platform: NodeJS.Platform,
 ): Promise<SpawnOutcome> {
   return new Promise((resolve) => {
     let child: ReturnType<typeof spawn>;
+    const useShell = platform === 'win32';
+    const spawnArgs = useShell ? args.map(quoteForWindowsShell) : args;
     try {
-      child = spawnFn(command, args, {
+      child = spawnFn(command, spawnArgs, {
         env,
         stdio: ['ignore', 'pipe', 'pipe'],
+        ...(useShell ? { shell: true } : {}),
       });
     } catch (err) {
       resolve({ kind: 'spawn-error', stderr: '', error: err as Error });
@@ -132,10 +141,11 @@ async function removeLegacyUserSkill(
   env: NodeJS.ProcessEnv,
   timeoutMs: number,
   logger: SkillInstallLogger,
+  platform: NodeJS.Platform,
 ): Promise<void> {
   if (!(await anyLegacyUserSkillExists(home))) return;
   const args = ['-y', SKILLS_CLI_SPEC, 'remove', '--agent', '*', '-g', LEGACY_USER_SKILL_NAME];
-  const outcome = await runSpawn(spawnFn, 'npx', args, env, timeoutMs);
+  const outcome = await runSpawn(spawnFn, 'npx', args, env, timeoutMs, platform);
   if (outcome.kind !== 'ok') {
     logger.warn(
       {
@@ -160,6 +170,7 @@ export async function installUserSkill(
   const spawnFn = opts.spawn ?? (spawn as SpawnLike);
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const surfaceAttribution: SkillStateSurface = opts.surface ?? 'cli-npx-skills-add';
+  const platform = opts.platform ?? process.platform;
 
   const report = async (
     outcome: SkillInstallEventOutcome,
@@ -235,10 +246,10 @@ export async function installUserSkill(
   }
   const env: NodeJS.ProcessEnv = { ...process.env, HOME: home };
 
-  await removeLegacyUserSkill(home, spawnFn, env, timeoutMs, logger);
+  await removeLegacyUserSkill(home, spawnFn, env, timeoutMs, logger, platform);
 
   const args = ['-y', SKILLS_CLI_SPEC, 'add', discoveryDir, '--agent', '*', '-g', '-y', '--copy'];
-  const outcome = await runSpawn(spawnFn, 'npx', args, env, timeoutMs);
+  const outcome = await runSpawn(spawnFn, 'npx', args, env, timeoutMs, platform);
 
   if (outcome.kind === 'ok') {
     try {

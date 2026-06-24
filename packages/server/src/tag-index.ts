@@ -12,6 +12,7 @@ import {
 import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
 import type { ContentFilter } from './content-filter.ts';
 import { isSupportedDocFile, stripDocExtension } from './doc-extensions.ts';
+import { toPosix } from './path-utils.ts';
 
 const TAG_VALUE_RE = createTagInTextRegex();
 
@@ -280,13 +281,13 @@ export class TagIndex {
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
       if (entry.isDirectory()) {
-        const relDir = relative(this.contentDir, fullPath);
+        const relDir = toPosix(relative(this.contentDir, fullPath));
         if (this.contentFilter && relDir && this.contentFilter.isDirExcluded(relDir)) continue;
         await this.walkContentDir(fullPath, out);
         continue;
       }
       if (!entry.isFile() || !isSupportedDocFile(entry.name)) continue;
-      const relPath = relative(this.contentDir, fullPath);
+      const relPath = toPosix(relative(this.contentDir, fullPath));
       if (this.contentFilter?.isExcluded(relPath)) continue;
       out.push({ docName: stripDocExtension(relPath), filePath: fullPath });
     }

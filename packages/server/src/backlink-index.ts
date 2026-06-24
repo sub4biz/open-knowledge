@@ -15,6 +15,7 @@ import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
 import { getLocalDir } from './config/paths.ts';
 import type { ContentFilter } from './content-filter.ts';
 import { isSupportedDocFile, stripDocExtension } from './doc-extensions.ts';
+import { toPosix } from './path-utils.ts';
 
 const WIKI_LINK_RE = /\[\[([^\n#[\]|]+)(?:#([^\n[\]|]+))?(?:\|([^\n[\]]+))?\]\]/y;
 
@@ -1230,11 +1231,11 @@ export class BacklinkIndex {
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
       if (entry.isDirectory()) {
-        const relDir = relative(this.contentDir, fullPath);
+        const relDir = toPosix(relative(this.contentDir, fullPath));
         if (this.contentFilter && relDir && this.contentFilter.isDirExcluded(relDir)) continue;
         await this.walkForPaths(fullPath, results);
       } else if (entry.isFile() && isSupportedDocFile(entry.name)) {
-        const relPath = relative(this.contentDir, fullPath);
+        const relPath = toPosix(relative(this.contentDir, fullPath));
         if (this.contentFilter?.isExcluded(relPath)) continue;
         results.push({ docName: stripDocExtension(relPath), filePath: fullPath });
       }

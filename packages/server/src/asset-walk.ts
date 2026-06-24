@@ -1,7 +1,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { lstat, readdir, realpath, stat } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { join, relative } from 'node:path';
 import {
   ASSET_EXTENSIONS,
   type BasenameIndex,
@@ -9,6 +9,7 @@ import {
 } from '@inkeep/open-knowledge-core';
 import type { ContentFilter } from './content-filter.ts';
 import { isSupportedAssetFile } from './doc-extensions.ts';
+import { isWithinDir, toPosix } from './path-utils.ts';
 
 type SeedSkipReason =
   | 'read-failed'
@@ -22,11 +23,6 @@ interface SeedOptions {
   contentFilter?: ContentFilter;
   basenameIndex: BasenameIndex;
   onSkip?(reason: SeedSkipReason, code: string | undefined, path: string): void;
-}
-
-function isWithinDir(candidate: string, dir: string): boolean {
-  if (candidate === dir) return true;
-  return candidate.startsWith(`${dir}${sep}`);
 }
 
 function errnoCode(err: unknown): string | undefined {
@@ -69,7 +65,7 @@ export async function seedBasenameIndex(opts: SeedOptions): Promise<void> {
     }
     for (const entry of entries) {
       const full = join(dir, entry.name);
-      const rel = relative(root, full);
+      const rel = toPosix(relative(root, full));
       if (rel.startsWith('..')) continue;
       if (opts.contentFilter?.isDirExcluded(rel) && entry.isDirectory()) continue;
 
