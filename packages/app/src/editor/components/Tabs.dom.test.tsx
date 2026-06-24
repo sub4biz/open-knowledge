@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { cleanup } from '@testing-library/react';
-import { readTabSlots } from './Tabs.tsx';
+import { findNthTabGearButton, readTabSlots } from './Tabs.tsx';
 
 afterEach(cleanup);
+afterEach(() => {
+  document.body.innerHTML = '';
+});
 
 function contentDom(childRenderers: string): string {
   return `<div class="component-children" data-node-view-content><div data-node-view-content-react>${childRenderers}</div></div>`;
@@ -10,6 +13,15 @@ function contentDom(childRenderers: string): string {
 
 function tabRenderer(label: string, id: string, nestedContentDom = ''): string {
   return `<div class="react-renderer node-jsxComponent"><div class="jsx-component-wrapper" data-component-type="tab"><section class="tab-panel" data-tab-label="${label}" data-tab-id="${id}">${nestedContentDom}</section></div></div>`;
+}
+
+function tabRendererWithGear(
+  label: string,
+  id: string,
+  gearOwner: string,
+  nestedContentDom = '',
+): string {
+  return `<div class="react-renderer node-jsxComponent"><div class="jsx-component-chrome"><button type="button" data-jsx-gear="" data-gear-owner="${gearOwner}"></button></div><div class="jsx-component-wrapper" data-component-type="tab"><section class="tab-panel" data-tab-label="${label}" data-tab-id="${id}">${nestedContentDom}</section></div></div>`;
 }
 
 function containerRenderer(type: string, childRenderers = ''): string {
@@ -102,5 +114,68 @@ describe('readTabSlots — counts only the Tabs own direct Tab children', () => 
 
   test('an empty Tabs yields zero slots', () => {
     expect(readTabSlots(mountOuterTabs(''))).toHaveLength(0);
+  });
+});
+
+describe('findNthTabGearButton — Notion-style rename gear lookup', () => {
+  test('returns the gear button of the Nth Tab in the strip', () => {
+    const root = mountOuterTabs(
+      tabRendererWithGear('Alpha', 'alpha', 'gear-0') +
+        tabRendererWithGear('Bravo', 'bravo', 'gear-1') +
+        tabRendererWithGear('Charlie', 'charlie', 'gear-2'),
+    );
+    expect(findNthTabGearButton(root, 0)?.dataset.gearOwner).toBe('gear-0');
+    expect(findNthTabGearButton(root, 1)?.dataset.gearOwner).toBe('gear-1');
+    expect(findNthTabGearButton(root, 2)?.dataset.gearOwner).toBe('gear-2');
+  });
+
+  test('returns null when the index is out of range', () => {
+    const root = mountOuterTabs(
+      tabRendererWithGear('Alpha', 'alpha', 'gear-0') +
+        tabRendererWithGear('Bravo', 'bravo', 'gear-1'),
+    );
+    expect(findNthTabGearButton(root, 2)).toBeNull();
+    expect(findNthTabGearButton(root, 99)).toBeNull();
+  });
+
+  test('returns null when the Tab at the slot has no gear (placeholder mode)', () => {
+    const root = mountOuterTabs(
+      tabRendererWithGear('Alpha', 'alpha', 'gear-0') + tabRenderer('Bravo', 'bravo'),
+    );
+    expect(findNthTabGearButton(root, 0)).not.toBeNull();
+    expect(findNthTabGearButton(root, 1)).toBeNull();
+  });
+
+  test('the returned button is the one .click() opens — round-trip the dispatch', () => {
+    const root = mountOuterTabs(
+      tabRendererWithGear('Alpha', 'alpha', 'gear-0') +
+        tabRendererWithGear('Bravo', 'bravo', 'gear-1'),
+    );
+    const gear = findNthTabGearButton(root, 1);
+    expect(gear).not.toBeNull();
+    let fired = 0;
+    gear?.addEventListener('click', () => {
+      fired++;
+    });
+    gear?.click();
+    expect(fired).toBe(1);
+  });
+
+  test('nested Tabs: inner pills do NOT count toward the outer Tabs slot set', () => {
+    const innerTabs = nestedTabsRenderer(
+      tabRendererWithGear('Inner one', 'inner-1', 'inner-gear-0') +
+        tabRendererWithGear('Inner two', 'inner-2', 'inner-gear-1'),
+    );
+    const tab1 = tabRendererWithGear('Outer one', 'outer-1', 'outer-gear-0', contentDom(innerTabs));
+    const root = mountOuterTabs(tab1 + tabRendererWithGear('Outer two', 'outer-2', 'outer-gear-1'));
+
+    expect(findNthTabGearButton(root, 0)?.dataset.gearOwner).toBe('outer-gear-0');
+    expect(findNthTabGearButton(root, 1)?.dataset.gearOwner).toBe('outer-gear-1');
+    expect(findNthTabGearButton(root, 2)).toBeNull();
+
+    const innerContent = document.querySelectorAll<HTMLElement>('.tabs-content')[1];
+    if (!innerContent) throw new Error('expected an inner .tabs-content');
+    expect(findNthTabGearButton(innerContent, 0)?.dataset.gearOwner).toBe('inner-gear-0');
+    expect(findNthTabGearButton(innerContent, 1)?.dataset.gearOwner).toBe('inner-gear-1');
   });
 });

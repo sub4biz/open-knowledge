@@ -189,7 +189,7 @@ describe('SrcAutocomplete — keyboard handling', () => {
     expect(getOptions().length).toBe(0);
   });
 
-  test('Enter with no matching suggestions is a no-op (does NOT call onChange)', () => {
+  test('Enter with no matching suggestions does NOT call onChange (no phantom selection)', () => {
     const onChange = mock((_v: string) => {});
 
     render(
@@ -205,6 +205,43 @@ describe('SrcAutocomplete — keyboard handling', () => {
     fireEvent.focus(input);
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('Enter with no highlighted suggestion calls onSubmit (Tab rename Enter-commits-and-closes)', () => {
+    const onSubmit = mock(() => {});
+    render(
+      <SrcAutocomplete
+        id="prop-src"
+        value=""
+        onChange={() => {}}
+        onSubmit={onSubmit}
+        accept={ALLOWED_IMAGE_MIME_TYPES}
+      />,
+    );
+    const input = document.getElementById('prop-src') as HTMLInputElement;
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  test('Enter with a highlighted suggestion picks the suggestion, NOT onSubmit', () => {
+    stubAssetPaths.add('assets/photo.png');
+    const onChange = mock((_v: string) => {});
+    const onSubmit = mock(() => {});
+    render(
+      <SrcAutocomplete
+        id="prop-src"
+        value=""
+        onChange={onChange}
+        onSubmit={onSubmit}
+        accept={ALLOWED_IMAGE_MIME_TYPES}
+      />,
+    );
+    const input = document.getElementById('prop-src') as HTMLInputElement;
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('/assets/photo.png');
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 

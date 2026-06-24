@@ -85,9 +85,10 @@ interface PropPanelProps {
   descriptor: JsxComponentDescriptor;
   values: Record<string, unknown>;
   onChange: (propName: string, value: unknown) => void;
+  onDismiss?: () => void;
 }
 
-export function PropPanel({ descriptor, values, onChange }: PropPanelProps) {
+export function PropPanel({ descriptor, values, onChange, onDismiss }: PropPanelProps) {
   const editableProps = descriptor.props.filter(
     (p) => !('hidden' in p && p.hidden) && p.hideWhen?.(values) !== true && p.type !== 'reactnode',
   );
@@ -109,6 +110,7 @@ export function PropPanel({ descriptor, values, onChange }: PropPanelProps) {
           propDef={propDef}
           value={values[propDef.name]}
           onChange={(v) => onChange(propDef.name, v)}
+          onDismiss={onDismiss}
           isAutoFocused={propDef.name === autoFocusedPropName}
         />
       ))}
@@ -143,6 +145,7 @@ export function PropPanel({ descriptor, values, onChange }: PropPanelProps) {
                   propDef={propDef}
                   value={values[propDef.name]}
                   onChange={(v) => onChange(propDef.name, v)}
+                  onDismiss={onDismiss}
                   isAutoFocused={propDef.name === autoFocusedPropName}
                 />
               ))}
@@ -162,13 +165,23 @@ function PropControl({
   propDef,
   value,
   onChange,
+  onDismiss,
   isAutoFocused,
 }: {
   propDef: PropDef;
   value: unknown;
   onChange: (value: unknown) => void;
+  onDismiss?: () => void;
   isAutoFocused: boolean;
 }) {
+  const handleDismissKeyDown = onDismiss
+    ? (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          onDismiss();
+        }
+      }
+    : undefined;
   switch (propDef.type) {
     case 'reactnode':
       return null;
@@ -271,6 +284,7 @@ function PropControl({
                 }
                 onChange(raw);
               }}
+              onKeyDown={handleDismissKeyDown}
               autoFocus={isAutoFocused}
               data-prop-autofocus={isAutoFocused ? '' : undefined}
               aria-invalid={cssError !== null ? true : undefined}
@@ -329,6 +343,7 @@ function PropControl({
                   }
                   onChange(raw);
                 }}
+                onSubmit={onDismiss}
                 accept={accept}
                 placeholder={mediaPlaceholder}
                 autoFocus={isAutoFocused}
@@ -351,6 +366,7 @@ function PropControl({
                   }
                   onChange(raw);
                 }}
+                onKeyDown={handleDismissKeyDown}
                 autoFocus={isAutoFocused}
                 data-prop-autofocus={isAutoFocused ? '' : undefined}
                 aria-invalid={mediaErrorMessage !== null ? true : undefined}
@@ -440,6 +456,7 @@ function PropControl({
               const num = Number(raw);
               if (!Number.isNaN(num)) onChange(num);
             }}
+            onKeyDown={handleDismissKeyDown}
             className="h-7 text-sm"
           />
         </div>

@@ -813,6 +813,7 @@ export function JsxComponentView({ node, editor, extension, getPos, selected }: 
               <button
                 type="button"
                 className="jsx-chrome-btn"
+                data-jsx-gear=""
                 aria-label={t`${settingsDescriptorLabel} properties`}
               >
                 <Settings2 size={12} aria-hidden="true" />
@@ -1007,6 +1008,7 @@ export function JsxComponentView({ node, editor, extension, getPos, selected }: 
           <PropPanel
             descriptor={descriptor}
             values={primitiveProps}
+            onDismiss={() => setPopoverOpen(false)}
             onChange={(propName, value) => {
               const p = typeof getPos === 'function' ? getPos() : undefined;
               if (typeof p !== 'number') return;

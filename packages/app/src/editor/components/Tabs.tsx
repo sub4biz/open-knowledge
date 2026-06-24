@@ -27,6 +27,13 @@ export function readTabSlots(root: HTMLElement): TabSummary[] {
   });
 }
 
+export function findNthTabGearButton(root: HTMLElement, index: number): HTMLButtonElement | null {
+  const renderers = Array.from(root.querySelectorAll<HTMLElement>(SLOT_SELECTOR));
+  const target = renderers[index];
+  if (!target) return null;
+  return target.querySelector<HTMLButtonElement>('[data-jsx-gear]');
+}
+
 export function Tabs({ id, children }: TabsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [labels, setLabels] = useState<TabSummary[]>([]);
@@ -122,7 +129,15 @@ export function Tabs({ id, children }: TabsProps) {
                 aria-controls={s.panelId ?? undefined}
                 tabIndex={s.index === safeActive ? 0 : -1}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setActiveIndex(s.index)}
+                onClick={() => {
+                  if (s.index !== safeActive) {
+                    setActiveIndex(s.index);
+                    return;
+                  }
+                  const root = contentRef.current;
+                  if (!root) return;
+                  findNthTabGearButton(root, s.index)?.click();
+                }}
               >
                 {s.label}
               </button>

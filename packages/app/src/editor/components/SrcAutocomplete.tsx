@@ -30,6 +30,7 @@ interface SrcAutocompleteProps {
   ariaDescribedBy?: string;
   dataPropAutofocus?: string;
   className?: string;
+  onSubmit?: () => void;
 }
 
 interface AssetItem {
@@ -99,6 +100,7 @@ export function SrcAutocomplete({
   ariaDescribedBy,
   dataPropAutofocus,
   className,
+  onSubmit,
 }: SrcAutocompleteProps): ReactNode {
   const pageList = useOptionalPageList();
   const assetPaths: ReadonlySet<string> = pageList?.assetPaths ?? EMPTY_ASSET_SET;
@@ -175,11 +177,18 @@ export function SrcAutocomplete({
               return;
             }
             if (e.key === 'Enter') {
-              if (!wantOpen) return;
-              const item = suggestions[highlight];
-              if (!item) return;
-              e.preventDefault();
-              selectSuggestion(item);
+              if (wantOpen) {
+                const item = suggestions[highlight];
+                if (item) {
+                  e.preventDefault();
+                  selectSuggestion(item);
+                  return;
+                }
+              }
+              if (onSubmit) {
+                e.preventDefault();
+                onSubmit();
+              }
               return;
             }
             if (e.key === 'Escape') {
