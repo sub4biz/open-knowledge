@@ -1,15 +1,15 @@
 'use client';
 
-import { Check, ChevronDown, Copy } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { clipboardCopyOutcome } from '@/lib/share-splash';
 import { cn } from '@/lib/utils';
 
 interface SplashCliBlockProps {
   installCommand: string;
-  cloneCommand: string;
-  disclosureSummary?: { lead: string; action: string };
-  initialOpen?: boolean;
+  cloneCommand?: string;
+  wrapperClassName?: string;
+  showHeading?: boolean;
 }
 
 const COPY_RESET_MS = 2000;
@@ -20,8 +20,8 @@ type CopyStatus = 'idle' | 'copied' | 'failed';
 export function SplashCliBlock({
   installCommand,
   cloneCommand,
-  disclosureSummary,
-  initialOpen,
+  wrapperClassName,
+  showHeading,
 }: SplashCliBlockProps) {
   const [status, setStatus] = useState<CopyStatus>('idle');
   const [failureSelected, setFailureSelected] = useState(false);
@@ -43,7 +43,7 @@ export function SplashCliBlock({
     }, ms);
   }
 
-  const payload = `${installCommand}\n${cloneCommand}`;
+  const payload = cloneCommand ? `${installCommand}\n${cloneCommand}` : installCommand;
 
   const handleCopy = async () => {
     let succeeded = true;
@@ -81,69 +81,59 @@ export function SplashCliBlock({
           : "Couldn't copy"
         : 'Copy';
 
-  const body = (
-    <div className="not-prose relative" data-testid="splash-cli-body">
-      <pre
-        ref={codeRef}
-        className="overflow-x-auto whitespace-pre rounded-lg border border-slide-border bg-slide-bg-elevated py-3.5 pr-12 pl-4 font-mono text-sm leading-relaxed text-slide-text"
-      >
-        <code className="block">{installCommand}</code>
-        <code className="block">{cloneCommand}</code>
-      </pre>
-      <button
-        type="button"
-        onClick={handleCopy}
-        data-testid="splash-cli-copy"
-        aria-label="Copy install and clone commands to clipboard"
-        title={statusLabel}
-        data-copy-status={status}
-        className={cn(
-          'absolute top-2.5 right-2.5 inline-flex size-7 items-center justify-center rounded-md text-slide-muted transition',
-          'hover:bg-black/5 hover:text-slide-text dark:hover:bg-white/10',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slide-accent',
-          status === 'copied' && 'text-slide-accent-strong',
-        )}
-      >
-        {status === 'copied' ? (
-          <Check className="size-4" aria-hidden="true" />
-        ) : (
-          <Copy className="size-4" aria-hidden="true" />
-        )}
-        {/* Status stays announced to assistive tech (the clipboard-failure
-            recovery) while the visible affordance is icon-only. */}
-        <span className="sr-only" aria-live="polite">
-          {statusLabel}
-        </span>
-      </button>
-    </div>
-  );
-
-  if (!disclosureSummary) {
-    return <div className="mt-12">{body}</div>;
-  }
-
   return (
-    <details className="group mt-6" data-testid="splash-cli-disclosure" open={initialOpen ?? false}>
-      <summary
-        className={cn(
-          'group/cli inline-flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm text-slide-muted',
-          'focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slide-accent',
-          '[&::-webkit-details-marker]:hidden',
-        )}
-        data-testid="splash-cli-disclosure-summary"
-      >
-        <span>
-          {disclosureSummary.lead}{' '}
-          <span className="font-medium text-slide-text underline underline-offset-4 transition-colors group-hover/cli:text-slide-accent-strong">
-            {disclosureSummary.action}
+    <div className={cn(wrapperClassName ?? 'mt-12')}>
+      {showHeading ? (
+        <p className="mb-2 inline-flex w-fit items-center gap-1.5 font-mono text-sm uppercase tracking-wide text-slide-muted">
+          Open with CLI
+        </p>
+      ) : null}
+      {/* Single rounded code surface with a top-right copy icon, mirroring the
+          docs code-block treatment rather than a nested inset + bottom text button.
+          Scroll + frame live on the wrapper; padding stays on the <pre> so the
+          trailing `px-4` survives a horizontal scroll (a scroll container drops
+          its own right padding at the scroll end). */}
+      <div className="not-prose relative" data-testid="splash-cli-body">
+        <div className="subtle-scrollbar overflow-x-auto rounded-lg border bg-slide-bg dark:bg-white/5">
+          <pre
+            ref={codeRef}
+            translate="no"
+            className="w-max min-w-full whitespace-pre px-4 pt-3 pb-2 font-mono text-sm leading-relaxed text-slide-text"
+          >
+            <code className="block">{installCommand}</code>
+            {cloneCommand ? <code className="block">{cloneCommand}</code> : null}
+          </pre>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          data-testid="splash-cli-copy"
+          aria-label={
+            cloneCommand
+              ? 'Copy install and clone commands to clipboard'
+              : 'Copy install command to clipboard'
+          }
+          title={statusLabel}
+          data-copy-status={status}
+          className={cn(
+            'absolute top-2.5 right-2.5 inline-flex size-7 items-center justify-center rounded-md text-slide-muted transition backdrop-blur-xl',
+            'hover:bg-black/5 hover:text-slide-text dark:hover:bg-white/10',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slide-accent',
+            status === 'copied' && 'text-primary',
+          )}
+        >
+          {status === 'copied' ? (
+            <Check className="size-4" aria-hidden="true" />
+          ) : (
+            <Copy className="size-4" aria-hidden="true" />
+          )}
+          {/* Status stays announced to assistive tech (the clipboard-failure
+              recovery) while the visible affordance is icon-only. */}
+          <span className="sr-only" aria-live="polite">
+            {statusLabel}
           </span>
-        </span>
-        <ChevronDown
-          className="size-3.5 shrink-0 text-slide-muted transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
-          aria-hidden="true"
-        />
-      </summary>
-      <div className="mt-3">{body}</div>
-    </details>
+        </button>
+      </div>
+    </div>
   );
 }

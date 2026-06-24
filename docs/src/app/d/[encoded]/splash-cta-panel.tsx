@@ -3,7 +3,7 @@
 import { ArrowUpRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { classifySplashOs, type SplashOs, splashCtaLayout } from '@/lib/share-splash';
-import { SplashCliBlock } from './splash-cli-block';
+import { SplashCliButton } from './splash-cli-button';
 import { SplashCtaCluster } from './splash-cta-cluster';
 
 interface SplashCtaPanelProps {
@@ -40,24 +40,23 @@ export function SplashCtaPanel({
           downloadUrl={downloadUrl}
           customSchemeUrl={customSchemeUrl}
           githubUrl={githubUrl}
+          installCommand={installCommand}
+          cloneCommand={cloneCommand}
         />
       )}
 
-      <SplashCliBlock
-        installCommand={installCommand}
-        cloneCommand={cloneCommand}
-        disclosureSummary={
-          layout.cliInline ? undefined : { lead: 'Have an Intel Mac?', action: 'Open with the CLI' }
-        }
-      />
-
-      {/* Linux drops the cluster (no desktop binary, no deep link) but keeps a
-          standalone GitHub fallback so a recipient who can't run the CLI still
-          reaches the content. splashCtaLayout encodes the invariant that every
-          OS keeps a GitHub path (cluster / standalone / Windows notice). */}
-      {layout.showStandaloneGithub && (
-        <div className="mt-6">
-          <SplashGithubLink githubUrl={githubUrl} />
+      {/* macOS/unknown carries the CLI inside the cluster's Download dropdown.
+          Linux has no desktop binary, so the CLI popover IS the primary action,
+          with View on GitHub as the secondary in the same row (the invariant
+          that every OS keeps a GitHub path — cluster / here / Windows notice). */}
+      {layout.cliInline && (
+        <div className="mt-12 flex flex-wrap items-center gap-4">
+          <SplashCliButton
+            installCommand={installCommand}
+            cloneCommand={cloneCommand}
+            variant="primary"
+          />
+          {layout.showStandaloneGithub && <SplashGithubLink githubUrl={githubUrl} />}
         </div>
       )}
     </>
@@ -74,7 +73,7 @@ function readPlatformInput(): string | null {
 
 function SplashWindowsNotice({ githubUrl }: { githubUrl: string }) {
   return (
-    <div className="mt-12 flex flex-col gap-4" role="status" data-testid="splash-windows-notice">
+    <div className="mt-12 flex gap-4" role="status" data-testid="splash-windows-notice">
       <p
         className="text-base leading-relaxed text-slide-text"
         data-testid="splash-windows-notice-text"
