@@ -4,6 +4,7 @@ import {
   type DocExtension,
   type FrontmatterMap,
   type FrontmatterPatch,
+  instantiateDoc,
   normalizeBridge,
   parseFrontmatterYaml,
   renderInventoryFooter,
@@ -237,7 +238,7 @@ async function writeOneDoc(
         error: `failed to read template at ${matched.path}: ${(err as Error).message}`,
       };
     }
-    const { body: templateBody } = stripFrontmatter(templateContent);
+    const templateBody = instantiateDoc(templateContent);
     effectiveMarkdown = applySubstitution(templateBody, {
       date: todayIsoUtc(),
       user: identity?.displayName ?? '',

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HARNESS_BOOT_TIMEOUT_MS } from './harness-boot-timeout';
 import { createTestServer, pollUntil, type TestServer } from './test-harness.ts';
@@ -120,6 +120,35 @@ test('the `extension` field wins over an extension typed into `path`', async () 
 
   await pollUntil(() => existsSync(join(server.contentDir, `${docName}.mdx`)));
   expect(existsSync(join(server.contentDir, `${docName}.md`))).toBe(false);
+});
+
+test('write({ document: { template } }) keeps a single-block template doc-frontmatter', async () => {
+  const session = await openMcpSession(server.port);
+  mkdirSync(join(server.contentDir, '.ok', 'templates'), { recursive: true });
+  writeFileSync(
+    join(server.contentDir, '.ok', 'templates', 'research-tpl.md'),
+    '---\ntemplate:\n  title: Research Log\n  description: provisional\ntype: research-note\nstatus: provisional\ncreated: {{date}}\ntags: [research]\n---\n\n## Question\n',
+    'utf-8',
+  );
+
+  const docName = `from-tpl-${randomUUID().slice(0, 8)}`;
+  const result = await callWrite(
+    server.port,
+    session,
+    { document: { path: docName, template: 'research-tpl' } },
+    server.contentDir,
+  );
+  expect(result.isError ?? false).toBe(false);
+
+  await pollUntil(() => existsSync(join(server.contentDir, `${docName}.md`)));
+  const created = readFileSync(join(server.contentDir, `${docName}.md`), 'utf-8');
+  expect(created).toContain('type: research-note');
+  expect(created).toContain('status: provisional');
+  expect(created).toContain('## Question');
+  expect(created).not.toContain('template:');
+  expect(created).not.toContain('title: Research Log');
+  expect(created).not.toContain('{{date}}');
+  expect(created).toMatch(/created: \d{4}-\d{2}-\d{2}/);
 });
 
 test('batch `documents` write honors a per-entry `extension`', async () => {

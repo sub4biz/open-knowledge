@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import {
+  instantiateDoc,
   parseFrontmatterYaml,
   stripFrontmatter,
   unwrapFrontmatterFences,
@@ -39,7 +40,7 @@ function collectMarkdown(root: string, dir = root): string[] {
 function consumerFrontmatterYaml(relPath: string, raw: string): string | null {
   const isTemplate = relPath.includes('/.ok/templates/');
   const docSource = isTemplate
-    ? applySubstitution(stripFrontmatter(raw).body, { date: '2026-01-01', user: 'Test User' })
+    ? applySubstitution(instantiateDoc(raw), { date: '2026-01-01', user: 'Test User' })
     : raw;
   const { frontmatter } = stripFrontmatter(docSource);
   if (frontmatter === '') return null;
@@ -205,7 +206,7 @@ describe('okf pack — OKF §9 conformance by construction', () => {
 });
 
 describe('all starter packs — OKF §9 rule 2 (every template instantiates a typed doc)', () => {
-  test('every template in every pack carries a non-empty type in its instantiated (block-2) frontmatter', () => {
+  test('every template in every pack carries a non-empty type in its instantiated doc-frontmatter', () => {
     const packs = Object.values(STARTER_PACKS);
     expect(packs.length).toBeGreaterThanOrEqual(7);
 

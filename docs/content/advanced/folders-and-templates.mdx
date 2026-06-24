@@ -55,8 +55,9 @@ A template body may use two placeholders, filled in automatically when a documen
 
 ```md title=".ok/templates/standup.md"
 ---
-title: Daily standup
-description: Standup notes scaffold
+template:
+  title: Daily standup
+  description: Standup notes scaffold
 ---
 
 # Standup — {{date}}
@@ -74,14 +75,17 @@ These two are the only placeholders Open Knowledge fills in. Any other `{{...}}`
 
 ### Give new documents their own properties
 
-The standup template above produces documents with just a body: a heading and some sections, no [properties](#properties-in-one-minute). This is also how you give every new doc in a folder the same **starting properties** (a `status`, a date, a `tags` array): add a second properties block (the same `---`-fenced frontmatter) at the very top of the **Starter content**:
+The standup template above produces documents with just a body. To give every new doc in a folder the same **starting properties** (a `type`, a `status`, a date, a `tags` array), you don't hand-edit anything — the **Edit template** dialog has a **Type** field and a **Default properties** section (key/value rows) for exactly this. The starter content stays pure markdown.
+
+On disk it all lives in one frontmatter block: the template's own identity sits under a reserved `template:` key, and every other top-level key is a property new documents start with:
 
 ```md title=".ok/templates/daily.md"
 ---
-title: Daily entry
-description: Daily journal entry.
----
----
+template:
+  title: Daily entry
+  description: Daily journal entry.
+type: daily-note
+description: Daily journal entry capturing intentions, notes, and reflections.
 title: {{date}}
 status: draft
 tags: [daily]
@@ -92,7 +96,9 @@ tags: [daily]
 (...)
 ```
 
-The first block is the template's own info: the name and description shown in the picker. The second block becomes the new document's own properties, written as real bytes into the file. Open Knowledge removes only the first block when a document is created, so everything else in the Starter content (including a properties block at the top) becomes the new document exactly as written. Because these are the new doc's *own* properties, the doc owns them outright: editing one doc never touches another.
+The `template:` block is the template's own info (the name and description shown in the picker); Open Knowledge strips it when a document is created. Every other key — `type`, `description`, `title`, `status`, `tags` above — becomes the new document's own properties, written as real bytes into the file. `description` gives each new document a starting one-line summary; edit it per document. Because these are the new doc's *own* properties, the doc owns them outright: editing one doc never touches another.
+
+(Older templates that used two stacked frontmatter blocks still work — Open Knowledge reads them and rewrites them to the single-block form the next time they're saved.)
 
 ### Edit and delete
 

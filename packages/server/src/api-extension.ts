@@ -86,6 +86,7 @@ import {
   type InlineAssetMediaKind,
   InstallSkillRequestSchema,
   InstallSkillSuccessSchema,
+  instantiateDoc,
   isHiddenDocName,
   LINKABLE_ASSET_EXTENSIONS,
   type LifecycleStatus,
@@ -111,6 +112,7 @@ import {
   type Principal,
   PrincipalSuccessSchema,
   type ProblemType,
+  parseTemplateFile,
   prependFrontmatter,
   RenamePathRequestSchema,
   RenamePathSuccessSchema,
@@ -170,7 +172,6 @@ import {
   TrashCleanupSuccessSchema,
   UploadAssetSuccessSchema,
   UploadRequestSchema,
-  unwrapFrontmatterFences,
   type WorkspaceSearchCorpus,
   type WorkspaceSearchDocument,
   type WorkspaceSearchIntent,
@@ -6695,10 +6696,10 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
             );
             return;
           }
-          const { body: templateBody } = stripFrontmatter(templateRaw);
+          const templateStarter = instantiateDoc(templateRaw);
           const userDisplayName =
             actor.kind === 'agent' || actor.kind === 'principal' ? (actor.displayName ?? '') : '';
-          initialContent = applySubstitution(templateBody, {
+          initialContent = applySubstitution(templateStarter, {
             date: todayIsoUtc(),
             user: userDisplayName,
           });
@@ -9874,22 +9875,6 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
     });
   }
 
-  const parseTemplateFile = (
-    raw: string,
-  ): { frontmatter: Record<string, unknown>; body: string } => {
-    const { frontmatter: fenced, body } = stripFrontmatter(raw);
-    let frontmatter: Record<string, unknown> = {};
-    if (fenced !== '') {
-      try {
-        const parsed = parseYaml(unwrapFrontmatterFences(fenced));
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          frontmatter = parsed as Record<string, unknown>;
-        }
-      } catch {}
-    }
-    return { frontmatter, body };
-  };
-
   const handleTemplateGet = withValidation(
     EmptyRequestSchema,
     async (req, res) => {
@@ -9918,7 +9903,9 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
         const { abs: foundAbs, folder: foundFolder, scope: foundScope } = found;
 
         const raw = await readFile(foundAbs, 'utf-8');
-        const { frontmatter, body } = parseTemplateFile(raw);
+        const model = parseTemplateFile(raw);
+        const frontmatter = model.identity as Record<string, unknown>;
+        const body = model.starterContent;
 
         const relPath = relative(resolvedContentDir, foundAbs)
           .split(/[\\/]/)
@@ -10213,9 +10200,9 @@ export function createApiExtension(options: ApiExtensionOptions): Extension {
             writeBody = body.body;
           } else {
             try {
-              writeBody = parseTemplateFile(
+              writeBody = instantiateDoc(
                 readFileSync(resolve(toValidated.resolvedContentDir, result.toPath), 'utf-8'),
-              ).body;
+              );
             } catch {
               writeBody = null;
             }

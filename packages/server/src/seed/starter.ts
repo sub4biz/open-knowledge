@@ -57,11 +57,11 @@ const KNOWLEDGE_BASE_FOLDERS: readonly StarterFolder[] = [
 
 const KNOWLEDGE_BASE_TEMPLATES: Readonly<Record<string, string>> = {
   clip: `---
-title: External Source
-description: Capture a URL or article text verbatim as raw reference material. For binary files (PDFs, images, audio), use the \`ingest\` tool instead — this \`clip\` template is for text sources only.
----
----
+template:
+  title: External Source
+  description: Capture a URL or article text verbatim as raw reference material. For binary files (PDFs, images, audio), use the \`ingest\` tool instead — this \`clip\` template is for text sources only.
 type: source
+description: "Raw source text captured verbatim for reference, with its original URL and fetch date."
 source_url:
 date_fetched: {{date}}
 preservation: text-extracted
@@ -75,11 +75,11 @@ tags: [source, immutable, layer-ingest, text]
 ## My notes
 `,
   'research-log': `---
-title: Research Log
-description: Provisional analysis synthesizing external sources. Every factual claim cites a doc in external-sources/. Promoted to articles/ via consolidate once findings are stable.
----
----
+template:
+  title: Research Log
+  description: Provisional analysis synthesizing external sources. Every factual claim cites a doc in external-sources/. Promoted to articles/ via consolidate once findings are stable.
 type: research-note
+description: "Provisional findings that synthesize the cited sources, pending promotion to a canonical article."
 status: provisional
 sources: []
 created: {{date}}
@@ -96,11 +96,11 @@ tags: [research, provisional]
 ## Open questions
 `,
   article: `---
-title: Canonical Article
-description: Canonical knowledge committed after a team decision. Carries status:canonical plus a supersedes chain tying back to the research/ docs it replaces. Source-of-truth for the domain.
----
----
+template:
+  title: Canonical Article
+  description: Canonical knowledge committed after a team decision. Carries status:canonical plus a supersedes chain tying back to the research/ docs it replaces. Source-of-truth for the domain.
 type: article
+description: "Canonical, team-approved reference for this topic."
 status: canonical
 supersedes: []
 authored: {{date}}
@@ -173,11 +173,11 @@ const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
 
 const SOFTWARE_LIFECYCLE_TEMPLATES: Readonly<Record<string, string>> = {
   proposal: `---
-title: Proposal Title
-description: One-line summary of the proposal.
----
----
+template:
+  title: Proposal Title
+  description: One-line summary of the proposal.
 type: proposal
+description: "A proposal put forward for discussion and a decision."
 status: draft
 authors: [{{user}}]
 created: {{date}}
@@ -195,11 +195,11 @@ tags: [proposal]
 ## Unresolved questions
 `,
   decision: `---
-title: Decision Title
-description: One-line decision summary.
----
----
+template:
+  title: Decision Title
+  description: One-line decision summary.
 type: decision
+description: "A recorded decision with its context and rationale."
 status: proposed
 date: {{date}}
 deciders: [{{user}}]
@@ -214,11 +214,11 @@ tags: [decision]
 ## Consequences
 `,
   spec: `---
-title: Spec Title
-description: One-line description of what's being built.
----
----
+template:
+  title: Spec Title
+  description: One-line description of what's being built.
 type: spec
+description: "Specification of the problem, requirements, and intended solution."
 status: draft
 owner: {{user}}
 target_release:
@@ -238,11 +238,11 @@ tags: [spec]
 ## Test plan
 `,
   'spec-plan': `---
-title: 'Plan: <Spec Title>'
-description: Implementation plan derived from the parent spec. Pairs with spec.md and tasks.md (github/spec-kit triple shape).
----
----
+template:
+  title: 'Plan: <Spec Title>'
+  description: Implementation plan derived from the parent spec. Pairs with spec.md and tasks.md (github/spec-kit triple shape).
 type: spec-plan
+description: "Implementation plan breaking the spec into an ordered approach."
 parent_spec:
 created: {{date}}
 author: {{user}}
@@ -260,11 +260,11 @@ tags: [spec, plan]
 ## Rollout
 `,
   'spec-tasks': `---
-title: 'Tasks: <Spec Title>'
-description: Task checklist for the parent spec. Pairs with spec.md and plan.md (github/spec-kit triple shape).
----
----
+template:
+  title: 'Tasks: <Spec Title>'
+  description: Task checklist for the parent spec. Pairs with spec.md and plan.md (github/spec-kit triple shape).
 type: spec-tasks
+description: "Task breakdown tracking the work needed to deliver the spec."
 parent_spec:
 created: {{date}}
 author: {{user}}
@@ -282,11 +282,11 @@ tags: [spec, tasks]
 ## Out of scope
 `,
   guide: `---
-title: '<Topic>: <Action>'
-description: One-line summary of what the reader will accomplish.
----
----
+template:
+  title: '<Topic>: <Action>'
+  description: One-line summary of what the reader will accomplish.
 type: guide
+description: "Step-by-step guide for completing a task."
 category: how-to
 last_verified: {{date}}
 tags: [guide]
@@ -301,11 +301,11 @@ tags: [guide]
 ## Links
 `,
   'onboarding-guide': `---
-title: 'Onboarding: <Audience>'
-description: First-N-days setup path for <audience> (e.g. new engineer, new contributor, new oncall).
----
----
+template:
+  title: 'Onboarding: <Audience>'
+  description: First-N-days setup path for <audience> (e.g. new engineer, new contributor, new oncall).
 type: guide
+description: "Onboarding guide that orients a new audience and gets them started."
 category: onboarding
 audience:
 last_verified: {{date}}
@@ -325,11 +325,11 @@ tags: [guide, onboarding]
 ## Links
 `,
   runbook: `---
-title: '<Service>: <Symptom>'
-description: Oncall procedure for diagnosing and remediating <symptom> in <service>.
----
----
+template:
+  title: '<Service>: <Symptom>'
+  description: Oncall procedure for diagnosing and remediating <symptom> in <service>.
 type: guide
+description: "Troubleshooting guide for diagnosing and resolving a symptom."
 category: runbook
 service:
 severity:
@@ -348,11 +348,11 @@ tags: [guide, runbook, oncall]
 ## Links
 `,
   postmortem: `---
-title: 'Incident: <short name>'
-description: Blameless postmortem for <incident>.
----
----
+template:
+  title: 'Incident: <short name>'
+  description: Blameless postmortem for <incident>.
 type: postmortem
+description: "Post-incident review covering impact, timeline, root cause, and follow-ups."
 severity:
 duration:
 services: []
@@ -395,22 +395,22 @@ const PLAIN_NOTES_FOLDERS: readonly StarterFolder[] = [
 
 const PLAIN_NOTES_TEMPLATES: Readonly<Record<string, string>> = {
   note: `---
-title: Note title
-description: One-line summary.
----
----
+template:
+  title: Note title
+  description: One-line summary.
 type: note
+description: "A short freeform note."
 created: {{date}}
 author: {{user}}
 tags: []
 ---
 `,
   daily: `---
-title: Daily entry
-description: Daily journal entry.
----
----
+template:
+  title: Daily entry
+  description: Daily journal entry.
 type: daily-note
+description: "Daily journal entry capturing intentions, notes, and reflections."
 title: {{date}}
 date: {{date}}
 author: {{user}}
@@ -479,11 +479,11 @@ const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
 
 const WORLDBUILDING_TEMPLATES: Readonly<Record<string, string>> = {
   character: `---
-title: Character Name
-description: One-line characterization.
----
----
+template:
+  title: Character Name
+  description: One-line characterization.
 type: character
+description: "Profile of a character: traits, motivations, relationships, and arc."
 status: alive
 faction: []
 first_appeared:
@@ -501,11 +501,11 @@ tags: [character]
 ## Links
 `,
   setting: `---
-title: Setting Name
-description: One-line atmospheric summary.
----
----
+template:
+  title: Setting Name
+  description: One-line atmospheric summary.
 type: setting
+description: "Description of a place or setting in the world."
 region:
 controlling_faction:
 danger_level:
@@ -521,11 +521,11 @@ tags: [setting]
 ## What's hidden
 `,
   theme: `---
-title: Theme Name
-description: One-line statement of the recurring concern.
----
----
+template:
+  title: Theme Name
+  description: One-line statement of the recurring concern.
 type: theme
+description: "A recurring theme and how it surfaces across the work."
 created: {{date}}
 author: {{user}}
 tags: [theme]
@@ -538,11 +538,11 @@ tags: [theme]
 ## Tension
 `,
   faction: `---
-title: Faction Name
-description: One-line description of who they are and what they want.
----
----
+template:
+  title: Faction Name
+  description: One-line description of who they are and what they want.
 type: faction
+description: "Profile of a faction: goals, members, and allegiances."
 alignment:
 leader:
 members: []
@@ -559,11 +559,11 @@ tags: [faction]
 ## Internal tensions
 `,
   'political-faction': `---
-title: Faction Name
-description: One-line summary of their politics and their ambition.
----
----
+template:
+  title: Faction Name
+  description: One-line summary of their politics and their ambition.
 type: political-faction
+description: "Profile of a political faction: ideology, power base, and aims."
 form: monarchy
 seat:
 leader:
@@ -587,11 +587,11 @@ tags: [faction, politics]
 ## Pressure points
 `,
   religion: `---
-title: Religion Name
-description: One-line summary of the faith and its central tension.
----
----
+template:
+  title: Religion Name
+  description: One-line summary of the faith and its central tension.
 type: religion
+description: "Profile of a religion: beliefs, practices, and followers."
 deity:
 pantheon: []
 clergy_structure:
@@ -615,11 +615,11 @@ tags: [faction, religion]
 ## Relations with power
 `,
   lore: `---
-title: Lore Topic
-description: One-line summary.
----
----
+template:
+  title: Lore Topic
+  description: One-line summary.
 type: lore
+description: "A piece of world lore and its place in the larger canon."
 era:
 scope: history
 created: {{date}}
@@ -634,11 +634,11 @@ tags: [lore]
 ## Implications
 `,
   'magic-system': `---
-title: Magic System Name
-description: One-line summary of the source and the cost.
----
----
+template:
+  title: Magic System Name
+  description: One-line summary of the source and the cost.
 type: magic-system
+description: "The rules, costs, and limits of a magic system."
 source:
 cost:
 discoverable_by: []
@@ -660,11 +660,11 @@ tags: [lore, magic]
 ## How it shapes the world
 `,
   'historical-event': `---
-title: Event Name
-description: One-line summary of what happened and why it mattered.
----
----
+template:
+  title: Event Name
+  description: One-line summary of what happened and why it mattered.
 type: historical-event
+description: "Account of a historical event: what happened, when, and why it matters."
 when:
 where:
 duration:
@@ -717,11 +717,11 @@ const WRITING_PIPELINE_FOLDERS: readonly StarterFolder[] = [
 
 const WRITING_PIPELINE_TEMPLATES: Readonly<Record<string, string>> = {
   idea: `---
-title: Idea title
-description: One-line hook.
----
----
+template:
+  title: Idea title
+  description: One-line hook.
 type: idea
+description: "An early idea captured for later development."
 captured_at: {{date}}
 hook:
 tags: [idea]
@@ -730,11 +730,11 @@ tags: [idea]
 ## Stimulus
 `,
   draft: `---
-title: Draft title
-description: What's this piece about?
----
----
+template:
+  title: Draft title
+  description: What's this piece about?
 type: draft
+description: "A work-in-progress draft."
 status: drafting
 target_form:
 target_words:
@@ -746,11 +746,11 @@ tags: [draft]
 
 `,
   published: `---
-title: Published title
-description: One-line summary.
----
----
+template:
+  title: Published title
+  description: One-line summary.
 type: publication
+description: "A finished, published piece."
 status: published
 published_at:
 canonical_url:
@@ -816,11 +816,11 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
 
 const ENTITY_VAULT_TEMPLATES: Readonly<Record<string, string>> = {
   person: `---
-title: Person Name
-description: One-line characterization. Who they are, why they matter to you.
----
----
+template:
+  title: Person Name
+  description: One-line characterization. Who they are, why they matter to you.
 type: person
+description: "Profile of a person: role, context, and how you know them."
 title: Person Name
 created: {{date}}
 author: {{user}}
@@ -838,11 +838,11 @@ tags: [person]
 - **{{date}}** | source | @{{user}} — First evidence entry. Confidence: draft.
 `,
   company: `---
-title: Company Name
-description: One-line company summary. What they do, who's involved.
----
----
+template:
+  title: Company Name
+  description: One-line company summary. What they do, who's involved.
 type: company
+description: "Profile of a company: what it does and why it matters to you."
 title: Company Name
 created: {{date}}
 author: {{user}}
@@ -860,11 +860,11 @@ tags: [company]
 - **{{date}}** | source | @{{user}} — First evidence entry. Confidence: draft.
 `,
   meeting: `---
-title: Meeting Title
-description: One-line meeting summary. Fill in after the meeting.
----
----
+template:
+  title: Meeting Title
+  description: One-line meeting summary. Fill in after the meeting.
 type: meeting
+description: "Meeting notes: attendees, discussion, decisions, and action items."
 title: Meeting Title
 date: {{date}}
 attendees: []
@@ -881,11 +881,11 @@ tags: [meeting]
 - [ ]
 `,
   concept: `---
-title: Concept Name
-description: One-line concept summary. What it names and why it recurs.
----
----
+template:
+  title: Concept Name
+  description: One-line concept summary. What it names and why it recurs.
 type: concept
+description: "Explanation of a concept and how it connects to related ideas."
 title: Concept Name
 created: {{date}}
 author: {{user}}
@@ -903,11 +903,11 @@ tags: [concept]
 - **{{date}}** | source | @{{user}} — First evidence entry. Confidence: draft.
 `,
   original: `---
-title: Idea Title
-description: One-line summary of the idea or take.
----
----
+template:
+  title: Idea Title
+  description: One-line summary of the idea or take.
 type: original
+description: "An original idea in its initial form."
 title: Idea Title
 date: {{date}}
 author: {{user}}
@@ -917,11 +917,11 @@ tags: [original]
 (Your own thinking. Link to anything that should become its own entity, preferably with path-qualified wikilinks once the entity dossier exists.)
 `,
   transcript: `---
-title: Transcript
-description: One-line transcript summary. Source and key topic.
----
----
+template:
+  title: Transcript
+  description: One-line transcript summary. Source and key topic.
 type: transcript
+description: "Verbatim transcript of a conversation or recording."
 title: Transcript
 date: {{date}}
 source:
@@ -1041,7 +1041,7 @@ description: What the agent may read, write, and surface. A 4-tier privacy model
 
 const ENTITY_VAULT_HEARTBEAT_MD = `---
 title: Operational cadence
-description: When the agent does scheduled work: daily briefings, end-of-day dossier maintenance, weekly audits. If you also use GBrain, note its sync/dream cadence here.
+description: "When the agent does scheduled work: daily briefings, end-of-day dossier maintenance, weekly audits. If you also use GBrain, note its sync/dream cadence here."
 ---
 
 # Heartbeat
@@ -1094,11 +1094,11 @@ const OKF_FOLDERS: readonly StarterFolder[] = [
 
 const OKF_TEMPLATES: Readonly<Record<string, string>> = {
   concept: `---
-title: Concept Name
-description: One-line definition of the concept.
----
----
+template:
+  title: Concept Name
+  description: One-line definition of the concept.
 type: concept
+description: "Explanation of a concept and how it connects to related ideas."
 created: {{date}}
 author: {{user}}
 tags: [concept]
@@ -1113,11 +1113,11 @@ tags: [concept]
 - Link a related idea, e.g. [another concept](./another-concept.md).
 `,
   reference: `---
-title: Reference Title
-description: One-line summary of the source.
----
----
+template:
+  title: Reference Title
+  description: One-line summary of the source.
 type: reference
+description: "A reference entry kept for quick lookup."
 created: {{date}}
 author: {{user}}
 tags: [reference]
@@ -1132,11 +1132,11 @@ tags: [reference]
 - Link the docs that cite this reference.
 `,
   note: `---
-title: Note Title
-description: One-line summary of the note.
----
----
+template:
+  title: Note Title
+  description: One-line summary of the note.
 type: note
+description: "A freeform note."
 created: {{date}}
 author: {{user}}
 tags: [note]

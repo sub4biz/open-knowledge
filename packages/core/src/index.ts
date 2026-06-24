@@ -912,6 +912,14 @@ export {
   type SkillStateTarget,
   type SkillStateTargetEntry,
 } from './skill-state/schema.ts';
+export {
+  composeTemplateFile,
+  instantiateDoc,
+  parseTemplateFile,
+  TEMPLATE_IDENTITY_KEY,
+  type TemplateIdentity,
+  type TemplateModel,
+} from './templates/template-format.ts';
 export type { Actor, PrincipalId, SessionId } from './types/actor.ts';
 export type {
   AgentFlashEntry,

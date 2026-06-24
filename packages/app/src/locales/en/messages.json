@@ -18,6 +18,7 @@
     "-QCLWk": ["Templates available"],
     "-Qw-1t": ["GitHub authentication failed. Try signing in again."],
     "-RXIMO": ["Couldn't read the selection — please try again."],
+    "-WFFG2": ["Default properties"],
     "-YV1Uo": ["Pattern ", ["patternNumber"]],
     "-g6KIS": ["Unrecognized link"],
     "-gdcIo": ["Auto-sync is on — your commits push and remote changes pull on intervals."],
@@ -30,13 +31,13 @@
     "-wePNM": [
       "Search matches file names, paths, and folders. Open a file to search its body (⌘F)."
     ],
+    "-zy2Nq": ["Type"],
     "0-31GV": ["Removing"],
     "02P3hL": ["Upload failed: ", ["message"]],
     "04RA0-": ["Failed to enable sync — ", ["detail"]],
     "06SZfb": ["Template \"", ["trimmedTitle"], "\" created"],
     "07gHun": ["You don't have access to this private repo. Sign in with an account that does."],
     "07q4Qk": ["File sidebar"],
-    "092Wah": ["Enter a name for this template."],
     "09Tv5j": ["Reconnecting…"],
     "0BB9ID": ["No headings yet."],
     "0Gd0NU": ["Shared"],
@@ -408,6 +409,7 @@
     ],
     "Aif3E7": ["Enable semantic search"],
     "Am78jY": ["Drag ", ["keyName"], " to reorder"],
+    "Aq-O0x": ["status"],
     "AqnqMJ": ["API key set"],
     "ArBWJf": ["Undo last edit"],
     "B11p-O": ["Edit markdown link"],
@@ -998,6 +1000,7 @@
     "VZGh8G": ["Fold, unfold, fold all, or unfold all source ranges."],
     "VZSBXL": ["Semantic ranking activates the first time an agent runs a search."],
     "V_6bJ4": ["Terminal settings not loaded yet — try again in a moment."],
+    "V_wltx": ["Enter a title for this template."],
     "VbqhBI": ["Already at ", ["assetContentPath"], " — reusing."],
     "VcqWBy": ["Upload may have succeeded but the sidebar is out of date — refresh to resync"],
     "VdXv4D": ["Clone from GitHub"],
@@ -1405,6 +1408,7 @@
     "iH8pgl": ["Back"],
     "iHAJDj": ["Resolving default location"],
     "iKSP5j": ["Word wrap"],
+    "iKZkk1": ["Property value"],
     "iMkWoF": ["Turn on"],
     "iNFKkm": ["No diff."],
     "iOHg1t": ["Open embedded URL in new tab"],
@@ -1419,6 +1423,9 @@
     "ig5vUe": ["Failed to load file"],
     "iilQXA": ["Folder duplicated"],
     "ijLc3m": ["Bullet list"],
+    "ipn17C": [
+      "The <0>type</0> every document created from this template gets (e.g. <1>research-note</1>). Keeps new docs Open Knowledge Format–conformant."
+    ],
     "iqIDv4": ["Sync status unavailable"],
     "iqugog": ["Initialize failed: ", ["errorDetail"]],
     "irFGwu": ["Template list"],
@@ -1429,6 +1436,7 @@
       "This project's running server doesn't support live editing. Restart Open Knowledge to fix."
     ],
     "j9Vqvc": ["inherited"],
+    "jEZ6Lf": ["provisional"],
     "jEdF24": ["Missing page: ", ["linkTitle"], ". Click to create."],
     "jGJy-9": ["Downloads ", ["shareOwner"], "/", ["shareRepo"], " from GitHub."],
     "jKd3AP": ["Could not enable the terminal: ", ["0"]],
@@ -1592,6 +1600,7 @@
     "o5gfs1": [
       "This setting is per-machine and isn't shared with collaborators. It needs an API key set with <0>ok embeddings set-key</0>."
     ],
+    "o9CrsQ": ["research-note"],
     "oAFVKX": ["Failed to update the project sync default — ", ["detail"]],
     "oBXkm2": ["Delete code block"],
     "oCZkaG": ["Copy path"],
@@ -1687,6 +1696,7 @@
     "rBc32v": ["Couldn't reach the embeddings provider — press ↵ to retry"],
     "rFw02Q": ["Uploading ", ["keyName"]],
     "rJVoVX": ["Source find results"],
+    "rNifQd": ["Remove property"],
     "rQAQus": ["Couldn't save template: ", ["error"]],
     "rQRrkB": ["yesterday"],
     "rVgSRB": ["Collapse ", ["docName"]],
@@ -1964,6 +1974,11 @@
     "zkz0Fg": ["Set up syncing"],
     "zlErBl": ["Page headings error response did not match RFC 9457"],
     "zo3Dl7": ["Toggle thumbnails"],
+    "zrP8HX": [
+      "Frontmatter every document created from this template starts with. Values are YAML — a list is <0>[a, b]</0>; <1>{",
+      ["date"],
+      "}</1> fills in on create."
+    ],
     "ztKII6": ["Failed to add item"],
     "zwBp5t": ["Private"]
   }

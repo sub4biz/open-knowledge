@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { parseTemplateFile } from '@inkeep/open-knowledge-core';
 import {
   buildStarterFolderFrontmatterYaml,
   listStarterPacks,
@@ -16,9 +17,7 @@ if (!LOG_MD_TEMPLATE) throw new Error('knowledge-base pack is missing log.md');
 const ENTITY_VAULT_PACK = STARTER_PACKS['entity-vault'];
 
 function stripTemplateMetadata(body: string): string {
-  const match = /^---\n[\s\S]*?\n---\n([\s\S]*)$/.exec(body);
-  if (!match?.[1]) throw new Error('template missing outer metadata frontmatter');
-  return match[1];
+  return parseTemplateFile(body).starterContent;
 }
 
 function documentFrontmatter(body: string): string {
@@ -221,10 +220,11 @@ describe('STARTER_PACKS — all packs structural validation', () => {
   test('every template body has a description: frontmatter line (load-bearing customer convention)', () => {
     for (const pack of Object.values(STARTER_PACKS)) {
       for (const [name, body] of Object.entries(pack.templates)) {
+        const { description } = parseTemplateFile(body).identity;
         expect(
-          body,
-          `Pack "${pack.id}" template "${name}" missing description: frontmatter line`,
-        ).toMatch(/^description:\s*\S/m);
+          typeof description === 'string' && description.trim().length > 0,
+          `Pack "${pack.id}" template "${name}" missing template.description`,
+        ).toBe(true);
       }
     }
   });

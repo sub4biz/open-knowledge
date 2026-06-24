@@ -554,6 +554,7 @@ msgid "Add properties"
 msgstr "Add properties"
 
 #: src/components/PropertyPanel.tsx
+#: src/components/TemplateForm.tsx
 msgid "Add property"
 msgstr "Add property"
 
@@ -1747,6 +1748,10 @@ msgstr "Customize how the editor looks and behaves."
 msgid "Date"
 msgstr "Date"
 
+#: src/components/TemplateForm.tsx
+msgid "Default properties"
+msgstr "Default properties"
+
 #: src/components/DeleteConfirmationDialog.tsx
 #: src/components/TemplateRow.tsx
 #: src/editor/extensions/JsxComponentView.tsx
@@ -2174,10 +2179,6 @@ msgstr "Eng specs"
 msgid "Enter a folder name (e.g. brain)."
 msgstr "Enter a folder name (e.g. brain)."
 
-#: src/components/TemplateForm.tsx
-msgid "Enter a name for this template."
-msgstr "Enter a name for this template."
-
 #: src/components/CreateProjectDialog.tsx
 msgid "Enter a project name"
 msgstr "Enter a project name"
@@ -2185,6 +2186,10 @@ msgstr "Enter a project name"
 #: src/components/CloneDialog.tsx
 msgid "Enter a repository URL or owner/repo"
 msgstr "Enter a repository URL or owner/repo"
+
+#: src/components/TemplateForm.tsx
+msgid "Enter a title for this template."
+msgstr "Enter a title for this template."
 
 #: src/components/ShareReceiveDialog.tsx
 msgid "Error:"
@@ -2619,6 +2624,10 @@ msgstr "Found the repo but could not open the project. Please try again."
 #: src/components/empty-state/CreateView.tsx
 msgid "From template"
 msgstr "From template"
+
+#: src/components/TemplateForm.tsx
+msgid "Frontmatter every document created from this template starts with. Values are YAML — a list is <0>[a, b]</0>; <1>{{date}}</1> fills in on create."
+msgstr "Frontmatter every document created from this template starts with. Values are YAML — a list is <0>[a, b]</0>; <1>{{date}}</1> fills in on create."
 
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "Full guide"
@@ -3425,7 +3434,6 @@ msgstr "Multi-page PDF viewer with toolbar controls (thumbnails, page nav, zoom)
 
 #: src/components/AuthModal.tsx
 #: src/components/FolderOverview.tsx
-#: src/components/TemplateForm.tsx
 #: src/editor/slash-command/items.tsx
 msgid "Name"
 msgstr "Name"
@@ -4415,12 +4423,21 @@ msgid "Property \"{trimmed}\" already exists"
 msgstr "Property \"{trimmed}\" already exists"
 
 #: src/components/FrontmatterRow.tsx
+#: src/components/TemplateForm.tsx
 msgid "Property name"
 msgstr "Property name"
+
+#: src/components/TemplateForm.tsx
+msgid "Property value"
+msgstr "Property value"
 
 #: src/components/SyncStatusBadge.tsx
 msgid "Protected branch — cannot push"
 msgstr "Protected branch — cannot push"
+
+#: src/components/TemplateForm.tsx
+msgid "provisional"
+msgstr "provisional"
 
 #: src/components/PublishToGitHubDialog.tsx
 msgid "Public"
@@ -4600,6 +4617,10 @@ msgstr "Remove item {0}"
 msgid "Remove link"
 msgstr "Remove link"
 
+#: src/components/TemplateForm.tsx
+msgid "Remove property"
+msgstr "Remove property"
+
 #: src/components/CreateProjectDialog.tsx
 msgid "Remove the parent <0>.git</0> folder"
 msgstr "Remove the parent <0>.git</0> folder"
@@ -4686,6 +4707,10 @@ msgstr "Repository not found. It may have been renamed, deleted, or moved."
 #: src/components/handoff/OpenInAgentMenuItem.tsx
 msgid "Requires {brand}."
 msgstr "Requires {brand}."
+
+#: src/components/TemplateForm.tsx
+msgid "research-note"
+msgstr "research-note"
 
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Reset {labelText} to default"
@@ -5366,6 +5391,10 @@ msgstr "Starting clone"
 msgid "Starting sign-in flow"
 msgstr "Starting sign-in flow"
 
+#: src/components/TemplateForm.tsx
+msgid "status"
+msgstr "status"
+
 #: src/components/settings/SharingSection.tsx
 #: src/components/SharingModeField.tsx
 msgid "Stays on this computer."
@@ -5617,6 +5646,10 @@ msgstr "That folder isn't an Open Knowledge project yet. Initialize it and open?
 msgid "The {targetNoun} could not be opened — try navigating to it manually."
 msgstr "The {targetNoun} could not be opened — try navigating to it manually."
 
+#: src/components/TemplateForm.tsx
+msgid "The <0>type</0> every document created from this template gets (e.g. <1>research-note</1>). Keeps new docs Open Knowledge Format–conformant."
+msgstr "The <0>type</0> every document created from this template gets (e.g. <1>research-note</1>). Keeps new docs Open Knowledge Format–conformant."
+
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "The Claude Desktop App didn't open the file. Is it installed? ({msg})"
 msgstr "The Claude Desktop App didn't open the file. Is it installed? ({msg})"
@@ -5813,6 +5846,7 @@ msgstr "This will replace the current document content with the version from <0>
 msgid "Timeline"
 msgstr "Timeline"
 
+#: src/components/TemplateForm.tsx
 #: src/editor/extensions/CodeBlockView.tsx
 msgid "Title"
 msgstr "Title"
@@ -5923,6 +5957,10 @@ msgstr "Two-page (even)"
 #: src/editor/components/Pdf.tsx
 msgid "Two-page (odd)"
 msgstr "Two-page (odd)"
+
+#: src/components/TemplateForm.tsx
+msgid "Type"
+msgstr "Type"
 
 #: src/components/CommandPalette.tsx
 msgid "Type a query, then press ↵ to search your pages by meaning."

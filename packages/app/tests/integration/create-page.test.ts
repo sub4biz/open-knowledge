@@ -156,6 +156,24 @@ describe('/api/create-page — template seeding', () => {
     expect(created).toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
+  test('single-block template: strips `template:` identity, keeps doc-frontmatter, substitutes tokens', async () => {
+    seedRootTemplate(
+      'research-tpl',
+      '---\ntemplate:\n  title: Research Log\n  description: provisional\ntype: research-note\nstatus: provisional\ncreated: {{date}}\ntags: [research]\n---\n\n## Question\n',
+    );
+    const { status } = await createPageWithTemplate('from-single-block.md', 'research-tpl');
+    expect(status).toBe(200);
+
+    const created = readFileSync(join(server.contentDir, 'from-single-block.md'), 'utf-8');
+    expect(created).toContain('type: research-note');
+    expect(created).toContain('status: provisional');
+    expect(created).toContain('## Question');
+    expect(created).not.toContain('template:');
+    expect(created).not.toContain('title: Research Log');
+    expect(created).not.toContain('{{date}}');
+    expect(created).toMatch(/created: \d{4}-\d{2}-\d{2}/);
+  });
+
   test('returns 400 when the template name does not resolve', async () => {
     const { status, body } = await createPageWithTemplate('no-such-tpl.md', 'does-not-exist');
     expect(status).toBe(400);
