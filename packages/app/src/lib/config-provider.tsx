@@ -12,13 +12,13 @@ import {
   type OkignoreBinding,
   type WriteScope,
 } from '@inkeep/open-knowledge-core';
-import { useTheme } from 'next-themes';
 import { type ReactNode, useEffect, useState } from 'react';
 import * as Y from 'yjs';
 import { useThemeBridge } from '@/hooks/use-theme-bridge';
 import { buildAuthToken } from './auth-token';
 import { ConfigContext, type ConfigContextValue } from './config-context';
 import { useServerInstanceId } from './server-instance-store';
+import { useApplyConfigTheme } from './use-apply-config-theme';
 
 export { useConfigContext } from './config-context';
 
@@ -224,13 +224,8 @@ export function ConfigProvider({
       ? mergeLayered(userState.config, projectState.config, projectLocalState?.config)
       : null;
 
-  const { setTheme } = useTheme();
   const themeValue = merged?.appearance?.theme;
-  useEffect(() => {
-    if (themeValue === 'light' || themeValue === 'dark' || themeValue === 'system') {
-      setTheme(themeValue);
-    }
-  }, [themeValue, setTheme]);
+  useApplyConfigTheme(themeValue);
 
   useThemeBridge(
     typeof window !== 'undefined' ? window.okDesktop : undefined,
