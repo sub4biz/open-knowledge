@@ -21,10 +21,15 @@ function memoryStorage(initial: Record<string, string> = {}): HeightStorage {
 }
 
 const TALL = 1000;
+const TALL_DEFAULT = 333;
 
 describe('readTerminalHeight', () => {
-  test('absent key returns default', () => {
-    expect(readTerminalHeight(memoryStorage(), TALL)).toBe(DEFAULT_TERMINAL_HEIGHT);
+  test('absent key returns the ~1/3-viewport default (1000 → 333)', () => {
+    expect(readTerminalHeight(memoryStorage(), TALL)).toBe(TALL_DEFAULT);
+  });
+
+  test('default below the floor on a short viewport clamps up to MIN (300 → 100 → 120)', () => {
+    expect(readTerminalHeight(memoryStorage(), 300)).toBe(MIN_TERMINAL_HEIGHT);
   });
 
   test('valid stored height is returned', () => {
@@ -50,17 +55,27 @@ describe('readTerminalHeight', () => {
 
   test('non-numeric value falls back to default', () => {
     const s = memoryStorage({ [TERMINAL_HEIGHT_KEY]: 'not a number' });
-    expect(readTerminalHeight(s, TALL)).toBe(DEFAULT_TERMINAL_HEIGHT);
+    expect(readTerminalHeight(s, TALL)).toBe(TALL_DEFAULT);
   });
 
   test('empty string falls back to default', () => {
     const s = memoryStorage({ [TERMINAL_HEIGHT_KEY]: '' });
-    expect(readTerminalHeight(s, TALL)).toBe(DEFAULT_TERMINAL_HEIGHT);
+    expect(readTerminalHeight(s, TALL)).toBe(TALL_DEFAULT);
   });
 
   test('floating-point value is rounded', () => {
     const s = memoryStorage({ [TERMINAL_HEIGHT_KEY]: '240.6' });
     expect(readTerminalHeight(s, TALL)).toBe(240);
+  });
+
+  test('throwing storage falls back to the fixed pixel default', () => {
+    const throwing: HeightStorage = {
+      getItem() {
+        throw new Error('SecurityError');
+      },
+      setItem() {},
+    };
+    expect(readTerminalHeight(throwing, TALL)).toBe(DEFAULT_TERMINAL_HEIGHT);
   });
 });
 
