@@ -20,8 +20,8 @@ export function SplashShareView({ encoded, view }: { encoded: string; view: OkSp
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-slide-bg font-[family-name:var(--font-dm-sans)]">
       <SplashChrome />
 
-      <section className="relative z-20 flex-1 px-4 pt-16 pb-16 md:pt-24 md:pb-20">
-        <div className="mx-auto max-w-5xl">
+      <section className="relative z-20 flex-1 px-6 pt-16 pb-16 md:pt-24 md:pb-20">
+        <div className="container mx-auto">
           <p className="mb-6 font-mono text-base font-medium uppercase tracking-wide text-primary">
             {view.target === 'folder' ? 'Shared folder' : 'Shared'}
           </p>
@@ -53,7 +53,7 @@ export function SplashShareView({ encoded, view }: { encoded: string; view: OkSp
               </svg>
             </a>
           </h1>
-          <div className="flex items-center gap-2 mt-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-8">
             <a
               href={view.githubUrl}
               target="_blank"
@@ -69,7 +69,7 @@ export function SplashShareView({ encoded, view }: { encoded: string; view: OkSp
                 className="inline-flex items-center gap-1.5 text-slide-muted"
                 data-testid="splash-branch-indicator"
               >
-                <DotIcon aria-hidden="true" />
+                <DotIcon aria-hidden="true" className="hidden sm:block" />
                 <GitBranchIcon className="size-4" aria-hidden="true" />
                 <span className="font-medium">{view.branch}</span>
               </p>
@@ -108,8 +108,8 @@ function SplashChrome() {
         variant="left"
         className="bottom-0 left-0 w-40 dark:opacity-30 sm:w-72 lg:w-[515px]"
       />
-      <header className="relative z-10 px-4">
-        <div className="mx-auto flex max-w-5xl pt-8 md:pt-10">
+      <header className="relative z-10 px-6">
+        <div className="container mx-auto flex pt-8 md:pt-10">
           <Link href="/" aria-label="Open Knowledge home" className="inline-flex items-center">
             {/* Link already names the control; hide the wordmark's own label to
                 avoid a doubled "Open Knowledge" announcement. */}
@@ -126,8 +126,8 @@ export function SplashFallback({ heading }: { heading: string }) {
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-slide-bg font-[family-name:var(--font-dm-sans)]">
       <SplashChrome />
 
-      <section className="relative z-20 flex-1 px-4 pt-16 pb-16 md:pt-24 md:pb-20">
-        <div className="mx-auto max-w-5xl">
+      <section className="relative z-20 flex-1 px-6 pt-16 pb-16 md:pt-24 md:pb-20">
+        <div className="container mx-auto">
           <h1 className="text-3xl font-light tracking-tight text-slide-text sm:text-4xl">
             {heading}
           </h1>
