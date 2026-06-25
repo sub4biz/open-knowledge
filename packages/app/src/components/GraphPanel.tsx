@@ -42,6 +42,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { hashFromDocName } from '@/lib/doc-hash';
+import { cn } from '@/lib/utils';
 
 const FULLSCREEN_HUB_LIMIT = 50;
 
@@ -65,8 +66,7 @@ function saveBoolPref(key: string, value: boolean): void {
     } else {
       window.localStorage.removeItem(key);
     }
-  } catch {
-  }
+  } catch {}
 }
 
 type FullscreenGraphMode = 'explore' | 'orphans' | 'hubs';
@@ -403,7 +403,13 @@ export function GraphPanel({ activeDocName }: { activeDocName: string }) {
             : 'flex-wrap gap-3'
         }
       >
-        <div className="flex min-w-0 items-center gap-1.5">
+        {/* In fullscreen the header reserve clears the macOS traffic-light
+            footprint; this small margin keeps the flush-left "GRAPH" title from
+            crowding the buttons (the reserve alone leaves it touching them). */}
+        <div
+          data-slot="graph-title-cluster"
+          className={cn('flex min-w-0 items-center gap-1.5', isExpanded && 'ml-2')}
+        >
           <PanelTitle>
             <Trans>Graph</Trans>
           </PanelTitle>

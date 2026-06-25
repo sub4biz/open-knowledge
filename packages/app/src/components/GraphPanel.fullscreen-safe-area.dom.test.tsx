@@ -74,5 +74,23 @@ describe('GraphPanel fullscreen safe-area behavior', () => {
     const header = panel?.querySelector('[data-slot="panel-header"]');
     expectVisualClassTokens(header?.className, ['pl-[var(--ok-titlebar-reserve-left,1rem)]']);
     expectVisualClassTokensAbsent(header?.className, ['pl-[var(--ok-titlebar-reserve-left)]']);
+
+    const titleCluster = header?.querySelector('[data-slot="graph-title-cluster"]');
+    expectVisualClassTokens(titleCluster?.className, ['ml-2']);
+  });
+
+  test('docked (non-expanded) graph does not indent the title cluster', async () => {
+    const { GraphPanel } = await import('./GraphPanel');
+    render(
+      <TooltipProvider>
+        <GraphPanel activeDocName="docs/Active" />
+      </TooltipProvider>,
+    );
+
+    const titleCluster = screen
+      .getByTestId('graph-view')
+      .closest('[data-slot="panel"]')
+      ?.querySelector('[data-slot="graph-title-cluster"]');
+    expectVisualClassTokensAbsent(titleCluster?.className, ['ml-2']);
   });
 });

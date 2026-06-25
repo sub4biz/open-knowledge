@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseTemplateFile } from '@inkeep/open-knowledge-core';
+import {
+  extractMarkdownLinksFromMarkdown,
+  extractWikiLinksFromMarkdown,
+} from '../backlink-index.ts';
 import {
   buildStarterFolderFrontmatterYaml,
   listStarterPacks,
@@ -490,5 +496,53 @@ describe('listStarterPacks() — wire-shape + entryCounts', () => {
     const plainNotes = listStarterPacks().find((p) => p.id === 'plain-notes');
     expect(plainNotes).toBeDefined();
     expect(plainNotes?.entryCounts).toEqual({ files: 2, folders: 2 });
+  });
+});
+
+describe('seeded content keeps illustrative example links out of the link graph', () => {
+  const EXAMPLE_TARGET_FRAGMENTS = [
+    'acme',
+    'jane-founder',
+    'jane-co',
+    'agent-runtime-observability',
+    'doc-a',
+    'doc-b',
+    'source-slug',
+    'another-concept',
+    'path/to',
+  ];
+
+  function extractedTargets(markdown: string): string[] {
+    return [
+      ...extractMarkdownLinksFromMarkdown(markdown, 'log').map((l) => l.target),
+      ...extractWikiLinksFromMarkdown(markdown).map((l) => l.target),
+    ];
+  }
+
+  function assertNoExampleLeak(where: string, body: string): void {
+    const targets = extractedTargets(body);
+    const leaked = targets.filter((t) => EXAMPLE_TARGET_FRAGMENTS.some((frag) => t.includes(frag)));
+    expect(leaked, `${where} leaks example link(s): ${leaked.join(', ')}`).toEqual([]);
+  }
+
+  test('no seeded rootFile or template body extracts an example placeholder link', () => {
+    for (const packId of STARTER_PACK_IDS) {
+      const pack = STARTER_PACKS[packId];
+      for (const [name, body] of Object.entries(pack.rootFiles ?? {})) {
+        assertNoExampleLeak(`${packId} rootFile ${name}`, body);
+      }
+      for (const [name, body] of Object.entries(pack.templates ?? {})) {
+        assertNoExampleLeak(`${packId} template ${name}`, parseTemplateFile(body).starterContent);
+      }
+    }
+  });
+
+  test('no pack SKILL.md leaks an example placeholder link', () => {
+    const packsDir = join(import.meta.dir, '..', '..', 'assets', 'skills', 'packs');
+    for (const packId of STARTER_PACK_IDS) {
+      const skillPath = join(packsDir, packId, 'SKILL.md');
+      expect(existsSync(skillPath), `${packId} pack is missing SKILL.md`).toBe(true);
+      assertNoExampleLeak(`${packId} SKILL.md`, readFileSync(skillPath, 'utf-8'));
+    }
   });
 });

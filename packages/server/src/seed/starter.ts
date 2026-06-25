@@ -1,4 +1,3 @@
-
 export type PackId =
   | 'knowledge-base'
   | 'software-lifecycle'
@@ -29,7 +28,6 @@ export interface StarterPack {
   templates: Readonly<Record<string, string>>;
   rootFiles?: Readonly<Record<string, string>>;
 }
-
 
 const KNOWLEDGE_BASE_FOLDERS: readonly StarterFolder[] = [
   {
@@ -128,7 +126,6 @@ description: Append-only audit trail of changes to this knowledge base.
 
 Append-only audit trail. Add one dated entry per turn that creates, edits, or restructures content. The knowledge-base skill describes what to log and the entry shape.
 `;
-
 
 const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
   {
@@ -378,7 +375,6 @@ tags: [postmortem]
 `,
 };
 
-
 const CODEBASE_WIKI_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'wiki/architecture',
@@ -556,7 +552,6 @@ description: Append-only audit trail of wiki generation and refresh runs.
 Append-only audit trail. Add one dated entry per generation or refresh run, recording the profile, the \`source_commit\` it was anchored to, and the coverage. The codebase-wiki skill describes the entry shape.
 `;
 
-
 const PLAIN_NOTES_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'notes',
@@ -614,7 +609,6 @@ tags: [daily]
 - Gratitude:
 `,
 };
-
 
 const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
   {
@@ -872,7 +866,6 @@ tags: [lore, history]
 `,
 };
 
-
 const WRITING_PIPELINE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'ideas',
@@ -948,7 +941,6 @@ tags: [published]
 `,
 };
 
-
 const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'people',
@@ -1015,7 +1007,7 @@ tags: [person]
 
 ## Compiled truth
 
-(Your current best understanding. Rewrite this section as new evidence changes the synthesis. Prefer path-qualified links such as [[companies/acme|Acme]] when identity matters.)
+(Your current best understanding. Rewrite this section as new evidence changes the synthesis. Prefer path-qualified links such as \`[[companies/acme|Acme]]\` when identity matters.)
 
 --- timeline ---
 
@@ -1037,7 +1029,7 @@ tags: [company]
 
 ## Compiled truth
 
-(Your current best understanding of the company. Rewrite this section as new evidence changes the synthesis. Prefer path-qualified links such as [[people/jane-founder|Jane Founder]].)
+(Your current best understanding of the company. Rewrite this section as new evidence changes the synthesis. Prefer path-qualified links such as \`[[people/jane-founder|Jane Founder]]\`.)
 
 --- timeline ---
 
@@ -1060,7 +1052,7 @@ tags: [meeting]
 
 ## Notes
 
-(Raw notes from the meeting. Prefer path-qualified links such as [[people/jane-founder|Jane Founder]], [[companies/jane-co|Jane Co]], and [[concepts/agent-runtime-observability|agent-runtime observability]].)
+(Raw notes from the meeting. Prefer path-qualified links such as \`[[people/jane-founder|Jane Founder]]\`, \`[[companies/jane-co|Jane Co]]\`, and \`[[concepts/agent-runtime-observability|agent-runtime observability]]\`.)
 
 ## Action items
 
@@ -1143,16 +1135,16 @@ What to log:
 
 **Reference docs as markdown links, not bare paths.** Every doc you touched should appear as \`[name](./path/to/doc.md)\` so the log shows up in \`links({ kind: "backlinks" })\` for those docs.
 
-<!-- Example entry shape:
+Example entry shape:
 
+\`\`\`markdown
 ## YYYY-MM-DD: <short title>
 
 - <what was done>
 - Dossiers updated: [Jane Founder](./people/jane-founder.md), [Jane Co](./companies/jane-co.md)
 - Meetings logged: [2026-05-12 coffee](./meetings/2026-05-12-jane-founder-coffee.md)
 - Open follow-ups: <topic-1>, <topic-2>
-
--->
+\`\`\`
 `;
 
 const ENTITY_VAULT_USER_MD = `---
@@ -1251,7 +1243,6 @@ description: "When the agent does scheduled work: daily briefings, end-of-day do
 
 `;
 
-
 const OKF_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'concepts',
@@ -1297,7 +1288,7 @@ tags: [concept]
 
 ## Related
 
-- Link a related idea, e.g. [another concept](./another-concept.md).
+- Link a related idea, e.g. \`[another concept](./another-concept.md)\`.
 `,
   reference: `---
 template:
@@ -1377,7 +1368,6 @@ const OKF_LOG_MD = `# Log
 
 Change history for this knowledge base, newest entry first. Add a dated entry (\`## YYYY-MM-DD: <summary>\`) whenever you create, edit, or restructure content — one entry per working session, not per file.
 `;
-
 
 export const STARTER_PACKS: Readonly<Record<PackId, StarterPack>> = {
   'knowledge-base': {
@@ -1538,7 +1528,6 @@ function computePackEntryCounts(pack: StarterPack): StarterPackEntryCounts {
   files += pack.rootFiles ? Object.keys(pack.rootFiles).length : 0;
   return { files, folders };
 }
-
 
 export const STARTER_FOLDERS: readonly StarterFolder[] = KNOWLEDGE_BASE_FOLDERS;
 
