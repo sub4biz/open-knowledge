@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { DiscordIcon } from '@/components/icons/discord';
 import { GitHubIcon } from '@/components/icons/github';
 import { XIcon } from '@/components/icons/x';
-import { InkeepWordmark } from '@/components/inkeep-wordmark';
+import { InkeepLogo } from '@/components/inkeep-logo';
 
 const socialLinks = [
   { href: 'https://github.com/inkeep/open-knowledge', label: 'GitHub', Icon: GitHubIcon },
@@ -41,7 +41,7 @@ export function SiteFooter() {
           className="order-first flex items-center gap-1.5 justify-self-center rounded-sm text-sm font-medium text-slide-muted/60 outline-none transition-colors min-[24rem]:col-span-2 sm:order-0 sm:col-span-1 hover:text-slide-text focus-visible:ring-2 focus-visible:ring-slide-accent focus-visible:ring-offset-2"
         >
           <span>Made by</span>
-          <InkeepWordmark className="mt-px w-14" />
+          <InkeepLogo className="w-20" />
         </Link>
         <div className="flex items-center justify-center gap-6 text-sm text-slide-muted min-[24rem]:justify-end">
           {legalLinks.map(({ href, label }) => (
