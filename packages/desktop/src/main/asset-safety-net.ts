@@ -7,6 +7,8 @@ interface WebContentsLike {
     event: 'will-navigate',
     handler: (event: { preventDefault: () => void }, url: string) => void,
   ): void;
+  getURL?(): string;
+  executeJavaScript?(code: string): Promise<unknown>;
 }
 
 interface AttachAssetSafetyNetDeps {
@@ -53,6 +55,31 @@ export function matchAssetUrl(url: string, editorOrigin: string): string | null 
   return path;
 }
 
+function safeOrigin(url: string | undefined | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+export function matchInAppRoute(url: string, rendererOrigin: string | null): string | null {
+  if (!rendererOrigin) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.origin !== rendererOrigin) return null;
+  return parsed.hash.startsWith('#/') ? parsed.hash : null;
+}
+
+function navigateToHashScript(hash: string): string {
+  return `window.location.hash = ${JSON.stringify(hash)};`;
+}
+
 export function attachAssetSafetyNet(
   webContents: WebContentsLike,
   deps: AttachAssetSafetyNetDeps,
@@ -71,6 +98,20 @@ export function attachAssetSafetyNet(
           });
         }
       });
+      return { action: 'deny' };
+    }
+    const inAppHash = matchInAppRoute(details.url, safeOrigin(webContents.getURL?.()));
+    if (inAppHash !== null) {
+      const nav = webContents.executeJavaScript?.(navigateToHashScript(inAppHash));
+      if (nav) {
+        void nav.catch((err: unknown) => {
+          log({
+            level: 'warn',
+            message: 'in-app navigation failed from setWindowOpenHandler',
+            data: { hash: inAppHash, err: (err as Error).message },
+          });
+        });
+      }
       return { action: 'deny' };
     }
     void deps.openExternal(details.url).catch((err: unknown) => {
@@ -104,7 +145,12 @@ export function attachAssetSafetyNet(
     } catch {
       return;
     }
-    if (parsed.origin === deps.editorOrigin) return;
+    if (
+      parsed.origin === deps.editorOrigin ||
+      parsed.origin === safeOrigin(webContents.getURL?.())
+    ) {
+      return;
+    }
     event.preventDefault();
     void deps.openExternal(url).catch((err: unknown) => {
       log({
