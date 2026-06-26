@@ -61,7 +61,7 @@ function depsBuilder(opts: {
 }): RepairSkillsDeps {
   return {
     resolveProjectBundledSkillDir: () => opts.projectBundleDir,
-    resolveDiscoveryBundledSkillDir: () => opts.discoveryBundleDir,
+    resolveUserBundledSkillDir: () => opts.discoveryBundleDir,
     readBundledVersion: async () => opts.bundledVersion,
     readRecordedVersion: async () => opts.recordedVersion,
     writeRecordedVersion: async (home, version) => {
@@ -323,7 +323,7 @@ describe('repairSkills — project sweep create-if-wired gate', () => {
       throw new Error('unreachable');
     expect(result.project.entries.find((e) => e.editorId === 'codex')?.outcome).toBe('created');
     expect(
-      existsSync(join(scratch.project, '.agents', 'skills', PROJECT_SKILL_DIR_NAME, 'SKILL.md')),
+      existsSync(join(scratch.project, '.codex', 'skills', PROJECT_SKILL_DIR_NAME, 'SKILL.md')),
     ).toBe(true);
   });
 
@@ -468,6 +468,7 @@ describe('repairSkills — user sweep version gate (AC-B1, AC-B2, AC-B3, AC-B4)'
   it('AC-B2: refreshes central + per-host and advances skill-state when version mismatches', async () => {
     mkdirSync(join(scratch.home, '.claude'), { recursive: true });
     mkdirSync(join(scratch.home, '.cursor'), { recursive: true });
+    mkdirSync(join(scratch.home, '.codex'), { recursive: true });
 
     const written: Array<{ home: string; version: string }> = [];
     const result = await repairSkills({
@@ -495,8 +496,10 @@ describe('repairSkills — user sweep version gate (AC-B1, AC-B2, AC-B3, AC-B4)'
     expect(existsSync(join(claudeDest, 'SKILL.md'))).toBe(true);
     expect(existsSync(join(cursorDest, 'SKILL.md'))).toBe(true);
 
+    const codexDest = join(scratch.home, '.codex', 'skills', USER_SKILL_DIR_NAME);
+    expect(existsSync(join(codexDest, 'SKILL.md'))).toBe(true);
     const codexEntry = result.user.entries.find((e) => e.kind === 'host' && e.editorId === 'codex');
-    expect(codexEntry?.outcome).toBe('skipped-collapsed-with-central');
+    expect(codexEntry?.outcome).toBe('written');
 
     expect(written).toEqual([{ home: scratch.home, version: '9.9.9' }]);
   });
@@ -649,7 +652,7 @@ describe('repairSkills — user sweep version gate (AC-B1, AC-B2, AC-B3, AC-B4)'
       logger: (event) => logEvents.push(event),
       deps: {
         resolveProjectBundledSkillDir: () => projectBundleDir,
-        resolveDiscoveryBundledSkillDir: () => {
+        resolveUserBundledSkillDir: () => {
           throw new Error('synthetic: discovery bundle not found');
         },
         readBundledVersion: async () => '9.9.9',
@@ -879,7 +882,7 @@ describe('repairSkills — JSONL telemetry parity with Desktop', () => {
       home: scratch.home,
       deps: {
         resolveProjectBundledSkillDir: () => projectBundleDir,
-        resolveDiscoveryBundledSkillDir: () => {
+        resolveUserBundledSkillDir: () => {
           throw new Error('synthetic: discovery bundle not found');
         },
         readBundledVersion: async () => '9.9.9',
@@ -908,7 +911,7 @@ describe('repairSkills — JSONL telemetry parity with Desktop', () => {
       home: scratch.home,
       deps: {
         resolveProjectBundledSkillDir: () => projectBundleDir,
-        resolveDiscoveryBundledSkillDir: () => discoveryBundleDir,
+        resolveUserBundledSkillDir: () => discoveryBundleDir,
         readBundledVersion: async () => {
           throw new Error('synthetic: cannot read package.json');
         },
@@ -1048,7 +1051,7 @@ describe('repairSkills — JSONL telemetry parity with Desktop', () => {
       home: scratch.home,
       deps: {
         resolveProjectBundledSkillDir: () => projectBundleDir,
-        resolveDiscoveryBundledSkillDir: () => discoveryBundleDir,
+        resolveUserBundledSkillDir: () => discoveryBundleDir,
         readBundledVersion: async () => '9.9.9',
         readRecordedVersion: async () => '0.6.0',
         writeRecordedVersion: async (home, version) => {
@@ -1078,7 +1081,7 @@ describe('formatRepairSkillsResult — done-branch stdout formatting', () => {
           { editorId: 'cursor', hostDir: '.cursor', path: '/y', outcome: 'no-token' },
           {
             editorId: 'codex',
-            hostDir: '.agents',
+            hostDir: '.codex',
             path: '/z',
             outcome: 'failed',
             error: 'simulated',
@@ -1107,9 +1110,9 @@ describe('formatRepairSkillsResult — done-branch stdout formatting', () => {
           {
             kind: 'host',
             editorId: 'codex',
-            hostDir: '.agents',
+            hostDir: '.codex',
             path: '/g',
-            outcome: 'skipped-collapsed-with-central',
+            outcome: 'skipped-host-absent',
           },
         ],
       },

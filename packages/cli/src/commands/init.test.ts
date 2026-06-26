@@ -515,12 +515,17 @@ describe('runInit', () => {
       expect(config.mcp[result.editors[0].serverName]).toEqual(PUBLISHED_OPENCODE_ENTRY);
     });
 
-    it('writes the shared .agents/skills/ skill once when Codex + OpenCode are both selected', async () => {
+    it('writes a distinct project skill for Codex and OpenCode in their own dirs', async () => {
       const result = await runInitForTest({ editors: ['codex', 'opencode'], scope: 'project' });
-      const sharedSkill = join(testDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md');
-      const sharedEntries = result.projectSkills.filter((s) => s.path === sharedSkill);
-      expect(sharedEntries).toHaveLength(1);
-      expect(existsSync(sharedSkill)).toBe(true);
+      const codexSkill = join(testDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md');
+      const opencodeSkill = join(testDir, '.opencode', 'skills', 'open-knowledge', 'SKILL.md');
+      expect(result.projectSkills.some((s) => s.path === codexSkill)).toBe(true);
+      expect(result.projectSkills.some((s) => s.path === opencodeSkill)).toBe(true);
+      expect(existsSync(codexSkill)).toBe(true);
+      expect(existsSync(opencodeSkill)).toBe(true);
+      expect(existsSync(join(testDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
+        false,
+      );
     });
   });
 
@@ -601,36 +606,14 @@ describe('runInit', () => {
       );
     });
 
-    it('flags claudeDesktopDetected=true when Claude config dir exists', async () => {
-      mkdirSync(dirname(resolveClaudeDesktopConfigPath({ home: fakeHome })), { recursive: true });
-
-      const result = await runInitForTest();
-
-      expect(result.claudeDesktopDetected).toBe(true);
-    });
-
-    it('flags claudeDesktopDetected=false when Claude config dir is absent', async () => {
-      const result = await runInitForTest();
-
-      expect(result.claudeDesktopDetected).toBe(false);
-    });
-
-    it('renders the Cowork install hint when Claude Desktop is detected', async () => {
+    it('does NOT advertise the Cowork bundle, even when Claude Desktop is present', async () => {
       mkdirSync(dirname(resolveClaudeDesktopConfigPath({ home: fakeHome })), { recursive: true });
 
       const result = await runInitForTest();
       const output = formatInitResult(result, testDir);
 
-      expect(output).toContain('Claude Desktop App detected.');
-      expect(output).toContain('Claude Chat & Cowork');
-      expect(output).toContain('ok install-skill');
-    });
-
-    it('omits the Cowork install hint when Claude Desktop is absent', async () => {
-      const result = await runInitForTest();
-      const output = formatInitResult(result, testDir);
-
-      expect(output).not.toContain('Claude Desktop detected. For Cowork:');
+      expect(output).not.toContain('ok cowork');
+      expect(output).not.toContain('Claude Chat & Cowork');
       expect(output).not.toContain('openknowledge.skill');
     });
   });
@@ -1307,14 +1290,14 @@ describe('runInit', () => {
           expect.objectContaining({
             editorId: 'codex',
             action: 'written',
-            path: join(testDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'),
+            path: join(testDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md'),
           }),
         ]),
       );
       expect(existsSync(join(testDir, '.cursor', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
         true,
       );
-      expect(existsSync(join(testDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
+      expect(existsSync(join(testDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
         true,
       );
     });

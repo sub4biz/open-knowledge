@@ -63,6 +63,16 @@ export function composeFilePrompt(
   return appendInstruction(directive, instruction);
 }
 
+export function composeSkillPrompt(
+  skillName: string,
+  scope: 'project' | 'global',
+  autoOpen: boolean,
+): string {
+  const safe = sanitizePathForPrompt(skillName);
+  const base = `Use your open-knowledge-write-skill skill to author the ${scope} Open Knowledge skill \`${safe}\`. Edit it with the Open Knowledge tools.`;
+  return autoOpen ? `${base} Open the OK editor in web view.` : base;
+}
+
 export function composeFolderPrompt(
   relativeFolderPath: string,
   autoOpen: boolean,

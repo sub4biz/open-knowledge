@@ -7,11 +7,13 @@ import {
   renameSync,
   rmdirSync,
   rmSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { basename, sep } from 'node:path';
+import type { AtomicWriteFsAdapter } from '@inkeep/open-knowledge-core/server';
 import type { Attributes } from '@opentelemetry/api';
 import { withSpan, withSpanSync } from './telemetry.ts';
 
@@ -169,6 +171,24 @@ export function tracedLinkSync(existingPath: string, newPath: string): void {
   );
 }
 
+export function tracedSymlinkSync(
+  target: string,
+  linkPath: string,
+  type?: 'dir' | 'file' | 'junction',
+): void {
+  withSpanSync(
+    'fs.symlinkSync',
+    {
+      attributes: buildAttrs('symlinkSync', linkPath, {
+        'fs.source_path': normalizeFsPath(target),
+      }),
+    },
+    () => {
+      symlinkSync(target, linkPath, type);
+    },
+  );
+}
+
 export function tracedRmSync(path: string, options?: RmOptions): void {
   withSpanSync('fs.rmSync', { attributes: buildAttrs('rmSync', path) }, () => {
     rmSync(path, options);
@@ -180,3 +200,8 @@ export function tracedRmdirSync(path: string): void {
     rmdirSync(path);
   });
 }
+
+export const tracedAtomicFs: AtomicWriteFsAdapter = {
+  writeFile: (path, content, opts) => tracedWriteFile(path, content, opts),
+  rename: (from, to) => tracedRename(from, to),
+};

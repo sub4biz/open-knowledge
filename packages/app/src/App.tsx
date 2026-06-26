@@ -29,9 +29,15 @@ import {
   useDocumentContext,
   useDocumentTransition,
 } from '@/editor/DocumentContext';
+import { useReconcileSkillTabs } from '@/hooks/use-reconcile-skill-tabs';
 import { fetchApiConfig } from '@/lib/api-config';
 import { ConfigProvider } from '@/lib/config-provider';
-import { assetPathFromHash, docNameFromHash, isContentRootHash } from '@/lib/doc-hash';
+import {
+  assetPathFromHash,
+  docNameFromHash,
+  isContentRootHash,
+  skillFileFromHash,
+} from '@/lib/doc-hash';
 import { mark, ProfilerBoundary } from '@/lib/perf';
 import { SingleFileModeProvider, useSingleFileMode } from '@/lib/single-file-mode';
 import { isSettingsShortcut, SETTINGS_OPEN_HASH } from '@/lib/use-settings-route';
@@ -64,6 +70,7 @@ function knownTargetsSignature(
 function NavigationHandler() {
   const { clearTarget, syncOpenTabsWithKnownTargets, tabSessionLoaded } = useDocumentContext();
   const { openTargetTransition } = useDocumentTransition();
+  useReconcileSkillTabs();
   const { assetPaths, folderPaths, loading, pageMeta, pages, pagesBySlug, pagesByBasename } =
     usePageList();
   const lastSyncedTargetsSignatureRef = useRef<string | null>(null);
@@ -106,6 +113,18 @@ function NavigationHandler() {
           target: assetPath,
           assetPath,
           mediaKind,
+        });
+        return;
+      }
+      const skillFile = skillFileFromHash(window.location.hash);
+      if (skillFile) {
+        mark('ok/nav/hash-change', { docName: null, kind: 'skill-file' });
+        openTargetTransition({
+          kind: 'skill-file',
+          target: `${skillFile.scope}/${skillFile.name}/${skillFile.path}`,
+          scope: skillFile.scope,
+          name: skillFile.name,
+          path: skillFile.path,
         });
         return;
       }

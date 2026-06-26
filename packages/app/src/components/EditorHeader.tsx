@@ -1,3 +1,4 @@
+import { parseManagedArtifactName } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
@@ -32,6 +33,7 @@ interface EditorHeaderProps {
 export function EditorHeader({ onSignIn, onSetIdentity, onOpenSearch }: EditorHeaderProps) {
   const { t } = useLingui();
   const { activeDocName, activeTarget } = useDocumentContext();
+  const managedArtifact = activeDocName ? parseManagedArtifactName(activeDocName) : null;
   const { state: sidebarState, isDraggingRail } = useSidebar();
   const singleFile = useSingleFileMode();
   const sidebarShortcut = formatShortcut('toggle-files-sidebar');
@@ -41,7 +43,7 @@ export function EditorHeader({ onSignIn, onSetIdentity, onOpenSearch }: EditorHe
     if (activeTarget?.kind === 'folder') {
       return buildFolderShareInput(activeTarget.folderPath);
     }
-    if (activeDocName) {
+    if (activeDocName && !managedArtifact) {
       return buildDocShareInput(activeDocName);
     }
     return null;

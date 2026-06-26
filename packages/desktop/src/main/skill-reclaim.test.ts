@@ -52,13 +52,14 @@ function makeHome(): string {
 interface CapturedEvent {
   ts: string;
   outcome: 'installed' | 'failed';
-  bundle?: 'discovery';
+  bundle?: string;
   version?: string;
   reason?: string;
 }
 
 interface FakeDeps {
-  resolveBundledSkillDir(): string;
+  userGlobalBundles: ReadonlyArray<{ id: string; name: string }>;
+  resolveBundledSkillDir(bundle: string): string;
   readServerPackageVersion(): Promise<string>;
   writeTargetVersion(
     home: string,
@@ -70,7 +71,7 @@ interface FakeDeps {
     ts: string;
     surface: 'desktop-direct';
     target: 'cli-hosts';
-    bundle?: 'discovery';
+    bundle?: string;
     outcome: 'installed' | 'failed';
     version?: string;
     reason?: string;
@@ -78,6 +79,10 @@ interface FakeDeps {
   stateWrites: Array<{ home: string; version: string }>;
   events: CapturedEvent[];
 }
+
+/** Default test bundle set — discovery only, so existing single-bundle
+ *  assertions hold; multi-bundle tests pass an explicit list. */
+const DISCOVERY_ONLY_BUNDLES = [{ id: 'discovery', name: 'open-knowledge-discovery' }] as const;
 
 function makeDeps(opts: {
   bundle: string;
@@ -91,6 +96,7 @@ function makeDeps(opts: {
   const stateWrites: Array<{ home: string; version: string }> = [];
   const events: CapturedEvent[] = [];
   return {
+    userGlobalBundles: DISCOVERY_ONLY_BUNDLES,
     resolveBundledSkillDir: () => {
       if (opts.resolveThrows) throw opts.resolveThrows;
       return opts.bundle;
@@ -157,6 +163,34 @@ describe('reclaimUserSkillsOnLaunch', () => {
     ]);
   });
 
+  test('installs every user-global bundle (discovery + write-skill) into central + per-host', async () => {
+    const home = makeHome();
+    const bundle = setupBundle();
+    mkdirSync(join(home, '.claude', 'skills'), { recursive: true });
+    const deps = {
+      ...makeDeps({ bundle, version: '1.0.0' }),
+      userGlobalBundles: [
+        { id: 'discovery', name: 'open-knowledge-discovery' },
+        { id: 'write-skill', name: 'open-knowledge-write-skill' },
+      ],
+    };
+    const r = await reclaimUserSkillsOnLaunch({
+      home,
+      isPackaged: true,
+      platform: 'darwin',
+      executablePath: EXE,
+      deps,
+    });
+    expect(r.status).toBe('done');
+    for (const name of ['open-knowledge-discovery', 'open-knowledge-write-skill']) {
+      expect(existsSync(join(home, '.agents', 'skills', name, 'SKILL.md'))).toBe(true);
+      expect(existsSync(join(home, '.claude', 'skills', name, 'SKILL.md'))).toBe(true);
+    }
+    const installed = deps.events.filter((e) => e.outcome === 'installed').map((e) => e.bundle);
+    expect(installed.sort()).toEqual(['discovery', 'write-skill']);
+    expect(deps.stateWrites).toEqual([{ home, version: '1.0.0' }]);
+  });
+
   test('central store overwrites existing files even when same path is present', async () => {
     const home = makeHome();
     const bundle = setupBundle();
@@ -203,8 +237,9 @@ describe('reclaimUserSkillsOnLaunch', () => {
     expect(existsSync(join(home, '.cursor', 'skills', 'open-knowledge-discovery'))).toBe(false);
   });
 
-  test('codex host (.agents) collapses with central path at user scope — written once, not twice', async () => {
+  test('codex installs to its own .codex host dir, distinct from the .agents central store', async () => {
     const home = makeHome();
+    mkdirSync(join(home, '.codex'), { recursive: true });
     const bundle = setupBundle();
     const deps = makeDeps({ bundle, version: '1.2.3' });
     const events: Array<Record<string, unknown>> = [];
@@ -223,15 +258,16 @@ describe('reclaimUserSkillsOnLaunch', () => {
     if (r.status === 'done') {
       const central = r.entries.find((e) => e.kind === 'central');
       expect(central?.status).toBe('written');
+      expect(central?.path).toContain(join('.agents', 'skills'));
       const codex = r.entries.find((e) => e.kind === 'host' && e.editorId === 'codex');
-      expect(codex).toBeUndefined();
+      expect(codex?.status).toBe('written');
+      expect(codex?.path).toContain(join('.codex', 'skills'));
+      expect(codex?.path).not.toBe(central?.path);
     }
-    const centralEvents = events.filter((e) => e.event === 'user-skill-reclaim-central-written');
-    expect(centralEvents).toHaveLength(1);
-    const codexHostEvents = events.filter(
-      (e) => e.event === 'user-skill-reclaim-host-written' && e.editorId === 'codex',
-    );
-    expect(codexHostEvents).toHaveLength(0);
+    expect(events.filter((e) => e.event === 'user-skill-reclaim-central-written')).toHaveLength(1);
+    expect(
+      events.filter((e) => e.event === 'user-skill-reclaim-host-written' && e.editorId === 'codex'),
+    ).toHaveLength(1);
   });
 
   test('per-host overwrite when SKILL.md already exists (force-write)', async () => {
@@ -403,10 +439,10 @@ describe('reclaimProjectSkillsOnProjectOpen', () => {
     expect(existsSync(join(projectDir, '.agents'))).toBe(false);
   });
 
-  test('codex project skill at .agents/skills/open-knowledge is reclaimed when present', async () => {
+  test('codex project skill at .codex/skills/open-knowledge is reclaimed when present', async () => {
     const projectDir = mkdtempSync(join(tmpdir(), 'ok-proj-'));
     cleanupPaths.push(projectDir);
-    const codexSkill = join(projectDir, '.agents', 'skills', 'open-knowledge');
+    const codexSkill = join(projectDir, '.codex', 'skills', 'open-knowledge');
     mkdirSync(codexSkill, { recursive: true });
     writeFileSync(join(codexSkill, 'SKILL.md'), '---\nname: open-knowledge\n---\n# v-old\n');
     const bundle = setupBundle();
@@ -572,7 +608,7 @@ describe('reclaimProjectSkillsOnProjectOpen — createIfWired (managed heal path
       expect(r.entries.find((e) => e.editorId === 'codex')?.status).toBe('created');
       expect(r.entries.find((e) => e.editorId === 'claude')?.status).toBe('no-token');
     }
-    expect(existsSync(join(projectDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
+    expect(existsSync(join(projectDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
       true,
     );
   });

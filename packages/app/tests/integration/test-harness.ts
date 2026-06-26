@@ -89,6 +89,7 @@ export interface CreateTestServerOptions {
   gitEnabled?: boolean;
   commitDebounceMs?: number;
   localOpCliArgs?: string[];
+  configHomedirOverride?: string;
   ephemeral?: boolean;
   projectDir?: string;
   singleDocRelPath?: string;
@@ -102,6 +103,11 @@ export async function createTestServer(options: CreateTestServerOptions = {}): P
     options.contentDir !== undefined
       ? realpathSync(options.contentDir)
       : realpathSync(mkdtempSync(join(tmpdir(), 'ok-test-')));
+  const ownedHomeDir =
+    options.configHomedirOverride === undefined
+      ? realpathSync(mkdtempSync(join(tmpdir(), 'ok-test-home-')))
+      : null;
+  const homeOverride = options.configHomedirOverride ?? (ownedHomeDir as string);
 
   const createdProjectDir = ephemeral && options.projectDir === undefined;
   const projectDir = ephemeral
@@ -133,6 +139,7 @@ export async function createTestServer(options: CreateTestServerOptions = {}): P
     contentRoot: options.gitEnabled === true ? '.' : undefined,
     enableTestRoutes: true,
     localOpCliArgs: options.localOpCliArgs,
+    configHomedirOverride: homeOverride,
     mdManager: options.mdManager,
     ...(ephemeral ? { ephemeral: true, singleDocRelPath: options.singleDocRelPath } : {}),
     skipStateManifestCheck: true,
@@ -190,6 +197,9 @@ export async function createTestServer(options: CreateTestServerOptions = {}): P
       }
       if (!options.keepContentDir) {
         rmSync(contentDir, { recursive: true, force: true });
+      }
+      if (ownedHomeDir !== null) {
+        rmSync(ownedHomeDir, { recursive: true, force: true });
       }
     },
   };

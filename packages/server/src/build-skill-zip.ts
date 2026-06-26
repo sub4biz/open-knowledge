@@ -6,18 +6,14 @@ import { basename, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripFrontmatter, unwrapFrontmatterFences } from '@inkeep/open-knowledge-core';
 import yazl from 'yazl';
+import { BUNDLE_SKILL_NAME, type BundleId } from './skill-bundles.ts';
+
+export type { BundleId };
 
 /** Maximum uncompressed + compressed size. Catches accidental binary bloat.
  *  Current baseline is ~10 KB DEFLATE — 100 KB gives an order of magnitude
  *  of headroom without permitting a runaway regression. */
 const MAX_ZIP_BYTES = 102_400;
-
-export type BundleId = 'discovery' | 'project';
-
-const BUNDLE_SKILL_NAME: Record<BundleId, string> = {
-  discovery: 'open-knowledge-discovery',
-  project: 'open-knowledge',
-};
 
 export interface BuildSkillZipOptions {
   bundle?: BundleId;

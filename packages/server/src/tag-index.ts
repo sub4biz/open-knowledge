@@ -9,7 +9,7 @@ import {
   tagsMatchingPrefix,
   unwrapFrontmatterFences,
 } from '@inkeep/open-knowledge-core';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isLinkIndexExcludedDoc } from './cc1-broadcast.ts';
 import type { ContentFilter } from './content-filter.ts';
 import { isSupportedDocFile, stripDocExtension } from './doc-extensions.ts';
 import { toPosix } from './path-utils.ts';
@@ -97,7 +97,7 @@ export class TagIndex {
   }
 
   updateDocumentFromMarkdown(docName: string, markdown: string): void {
-    if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+    if (isLinkIndexExcludedDoc(docName)) return;
     try {
       const { frontmatter, body } = stripFrontmatter(markdown);
       const yamlBody = frontmatter ? unwrapFrontmatterFences(frontmatter) : '';
@@ -121,7 +121,7 @@ export class TagIndex {
   }
 
   deleteDocument(docName: string): void {
-    if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+    if (isLinkIndexExcludedDoc(docName)) return;
     const prior = this.state.byDoc.get(docName);
     if (!prior) return;
     for (const tag of prior) {

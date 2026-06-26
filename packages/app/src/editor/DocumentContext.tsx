@@ -14,6 +14,8 @@ import {
   hashFromAssetPath,
   hashFromDocName,
   hashFromFolderPath,
+  hashFromSkillFile,
+  skillFileFromHash,
 } from '@/lib/doc-hash';
 import { emitBranchChanged, emitDocumentsChanged } from '@/lib/documents-events';
 import { mark } from '@/lib/perf';
@@ -48,6 +50,7 @@ import {
   remapVisibleTabsForRename,
   removeOpenTab,
   removePinnedTab,
+  skillFileTabId,
   tabIdForNavigationTarget,
   writeLocalTabSessionState,
 } from './editor-tabs';
@@ -231,12 +234,16 @@ function hashFromTabId(tabId: string): string {
       return hashFromFolderPath(tab.folderPath);
     case 'asset':
       return hashFromAssetPath(tab.assetPath);
+    case 'skill-file':
+      return hashFromSkillFile({ scope: tab.scope, name: tab.name, path: tab.path });
   }
 }
 
 function tabIdFromHash(hash: string): string | null {
   const assetPath = assetPathFromHash(hash);
   if (assetPath) return assetTabId(assetPath);
+  const skillFile = skillFileFromHash(hash);
+  if (skillFile) return skillFileTabId(skillFile);
   const docName = docNameFromHash(hash);
   if (!docName) return null;
   const trimmed = docName.trim();
@@ -289,6 +296,8 @@ function navigationTargetKey(target: ResolvedNavigationTarget): string {
       return `folder:${target.folderPath}`;
     case 'asset':
       return `asset:${target.assetPath}:${target.mediaKind ?? ''}`;
+    case 'skill-file':
+      return `skill-file:${target.scope}:${target.name}:${target.path}`;
     case 'large-file':
       return `large-file:${target.docName}:${target.size}:${target.limit}`;
     case 'missing':
@@ -1063,6 +1072,18 @@ export function DocumentProvider({ children }: { children: ReactNode }) {
       if (tab.kind === 'asset') {
         setActiveTarget(assetTargetForPath(tab.assetPath));
         const nextHash = hashFromAssetPath(tab.assetPath);
+        if (window.location.hash !== nextHash) window.location.hash = nextHash;
+        return;
+      }
+      if (tab.kind === 'skill-file') {
+        setActiveTarget({
+          kind: 'skill-file',
+          target: `${tab.scope}/${tab.name}/${tab.path}`,
+          scope: tab.scope,
+          name: tab.name,
+          path: tab.path,
+        });
+        const nextHash = hashFromSkillFile({ scope: tab.scope, name: tab.name, path: tab.path });
         if (window.location.hash !== nextHash) window.location.hash = nextHash;
         return;
       }

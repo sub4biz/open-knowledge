@@ -1,6 +1,7 @@
 import { humanFormat } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import {
+  ChevronRight,
   Copy,
   FilePlus,
   FolderOpen,
@@ -24,9 +25,11 @@ import {
 import { useInstalledAgents } from '@/components/handoff/useInstalledAgents';
 import { ProjectSwitcher } from '@/components/ProjectSwitcher';
 import { onPillRenderError, SidebarSearchBar } from '@/components/SidebarSearchBar';
+import { SkillsSidebarSection } from '@/components/SkillsSidebarSection';
 import { TemplateMenuRows } from '@/components/template-menu-rows';
 import { UpdateNotices } from '@/components/UpdateNotices';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -48,6 +51,8 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -121,6 +126,7 @@ const ToolbarButton: FC<ToolbarButtonProps> = ({ icon: Icon, label, ...props }) 
 function FileSidebarInner({ onOpenSearch }: FileSidebarProps) {
   const { t } = useLingui();
   const [tree, setTree] = useState<FileTreeHandle | null>(null);
+  const [treeContentHeight, setTreeContentHeight] = useState<number | null>(null);
 
   const { activeDocName, activeTarget } = useDocumentContext();
   const baseCreateDir =
@@ -178,6 +184,10 @@ function FileSidebarInner({ onOpenSearch }: FileSidebarProps) {
 
   const bridge = typeof window !== 'undefined' ? window.okDesktop : undefined;
   const workspace = useWorkspace();
+  const projectName =
+    bridge?.config?.projectName ||
+    workspace?.contentDir.split('/').filter(Boolean).pop() ||
+    t`Files`;
   const handoffInstallStates = useInstalledAgents().states;
   const { dispatch: dispatchHandoff } = useHandoffDispatch();
   const emptySpaceHandoffInput = buildProjectScopedHandoffInput({ workspace });
@@ -468,7 +478,7 @@ function FileSidebarInner({ onOpenSearch }: FileSidebarProps) {
                     <DropdownMenuTrigger asChild>
                       <ToolbarButton icon={ListCollapse} label={t`Tree view options`} />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="min-w-52">
                       {!allExpanded ? (
                         <DropdownMenuItem onSelect={() => tree?.expandAll()}>
                           <UnfoldVertical aria-hidden="true" />
@@ -494,7 +504,7 @@ function FileSidebarInner({ onOpenSearch }: FileSidebarProps) {
                     <DropdownMenuTrigger asChild>
                       <ToolbarButton icon={FilePlus} label={t`New from template`} />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="min-w-52">
                       <TemplateMenuRows
                         parentDir={initialCreateDir}
                         onSelectTemplate={(templateName) =>
@@ -582,7 +592,49 @@ function FileSidebarInner({ onOpenSearch }: FileSidebarProps) {
             </div>
             <SidebarContent>
               <ConflictsSection />
-              <FileTree ref={setTree} />
+              {/* Project files, under a collapsible header named for the project
+                  — a true peer to the Skills section below it. The content pane
+                  is sized to the tree's measured content height (capped at 70vh),
+                  so a short tree sits flush above Skills (no bottom-dock) and a
+                  long tree virtualizes + scrolls internally; SidebarContent
+                  scrolls both sections together. `50vh` is the bootstrap height
+                  before the first measurement lands. */}
+              <Collapsible defaultOpen className="group/files flex shrink-0 flex-col">
+                {/* SidebarGroup wrapper matches the Skills section so the two
+                    headers + their content share the same gutter alignment. */}
+                <SidebarGroup className="min-h-0">
+                  <SidebarGroupLabel asChild className="shrink-0">
+                    <CollapsibleTrigger className="flex w-full items-center gap-1.5">
+                      <FolderOpen className="size-3.5 shrink-0" />
+                      <span className="truncate">{projectName}</span>
+                      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/files:rotate-90" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent
+                    className="flex max-h-[70vh] flex-col overflow-hidden"
+                    style={{
+                      height: treeContentHeight != null ? `${treeContentHeight}px` : '50vh',
+                    }}
+                  >
+                    <FileTree ref={setTree} onContentHeightChange={setTreeContentHeight} />
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+              <SkillsSidebarSection />
+              {/* Deselect-to-root hit target. With the tree sized flush to its
+                  rows there's no empty space inside it to click, so the leftover
+                  sidebar space below the sections takes over: clicking it clears
+                  the creation target (New file / New folder then land at the
+                  project root) and neutralizes the focused row's ring, exactly
+                  like the old empty-tree-area click. Flex-grows to fill whatever
+                  space the two sections leave; collapses to nothing (and the
+                  sidebar scrolls) once they exceed the viewport. */}
+              <div
+                aria-hidden
+                data-sidebar-empty-deselect
+                className="min-h-8 flex-1 cursor-default"
+                onClick={() => tree?.clearCreationTarget()}
+              />
             </SidebarContent>
             <SidebarFooter className="px-0">
               <UpdateNotices />
@@ -621,7 +673,7 @@ function FileSidebarInner({ onOpenSearch }: FileSidebarProps) {
             />
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent>
+        <ContextMenuContent className="min-w-52">
           {/*
            * Empty-space menu — 11 items, 4 sections.
            *

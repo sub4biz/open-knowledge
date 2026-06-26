@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
   BUNDLE_IDS,
   buildPackSkills,
@@ -28,16 +28,25 @@ function fixture(opts: {
   discovery: string;
   project: string;
   shared?: Record<string, string>;
+  references?: Record<string, string>;
 }): SkillBundlePaths {
   const root = mkdtempSync(join(tmpdir(), 'ok-skill-compose-'));
   cleanup.push(root);
   const skillsDir = join(root, 'skills');
   for (const bundle of BUNDLE_IDS) mkdirSync(join(skillsDir, bundle), { recursive: true });
   mkdirSync(join(skillsDir, '_shared'), { recursive: true });
+  for (const bundle of BUNDLE_IDS) {
+    writeFileSync(join(skillsDir, bundle, 'SKILL.md'), `# ${bundle}\n`);
+  }
   writeFileSync(join(skillsDir, 'discovery', 'SKILL.md'), opts.discovery);
   writeFileSync(join(skillsDir, 'project', 'SKILL.md'), opts.project);
   for (const [name, body] of Object.entries(opts.shared ?? {})) {
     writeFileSync(join(skillsDir, '_shared', name), body);
+  }
+  for (const [rel, body] of Object.entries(opts.references ?? {})) {
+    const dest = join(skillsDir, rel);
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, body);
   }
   return { skillsDir, distDir: join(root, 'dist', 'assets', 'skills') };
 }
@@ -74,20 +83,34 @@ describe('composeSkill', () => {
 });
 
 describe('buildSkillBundles', () => {
-  test('composes both bundles into dist/<bundle>/SKILL.md', () => {
+  test('composes EVERY canonical bundle into dist/<bundle>/SKILL.md and resolves placeholders', () => {
     const paths = fixture({
       discovery: 'discovery: {{> _shared/intro.md }}\n',
       project: 'project: {{> _shared/intro.md }}\n',
       shared: { 'intro.md': 'SHARED-INTRO' },
     });
     const built = buildSkillBundles(paths);
-    expect(built.map((b) => b.bundle).sort()).toEqual(['discovery', 'project']);
-    for (const b of built) {
-      expect(existsSync(b.outputPath)).toBe(true);
-      expect(readFileSync(b.outputPath, 'utf-8')).toContain('SHARED-INTRO');
-      expect(readFileSync(b.outputPath, 'utf-8')).not.toContain('{{>');
-      expect(b.placeholders).toEqual(['intro.md']);
+    expect(built.map((b) => b.bundle).sort()).toEqual([...BUNDLE_IDS].sort());
+    for (const id of ['discovery', 'project'] as const) {
+      const b = built.find((x) => x.bundle === id);
+      expect(b && existsSync(b.outputPath)).toBe(true);
+      const text = readFileSync(b?.outputPath ?? '', 'utf-8');
+      expect(text).toContain('SHARED-INTRO');
+      expect(text).not.toContain('{{>');
+      expect(b?.placeholders).toEqual(['intro.md']);
     }
+  });
+
+  test('copies a bundle’s references/ into dist so the complete bundle ships (H1)', () => {
+    const paths = fixture({
+      discovery: '# d\n',
+      project: '# p\n',
+      references: { 'project/references/setup.md': 'SETUP-DOC' },
+    });
+    buildSkillBundles(paths);
+    const ref = join(paths.distDir, 'project', 'references', 'setup.md');
+    expect(existsSync(ref)).toBe(true);
+    expect(readFileSync(ref, 'utf-8')).toBe('SETUP-DOC');
   });
 
   test('identity transform when no placeholders are used (v1 case)', () => {
@@ -175,7 +198,7 @@ describe('repo assets — production guard', () => {
     expect(result.ok).toBe(true);
   });
 
-  test('both real source bundles exist and the _shared directory is present', () => {
+  test('every real source bundle exists and the _shared directory is present', () => {
     const { skillsDir } = defaultPaths();
     for (const bundle of BUNDLE_IDS) {
       expect(existsSync(join(skillsDir, bundle, 'SKILL.md'))).toBe(true);
@@ -183,11 +206,20 @@ describe('repo assets — production guard', () => {
     expect(existsSync(join(skillsDir, '_shared'))).toBe(true);
   });
 
-  test('the two bundles carry distinct frontmatter name: values (shadow prevention)', () => {
+  test('every bundle carries a distinct frontmatter name: value (shadow prevention)', () => {
     const { skillsDir } = defaultPaths();
-    const discovery = readFileSync(join(skillsDir, 'discovery', 'SKILL.md'), 'utf-8');
-    const project = readFileSync(join(skillsDir, 'project', 'SKILL.md'), 'utf-8');
-    expect(/^name:\s*open-knowledge-discovery\s*$/m.test(discovery)).toBe(true);
-    expect(/^name:\s*open-knowledge\s*$/m.test(project)).toBe(true);
+    const expected: Record<(typeof BUNDLE_IDS)[number], string> = {
+      discovery: 'open-knowledge-discovery',
+      project: 'open-knowledge',
+      'write-skill': 'open-knowledge-write-skill',
+    };
+    const names = new Set<string>();
+    for (const bundle of BUNDLE_IDS) {
+      const md = readFileSync(join(skillsDir, bundle, 'SKILL.md'), 'utf-8');
+      const want = expected[bundle];
+      expect(new RegExp(`^name:\\s*${want}\\s*$`, 'm').test(md)).toBe(true);
+      names.add(want);
+    }
+    expect(names.size).toBe(BUNDLE_IDS.length);
   });
 });

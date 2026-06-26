@@ -72,6 +72,7 @@ import { EmbeddingsKeySection } from './EmbeddingsKeySection';
 import { OkignoreSection } from './OkignoreSection';
 import { ProjectTemplatesSection } from './ProjectTemplatesSection';
 import { SearchSection } from './SearchSection';
+import { SkillsManagerSection } from './SkillsManagerSection';
 import {
   getEnumOptions,
   getFieldDefault,
@@ -162,6 +163,9 @@ export function SettingsDialogBody({
   }
   if (activeId === 'project-templates') {
     return <ProjectTemplatesSection />;
+  }
+  if (activeId === 'skills') {
+    return <SkillsManagerSection />;
   }
   if (activeId === 'sharing') {
     return <SharingSection />;

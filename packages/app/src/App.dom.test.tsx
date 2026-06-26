@@ -56,6 +56,8 @@ mock.module('@/editor/DocumentContext', () => ({
     clearTarget: clearTargetMock,
     syncOpenTabsWithKnownTargets: syncOpenTabsWithKnownTargetsMock,
     tabSessionLoaded,
+    openTabs: [],
+    closeDocument: () => {},
   }),
   useDocumentTransition: () => ({
     openTargetTransition: openTargetTransitionMock,

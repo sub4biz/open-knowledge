@@ -6,6 +6,7 @@ import {
   readContributors,
 } from '@inkeep/open-knowledge-core/shadow-repo-layout';
 import { getDocExtension } from './doc-extensions.ts';
+import { managedArtifactTimelinePaths } from './managed-artifact-persistence.ts';
 import {
   type AncestorShaSetCache,
   batchCheckExistence,
@@ -246,13 +247,27 @@ export async function getDocumentHistory(
     normalizedRoot
       ? `${normalizedRoot}/${name}${getDocExtension(name)}`
       : `${name}${getDocExtension(name)}`;
-  const docPath = query.docName ? pathFor(query.docName) : undefined;
+
+  const managed = query.docName
+    ? managedArtifactTimelinePaths(query.docName)
+    : ({ managed: false } as const);
+  if (managed.managed && !managed.versioned) return EMPTY;
+  const managedFilePath = managed.managed && managed.versioned ? managed.filePath : undefined;
+  const effectiveDocName = managed.managed && managed.versioned ? managed.docKey : query.docName;
+
+  const docPath = query.docName
+    ? managedFilePath
+      ? normalizedRoot
+        ? `${normalizedRoot}/${managedFilePath}`
+        : managedFilePath
+      : pathFor(query.docName)
+    : undefined;
 
   try {
     const renameLogIndex = options?.renameLogIndex ?? getOrLoadRenameLogIndex(shadow.gitDir);
     const { chain, skipped } = await withSpan('rename.expandPredecessors', undefined, async () =>
       query.docName
-        ? expandPredecessors(query.docName, branch, renameLogIndex)
+        ? expandPredecessors(effectiveDocName, branch, renameLogIndex)
         : { chain: [], skipped: 0 },
     );
     const hasRenameHistory = chain.length > 1;

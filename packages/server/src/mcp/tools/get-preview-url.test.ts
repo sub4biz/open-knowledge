@@ -24,6 +24,7 @@ interface ToolResult {
 type ToolHandler = (args: {
   document?: string;
   folder?: string;
+  skill?: { name: string; scope?: 'project' | 'global' };
   armPaneTarget?: boolean;
   cwd?: string;
 }) => Promise<ToolResult>;
@@ -147,6 +148,42 @@ describe('preview_url tool — UI running', () => {
     const handler = captureRegistration(cwd);
     const result = await handler({ document: 'notes/My Doc' });
     expect(result.structuredContent?.url).toBe(`${uiBase}/#/notes/My%20Doc`);
+  });
+});
+
+describe('preview_url tool — skill target', () => {
+  test('with skill: composes the __skill__ route (default project scope)', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'ok-get-preview-url-'));
+    const uiBase = bindTestUiLock(cwd);
+    const handler = captureRegistration(cwd);
+    const result = await handler({ skill: { name: 'trip-log' } });
+    expect(result.structuredContent?.url).toBe(`${uiBase}/#/__skill__/project/trip-log`);
+  });
+
+  test('with skill + explicit global scope and a spaced name', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'ok-get-preview-url-'));
+    const uiBase = bindTestUiLock(cwd);
+    const handler = captureRegistration(cwd);
+    const result = await handler({ skill: { name: 'run tests', scope: 'global' } });
+    expect(result.structuredContent?.url).toBe(`${uiBase}/#/__skill__/global/run%20tests`);
+  });
+
+  test('armPaneTarget with a skill arms the skill route', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'ok-get-preview-url-'));
+    bindTestUiLock(cwd);
+    const handler = captureRegistration(cwd);
+    await handler({ skill: { name: 'trip-log' }, armPaneTarget: true });
+    expect(readArmedPaneTarget(resolveLockDir(cwd))).toBe('#/__skill__/project/trip-log');
+  });
+
+  test('skill + document together is rejected (mutually exclusive)', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'ok-get-preview-url-'));
+    bindTestUiLock(cwd);
+    const handler = captureRegistration(cwd);
+    const result = await handler({ skill: { name: 'trip-log' }, document: 'specs/foo/SPEC' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('mutually exclusive');
+    expect(readArmedPaneTarget(resolveLockDir(cwd))).toBeNull();
   });
 });
 

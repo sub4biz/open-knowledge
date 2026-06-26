@@ -16,14 +16,22 @@ import {
   textPlusStructured,
   textResult,
 } from './shared.ts';
-import { exactlyOneTargetError, resolveTemplatePath } from './verb-schemas.ts';
+import { deleteSkill, deleteSkillFile, type SkillScope } from './skill-target.ts';
+import {
+  exactlyOneTargetError,
+  resolveSkillFilePath,
+  resolveTemplatePath,
+  SKILL_NAME_DESCRIBE,
+  SkillScopeArg,
+} from './verb-schemas.ts';
 
 const BASE_DESCRIPTION = [
-  'Delete one thing. Pass EXACTLY ONE of `document`, `folder`, `template`, or `asset`.',
+  'Delete one thing. Pass EXACTLY ONE of `document`, `folder`, `template`, `skill`, or `asset`.',
   '',
   '- `document` — Doc path(s) to delete (a single path or an array). Inbound links become redlinks. Irreversible. [Requires: Hocuspocus server]',
   '- `folder` — Folder path to delete (recursive). [Requires: Hocuspocus server]',
   '- `template` — `{ path: "<folder>/<name>" }` — a template to delete (server-routed, attributed; auto-cleans empty `.ok/`). [Requires: Hocuspocus server]',
+  '- `skill` — `{ name }` deletes a whole SKILL; `{ name, files: ["references/x.md"] }` deletes specific bundle files (server-routed, attributed; auto-cleans empty `.ok/`). [Requires: Hocuspocus server]',
   '- `asset` — `{ path: "<folder>/<file.ext>" }` — a binary asset to delete. [Requires: Hocuspocus server]',
   '',
   'Call `links({ kind: "backlinks", document })` BEFORE deleting a doc to see what links here.',
@@ -104,6 +112,22 @@ export function register(server: ServerInstance, deps: DeleteDeps): void {
           .object({ path: z.string().describe('Template path = `<folder>/<name>`.') })
           .optional()
           .describe('A template to delete.'),
+        skill: z
+          .object({
+            name: z.string().describe(SKILL_NAME_DESCRIBE),
+            files: z
+              .array(z.string())
+              .min(1)
+              .optional()
+              .describe(
+                'Skill-relative bundle file paths to delete (`references/...`/`scripts/...`). Omit to delete the WHOLE skill (`.ok/skills/<name>/`).',
+              ),
+            scope: SkillScopeArg.optional(),
+          })
+          .optional()
+          .describe(
+            'A skill to delete — the whole skill (`.ok/skills/<name>/`), or specific bundle files when `files` is set.',
+          ),
         asset: z
           .object({
             path: z
@@ -138,6 +162,16 @@ export function register(server: ServerInstance, deps: DeleteDeps): void {
           .object({ ok: z.boolean(), existed: z.boolean() })
           .optional()
           .describe('Template delete result.'),
+        skill: z
+          .object({
+            ok: z.boolean(),
+            existed: z.boolean().optional(),
+            files: looseObjectArray
+              .optional()
+              .describe('Per-bundle-file delete results `{ path, ok, existed?, error? }`.'),
+          })
+          .optional()
+          .describe('Skill delete result (whole skill or specific bundle files).'),
         asset: z
           .object({ ok: z.boolean(), path: z.string() })
           .optional()
@@ -152,6 +186,7 @@ export function register(server: ServerInstance, deps: DeleteDeps): void {
       document?: string | string[] | { path: string | string[] };
       folder?: string | { path: string };
       template?: { path: string };
+      skill?: { name: string; scope?: SkillScope; files?: string[] };
       asset?: { path: string };
       cwd?: string;
     }) => {
@@ -174,9 +209,55 @@ export function register(server: ServerInstance, deps: DeleteDeps): void {
         'document',
         'folder',
         'template',
+        'skill',
         'asset',
       ]);
       if (teaching) return textResult(`Error: ${teaching}`, true);
+
+      if (args.skill !== undefined) {
+        const skill = args.skill;
+        if (skill.files !== undefined && skill.files.length > 0) {
+          for (const f of skill.files) {
+            const check = resolveSkillFilePath(f);
+            if (!check.ok) return textResult(`Error: ${check.error}`, true);
+          }
+          const results: Array<{ path: string; ok: boolean; existed?: boolean; error?: string }> =
+            [];
+          for (const f of skill.files) {
+            const r = await deleteSkillFile(url, {
+              name: skill.name,
+              scope: skill.scope,
+              path: f,
+              identity: deps.identityRef?.current,
+            });
+            const struct = (
+              r as { structuredContent?: { skill?: { file?: { existed?: boolean } } } }
+            ).structuredContent;
+            if (r.isError) {
+              results.push({ path: f, ok: false, error: r.content[0]?.text ?? 'delete failed' });
+            } else {
+              results.push({ path: f, ok: true, existed: struct?.skill?.file?.existed === true });
+            }
+          }
+          const okCount = results.filter((r) => r.ok).length;
+          const allOk = okCount === results.length;
+          const lines = results.map((r) =>
+            r.ok
+              ? `${r.existed ? 'Deleted' : 'No-op (absent)'} ${r.path}.`
+              : `Failed ${r.path}: ${r.error}`,
+          );
+          return textPlusStructured(
+            `${okCount}/${results.length} skill file(s) processed.\n${lines.join('\n')}`,
+            { skill: { ok: allOk, files: results } },
+            !allOk,
+          );
+        }
+        return deleteSkill(url, {
+          name: skill.name,
+          scope: skill.scope,
+          identity: deps.identityRef?.current,
+        });
+      }
 
       if (args.template !== undefined) {
         const resolved = resolveTemplatePath(args.template.path);

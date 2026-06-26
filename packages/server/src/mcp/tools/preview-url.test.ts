@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { LOCAL_DIR, OK_DIR } from '@inkeep/open-knowledge-core';
 import { acquireUiLock, updateUiLockPort } from '../../ui-lock.ts';
-import { resolvePreviewUrl } from './preview-url.ts';
+import { encodeSkillRoute, resolvePreviewUrl, resolveSkillPreviewUrl } from './preview-url.ts';
 
 let tmpDir: string;
 let lockDir: string;
@@ -61,6 +61,33 @@ describe('resolvePreviewUrl — lock edges', () => {
       if (prior === undefined) delete process.env.OK_ELECTRON_PROTOCOL_HOST;
       else process.env.OK_ELECTRON_PROTOCOL_HOST = prior;
     }
+  });
+});
+
+describe('resolveSkillPreviewUrl', () => {
+  test('returns the route-only __skill__ url when ui.lock is bound', () => {
+    acquireUiLock(lockDir, { port: 0, worktreeRoot: tmpDir });
+    updateUiLockPort(lockDir, 5173);
+    expect(resolveSkillPreviewUrl('global', 'trip-log', { lockDir })).toEqual({
+      url: '/#/__skill__/global/trip-log',
+      source: 'lock',
+    });
+  });
+
+  test('encodes the skill name per-segment and defaults nothing (scope passed in)', () => {
+    acquireUiLock(lockDir, { port: 0, worktreeRoot: tmpDir });
+    updateUiLockPort(lockDir, 5173);
+    expect(resolveSkillPreviewUrl('project', 'run tests', { lockDir })?.url).toBe(
+      '/#/__skill__/project/run%20tests',
+    );
+  });
+
+  test('null when no UI is running', () => {
+    expect(resolveSkillPreviewUrl('project', 'x', { lockDir })).toBeNull();
+  });
+
+  test('encodeSkillRoute matches the app hash parser body (no leading #/)', () => {
+    expect(encodeSkillRoute('global', 'trip-log')).toBe('__skill__/global/trip-log');
   });
 });
 

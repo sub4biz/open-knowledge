@@ -34,6 +34,7 @@
  *   (invalidate + nav), or (c) Activity eviction from the MRU mount list.
  */
 
+import { isManagedArtifactDocName } from '@inkeep/open-knowledge-core';
 import { t } from '@lingui/core/macro';
 import { Loader2, RefreshCw } from 'lucide-react';
 import {
@@ -53,6 +54,7 @@ import { clearMountId, getMountId, setMountId } from '@/editor/mount-id-registry
 import type { ServerRestartRecoveryState } from '@/editor/provider-pool';
 import { TiptapEditor } from '@/editor/TiptapEditor';
 import { useLifecycleStatus } from '@/hooks/use-lifecycle-status';
+import { parseProjectSkillContentDocName } from '@/lib/managed-artifact-doc-name';
 import { mark, ProfilerBoundary } from '@/lib/perf';
 import { readNumericOverride } from '@/lib/perf/env-override';
 import { DiffViewBoundary } from './DiffViewBoundary';
@@ -63,6 +65,10 @@ import { PageHeader } from './PageHeader';
 import { usePageList } from './PageListContext';
 import { PropertyPanel } from './PropertyPanel';
 import { Button } from './ui/button';
+
+const ManagedArtifactProperties = lazy(async () => ({
+  default: (await import('./ManagedArtifactProperties')).ManagedArtifactProperties,
+}));
 
 export const LARGE_DOC_CHAR_THRESHOLD = readNumericOverride('LARGE_DOC_CHAR_THRESHOLD', 500_000);
 
@@ -290,7 +296,9 @@ function EditorActivityPoolInner({
           isActive={entry.docName === activeDocName}
           isSourceMode={isSourceMode}
           editorPlaceholder={editorPlaceholder}
-          isNewDoc={!loading && !pages.has(entry.docName)}
+          isNewDoc={
+            !loading && !pages.has(entry.docName) && !isManagedArtifactDocName(entry.docName)
+          }
           previousDocName={previousDocName}
           onNavigateBack={onNavigateBack}
           onRecycle={onRecycle}
@@ -652,21 +660,29 @@ function ActivityEntry({
                   visible editor to 8000px and creating bottom whitespace on
                   short docs — see globals.css §.ok-mode-hidden). */
                     <div className="flex h-full flex-col">
-                      {/* PageHeader: cover banner + page icon, decorative-only
-                        chrome above the property panel. Reads `cover` + `icon`
-                        from the same frontmatter binding PropertyPanel uses.
-                        Returns null when neither is set, so docs that don't
-                        opt in pay zero layout cost. Hidden in source mode
-                        (CodeMirror surfaces the raw YAML directly). */}
-                      {!isSourceMode && <PageHeader provider={entry.provider} />}
-                      {/* PropertyPanel: top-of-doc frontmatter table, sibling to the
-                        dual-editor stack inside DocumentBoundary so it shares the
-                        same suspend/error scope and remounts cleanly on doc switch.
-                        Hidden in source mode (CodeMirror surfaces raw YAML).
-                        The panel itself returns null when the doc has no
-                        frontmatter — empty-state shows the toolbar trigger in
-                        EditorHeader instead. */}
-                      {!isSourceMode && <PropertyPanel provider={entry.provider} />}
+                      {/* Property region (WYSIWYG only — source mode surfaces the
+                        raw YAML directly in CodeMirror). Managed-artifact docs
+                        (skills/templates) render their own identity panel in
+                        place of the document PageHeader + PropertyPanel: `name`
+                        (and a skill's `scope`) are identity, not free-form
+                        frontmatter, and they have no cover/icon. Regular docs get
+                        PageHeader (decorative cover+icon, null when unset) +
+                        PropertyPanel (frontmatter table, null when empty). */}
+                      {!isSourceMode &&
+                        (isManagedArtifactDocName(entry.docName) ||
+                        parseProjectSkillContentDocName(entry.docName) ? (
+                          <Suspense fallback={null}>
+                            <ManagedArtifactProperties
+                              docName={entry.docName}
+                              provider={entry.provider}
+                            />
+                          </Suspense>
+                        ) : (
+                          <>
+                            <PageHeader provider={entry.provider} />
+                            <PropertyPanel provider={entry.provider} />
+                          </>
+                        ))}
                       <div className="relative flex-1">
                         {gate.renderSource ? (
                           <div className={isSourceMode ? 'h-full' : 'ok-mode-hidden h-full'}>

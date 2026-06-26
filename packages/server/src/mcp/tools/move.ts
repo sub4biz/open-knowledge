@@ -1,5 +1,6 @@
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { MANAGED_ARTIFACT_SCOPES } from '@inkeep/open-knowledge-core';
 import { z } from 'zod';
 import { SUPPORTED_DOC_EXTENSIONS } from '../../doc-extensions.ts';
 import type { AgentIdentity } from '../agent-identity.ts';
@@ -24,6 +25,7 @@ import {
   textPlusStructured,
   textResult,
 } from './shared.ts';
+import { moveSkill, moveSkillCrossScope, type SkillScope } from './skill-target.ts';
 import { resolveTemplatePath } from './verb-schemas.ts';
 
 const DESCRIPTION = [
@@ -33,6 +35,7 @@ const DESCRIPTION = [
   '- `from` — Current path. Doc: docName (trailing `.md`/`.mdx` stripped). Folder: relative path, no leading/trailing slash. Asset: the file path incl. extension.',
   '- `to` — New path. Same shape as `from`.',
   '- `template` — Move/rename a TEMPLATE instead of a doc/folder/asset: `{ from: "<folder>/<name>", to: "<folder>/<name>" }` (nested — a flat path cannot disambiguate a template under `.ok/templates/` from a same-named doc). Mutually exclusive with flat `from`/`to`. Inherited templates are not moved (move the local copy / the owning folder); templates carry no inbound links, so nothing is rewritten.',
+  '- `skill` — Move/rename a SKILL: `{ from: "<name>", to: "<name>", scope?, toScope? }` (nested). Within one level (omit `toScope`, or `toScope` === `scope`): renames `.ok/skills/<from>/` → `.ok/skills/<to>/` and keeps the SKILL.md `name` in sync. ACROSS levels (`toScope` differs from `scope`, e.g. `scope: "project"` + `toScope: "global"`): moves the skill between the Project level (this KB) and the Global level (`~/.ok/skills`); history does NOT transfer (it re-creates fresh in the new level) and the moved skill lands as an un-projected Draft. Run `install` afterward to (re)project it. Mutually exclusive with flat `from`/`to`.',
   '- `summary` — Optional one-line user-outcome (≤80 chars). If omitted, defaults to "Renamed X → Y". Avoid secrets or PII — persisted to git history.',
   '',
   '**Errors:** 400 — invalid path / excluded by `.gitignore`/`.okignore`; 404 — source does not exist; 409 — destination already exists (`colliding[]` returned).',
@@ -62,6 +65,7 @@ interface MoveArgs {
   from?: string;
   to?: string;
   template?: { from: string; to: string };
+  skill?: { from: string; to: string; scope?: SkillScope; toScope?: SkillScope };
   summary?: string;
   cwd?: string;
 }
@@ -150,6 +154,27 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
           .describe(
             'Move/rename a TEMPLATE instead: `{ from: "<folder>/<name>", to: "<folder>/<name>" }`. Nested because a flat path cannot disambiguate a template under `.ok/templates/` from a same-named doc. Mutually exclusive with flat `from`/`to`.',
           ),
+        skill: z
+          .object({
+            from: z.string(),
+            to: z.string(),
+            scope: z
+              .enum(MANAGED_ARTIFACT_SCOPES)
+              .optional()
+              .describe(
+                'Source level (default "project"). "project" = this KB\'s `.ok/skills/`; "global" = the Global `~/.ok/skills/`.',
+              ),
+            toScope: z
+              .enum(MANAGED_ARTIFACT_SCOPES)
+              .optional()
+              .describe(
+                'Destination level. Omit (or set equal to `scope`) for a within-level rename. Set to the OTHER level to move the skill across levels (project↔global) — history does not transfer and it lands as a Draft.',
+              ),
+          })
+          .optional()
+          .describe(
+            'Move/rename a SKILL: `{ from: "<name>", to: "<name>", scope?, toScope? }`. Within one level: renames `.ok/skills/<name>/` and keeps SKILL.md `name` in sync. Across levels (`toScope` differs from `scope`): moves between Project and Global, resetting history. Mutually exclusive with flat `from`/`to`.',
+          ),
         summary: summaryArgSchema.describe(
           'Optional one-line user-outcome (≤80 chars). Defaults to "Renamed X → Y". Persisted to git history.',
         ),
@@ -158,10 +183,10 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
       outputSchema: outputSchemaWithText({
         ok: z.boolean().describe('Whether the move succeeded.'),
         kind: z
-          .enum(['file', 'folder', 'asset', 'template'])
+          .enum(['file', 'folder', 'asset', 'template', 'skill'])
           .optional()
           .describe(
-            'What was moved (`file`/`folder`/`asset` auto-detected from `from`; `template` when the `template` target was used).',
+            'What was moved (`file`/`folder`/`asset` auto-detected from `from`; `template`/`skill` when that nested target was used).',
           ),
         committed: z
           .boolean()
@@ -190,6 +215,18 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
         colliding: looseObjectArray
           .optional()
           .describe('On a 409 collision: the conflicting from→to pairs.'),
+        crossScope: z
+          .boolean()
+          .optional()
+          .describe(
+            'Skill cross-level move only: `true` when the skill was moved between the Project and Global levels (history reset; lands as a Draft — re-run `install`).',
+          ),
+        bothScopes: z
+          .boolean()
+          .optional()
+          .describe(
+            'Skill cross-level move only: `true` when the destination write succeeded but deleting the source failed, so the skill now exists in BOTH levels and the source copy must be removed manually.',
+          ),
       }),
     },
     async (args: MoveArgs) => {
@@ -239,9 +276,36 @@ export function register(server: ServerInstance, deps: MoveDeps): void {
         );
       }
 
+      if (args.skill !== undefined) {
+        if (args.from !== undefined || args.to !== undefined) {
+          return textResult(
+            'Error: pass EITHER flat `from`/`to` (document/folder/asset) OR `skill: { from, to }` — not both.',
+            true,
+          );
+        }
+        const fromScope = args.skill.scope ?? 'project';
+        if (args.skill.toScope !== undefined && args.skill.toScope !== fromScope) {
+          return moveSkillCrossScope(url, {
+            fromScope,
+            toScope: args.skill.toScope,
+            fromName: args.skill.from,
+            toName: args.skill.to,
+            summary: args.summary,
+            identity: deps.identityRef?.current,
+          });
+        }
+        return moveSkill(url, {
+          fromName: args.skill.from,
+          toName: args.skill.to,
+          scope: args.skill.scope,
+          summary: args.summary,
+          identity: deps.identityRef?.current,
+        });
+      }
+
       if (args.from === undefined || args.to === undefined) {
         return textResult(
-          'Error: provide both `from` and `to` (or use `template: { from, to }` to move a template).',
+          'Error: provide both `from` and `to` (or use `template: { from, to }` to move a template, or `skill: { from, to }` to move/rename a skill).',
           true,
         );
       }

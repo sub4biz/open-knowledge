@@ -1,4 +1,9 @@
-import { FrontmatterValueSchema } from '@inkeep/open-knowledge-core';
+import {
+  FrontmatterValueSchema,
+  MANAGED_ARTIFACT_SCOPES,
+  SKILL_NAME_REGEX,
+  TEMPLATE_NAME_REGEX,
+} from '@inkeep/open-knowledge-core';
 import { z } from 'zod';
 import { SUPPORTED_DOC_EXTENSIONS } from '../../doc-extensions.ts';
 
@@ -38,7 +43,6 @@ export function splitTargetPath(path: string): { folder: string; name: string } 
     : { folder: clean.slice(0, idx), name: clean.slice(idx + 1) };
 }
 
-const TEMPLATE_NAME_REGEX = /^[A-Za-z0-9_-]+$/;
 export const TEMPLATE_PATH_DESCRIBE =
   'Template path = `<folder>/<name>` (e.g. "fishing-log/trip-log"). The slashes are the folder it belongs to; the final segment is the template name (letters, digits, `_`, `-` only — no dots/spaces). Stored at `<folder>/.ok/templates/<name>.md`.';
 export const TEMPLATE_CONTENT_DESCRIBE =
@@ -55,6 +59,90 @@ export function resolveTemplatePath(
     };
   }
   return { ok: true, folder, name };
+}
+
+export const SKILL_NAME_DESCRIBE =
+  'Skill name — the skill\'s identity AND its directory under `.ok/skills/<name>/`. Lowercase letters, digits, hyphens only (≤64 chars; no slashes, dots, spaces, or uppercase). Example: "trip-log".';
+export const SKILL_DESCRIPTION_DESCRIBE =
+  'One-line description (≤1024 chars) — the PRIMARY triggering surface telling an agent WHEN to use this skill. No XML tags (`<...>`), which break the skill loader.';
+export const SKILL_BODY_DESCRIBE =
+  'SKILL.md body (markdown guidance). Authored WITHOUT frontmatter — `name` + `description` are passed separately and composed server-side. Keep under ~500 lines; move depth into one-level-deep `references/`.';
+const SKILL_SCOPE_DESCRIBE =
+  'Level: "project" (default — a Project skill: lives in this KB\'s `.ok/skills/`, shared with teammates via git) or "global" (a Global skill: your user-level `~/.ok/skills/` store, available in every project on this machine — not shared, not version-tracked). Pass the literal value "global" for a Global skill.';
+
+export const SkillScopeArg = z.enum(MANAGED_ARTIFACT_SCOPES).describe(SKILL_SCOPE_DESCRIBE);
+
+export function resolveSkillName(
+  name: string,
+): { ok: true; name: string } | { ok: false; error: string } {
+  if (
+    typeof name !== 'string' ||
+    name.length === 0 ||
+    name.length > 64 ||
+    !SKILL_NAME_REGEX.test(name)
+  ) {
+    return {
+      ok: false,
+      error: `a skill name must be lowercase letters, digits, and hyphens (≤64 chars, no slashes/dots/spaces/uppercase) — ${JSON.stringify(name)} is invalid. e.g. { skill: { name: "trip-log" } }.`,
+    };
+  }
+  return { ok: true, name };
+}
+
+export const SKILL_FILES_DESCRIBE =
+  'Bundle files to write beside `SKILL.md`, as an ARRAY of `{ path, content }` (consistent with `documents`/`asset`). ' +
+  '`path` is SKILL-RELATIVE and MUST live under `references/` or `scripts/` (e.g. "references/tiers.md", "scripts/run.sh") — ' +
+  'no `../`, no absolute paths, no other top-level dir. `content` is the full text. Text only (no binary). ' +
+  'Independent of `body`: write one reference without resending SKILL.md.';
+export const SKILL_FILE_DESCRIBE =
+  'A single SKILL-RELATIVE bundle file path under `references/` or `scripts/` (e.g. "references/tiers.md"). ' +
+  'For `edit`, names the one bundle file to find/replace in; for `skills`, the one file to read.';
+
+export type SkillFileKind = 'reference' | 'script';
+
+export function resolveSkillFilePath(
+  path: string,
+): { ok: true; path: string; kind: SkillFileKind } | { ok: false; error: string } {
+  if (typeof path !== 'string' || path.length === 0) {
+    return { ok: false, error: 'a skill file `path` is required (e.g. "references/tiers.md").' };
+  }
+  if (path.includes('\x00')) {
+    return { ok: false, error: 'a skill file `path` may not contain a NUL byte.' };
+  }
+  if (path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path)) {
+    return {
+      ok: false,
+      error: `a skill file \`path\` must be skill-relative, not absolute — "${path}" is rejected. e.g. { path: "references/tiers.md" }.`,
+    };
+  }
+  const segments = path
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((s) => s !== '' && s !== '.');
+  if (segments.some((s) => s === '..')) {
+    return {
+      ok: false,
+      error: `a skill file \`path\` may not contain ".." — "${path}" could escape the skill dir. Allowed roots: references/, scripts/.`,
+    };
+  }
+  const top = segments[0];
+  if (top !== 'references' && top !== 'scripts') {
+    return {
+      ok: false,
+      error: `a skill file \`path\` must start with \`references/\` or \`scripts/\` — "${path}" is not allowed. SKILL.md is authored via \`body\`.`,
+    };
+  }
+  if (segments.length < 2) {
+    return {
+      ok: false,
+      error: `a skill file \`path\` needs a file under \`${top}/\` (e.g. "${top}/notes.md") — "${path}" names only the directory.`,
+    };
+  }
+  return {
+    ok: true,
+    path: segments.join('/'),
+    kind: top === 'scripts' ? 'script' : 'reference',
+  };
 }
 
 export function exactlyOneTargetError(

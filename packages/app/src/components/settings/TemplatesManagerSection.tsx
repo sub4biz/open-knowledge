@@ -3,12 +3,14 @@ import { Plus } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { NewTemplateDialog } from '@/components/NewTemplateDialog';
 import { TemplateDeleteDialog } from '@/components/TemplateDeleteDialog';
-import { TemplateEditDialog } from '@/components/TemplateEditDialog';
 import { TemplateRow } from '@/components/TemplateRow';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type TemplateMenuEntry, useFolderConfig } from '@/hooks/use-folder-config';
+import { templateDocName } from '@/lib/managed-artifact-doc-name';
+import { openManagedArtifactTab } from '@/lib/open-managed-artifact-tab';
+import { useSettingsRoute } from '@/lib/use-settings-route';
 
 interface TemplatesManagerConfig {
   scope: TemplateMenuEntry['scope'];
@@ -23,9 +25,14 @@ interface TemplatesManagerConfig {
 
 export function TemplatesManagerSection({ config }: { config: TemplatesManagerConfig }) {
   const { state, refresh } = useFolderConfig('');
-  const [editTarget, setEditTarget] = useState<TemplateMenuEntry | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TemplateMenuEntry | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const settingsRoute = useSettingsRoute();
+
+  function openTemplateTab(folder: string, name: string) {
+    openManagedArtifactTab(templateDocName(folder, name));
+    settingsRoute.close();
+  }
 
   const templates: TemplateMenuEntry[] =
     state.status === 'ready'
@@ -59,7 +66,10 @@ export function TemplatesManagerSection({ config }: { config: TemplatesManagerCo
           existingNames={new Set()}
           open={newOpen}
           onOpenChange={setNewOpen}
-          onCreated={refresh}
+          onCreated={(createdName) => {
+            refresh();
+            openTemplateTab('', createdName);
+          }}
         />
       </section>
     );
@@ -102,7 +112,7 @@ export function TemplatesManagerSection({ config }: { config: TemplatesManagerCo
               <TemplateRow
                 key={tpl.name}
                 template={tpl}
-                onEdit={() => setEditTarget(tpl)}
+                onEdit={() => openTemplateTab(tpl.source_folder, tpl.name)}
                 onDelete={() => setDeleteTarget(tpl)}
                 badge={
                   <Badge variant={config.badge.variant} className="text-2xs">
@@ -120,15 +130,10 @@ export function TemplatesManagerSection({ config }: { config: TemplatesManagerCo
         existingNames={new Set(templates.map((tpl) => tpl.name))}
         open={newOpen}
         onOpenChange={setNewOpen}
-        onCreated={refresh}
-      />
-      <TemplateEditDialog
-        folderPath=""
-        template={editTarget}
-        onOpenChange={(open) => {
-          if (!open) setEditTarget(null);
+        onCreated={(createdName) => {
+          refresh();
+          openTemplateTab('', createdName);
         }}
-        onSaved={refresh}
       />
       <TemplateDeleteDialog
         template={deleteTarget}

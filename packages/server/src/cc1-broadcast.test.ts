@@ -19,7 +19,12 @@ import {
   CONFIG_DOC_NAMES,
   SYSTEM_DOC_NAME,
 } from '@inkeep/open-knowledge-core';
-import { CC1Broadcaster, isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import {
+  CC1Broadcaster,
+  isConfigDoc,
+  isLinkIndexExcludedDoc,
+  isSystemDoc,
+} from './cc1-broadcast.ts';
 import { getMetrics, resetMetrics } from './metrics.ts';
 
 describe('isSystemDoc', () => {
@@ -548,5 +553,24 @@ describe('CC1Broadcaster', () => {
   test('emitConfigIgnoreNestedError does NOT throw when payload is invalid (catches Zod parse errors)', () => {
     expect(() => broadcaster.emitConfigIgnoreNestedError('', 'something broke')).not.toThrow();
     expect(broadcasts).toHaveLength(0);
+  });
+});
+
+describe('isLinkIndexExcludedDoc', () => {
+  test('excludes system + config docs (never in the link index)', () => {
+    expect(isLinkIndexExcludedDoc(SYSTEM_DOC_NAME)).toBe(true);
+    for (const name of CONFIG_DOC_NAMES) {
+      expect(isLinkIndexExcludedDoc(name)).toBe(true);
+    }
+  });
+
+  test('admits managed-artifact docs — they participate in the link index', () => {
+    expect(isLinkIndexExcludedDoc('__skill__/project/my-skill')).toBe(false);
+    expect(isLinkIndexExcludedDoc('__template__/docs/my-template')).toBe(false);
+  });
+
+  test('admits ordinary documents', () => {
+    expect(isLinkIndexExcludedDoc('docs/getting-started')).toBe(false);
+    expect(isLinkIndexExcludedDoc('readme')).toBe(false);
   });
 });

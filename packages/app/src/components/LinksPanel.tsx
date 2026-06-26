@@ -4,6 +4,7 @@ import {
   BacklinksSuccessSchema,
   type ForwardLinkEntry,
   ForwardLinksSuccessSchema,
+  isManagedArtifactDocName,
   ProblemDetailsSchema,
 } from '@inkeep/open-knowledge-core';
 import { t } from '@lingui/core/macro';
@@ -243,7 +244,7 @@ function BacklinksSection({ docName }: { docName: string }) {
   } = useQuery({
     queryKey: ['backlinks', docName],
     queryFn: () => fetchBacklinks(docName),
-    enabled: !loading && pages.has(docName),
+    enabled: !loading && (pages.has(docName) || isManagedArtifactDocName(docName)),
   });
   const [expanded, setExpanded] = useState(false);
   const [prevDocName, setPrevDocName] = useState(docName);
@@ -325,7 +326,7 @@ function ForwardLinksSection({ docName }: { docName: string }) {
   } = useQuery({
     queryKey: ['forward-links', docName],
     queryFn: () => fetchForwardLinks(docName),
-    enabled: !pagesLoading && pages.has(docName),
+    enabled: !pagesLoading && (pages.has(docName) || isManagedArtifactDocName(docName)),
   });
   const [creatingKey, setCreatingKey] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -386,7 +387,10 @@ function ForwardLinksSection({ docName }: { docName: string }) {
     const key = `doc:${link.docName}:${link.anchor ?? ''}`;
     const navigateHashDocName =
       linkIntent.kind === 'navigate' ? linkIntent.hashDocName : link.docName;
-    const navigateHref = hashFromDocName(navigateHashDocName, link.anchor);
+    const navigateHref =
+      linkIntent.kind === 'navigate' && linkIntent.hash
+        ? linkIntent.hash
+        : hashFromDocName(navigateHashDocName, link.anchor);
 
     if (unresolved && linkIntent.kind === 'create') {
       const seed = {

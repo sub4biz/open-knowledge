@@ -1,3 +1,9 @@
+import { MANAGED_ARTIFACT_SCOPES, type SkillScope } from '@inkeep/open-knowledge-core';
+
+function isSkillScope(value: string): value is SkillScope {
+  return (MANAGED_ARTIFACT_SCOPES as readonly string[]).includes(value);
+}
+
 /** Parse a docName from a `#/<path>?<query>` hash. Returns null if the hash
  * is empty, malformed, or not in the `#/` namespace.
  *
@@ -6,6 +12,7 @@
  * docName matches the server's on-disk name (e.g. `My Notes/Ideas — 2026`). */
 export function docNameFromHash(hash: string): string | null {
   if (hash.startsWith(ASSET_HASH_PREFIX)) return null;
+  if (hash.startsWith(SKILL_FILE_HASH_PREFIX)) return null;
   if (!hash.startsWith('#/')) return null;
   const rest = hash.slice(2);
   const delimiter = firstRouteDelimiterIndex(rest);
@@ -98,4 +105,35 @@ export function assetPathFromHash(hash: string): string | null {
 
 export function hashFromAssetPath(assetPath: string): string {
   return `${ASSET_HASH_PREFIX}${assetPath.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+const SKILL_FILE_HASH_PREFIX = '#/__skill-file__/';
+
+export interface SkillFileHashTarget {
+  scope: SkillScope;
+  name: string;
+  path: string;
+}
+
+export function hashFromSkillFile(target: SkillFileHashTarget): string {
+  const head = [target.scope, target.name].map(encodeURIComponent).join('/');
+  const tail = target.path.split('/').map(encodeURIComponent).join('/');
+  return `${SKILL_FILE_HASH_PREFIX}${head}/${tail}`;
+}
+
+export function skillFileFromHash(hash: string): SkillFileHashTarget | null {
+  if (!hash.startsWith(SKILL_FILE_HASH_PREFIX)) return null;
+  const encoded = hash.slice(SKILL_FILE_HASH_PREFIX.length);
+  if (!encoded) return null;
+  let segments: string[];
+  try {
+    segments = encoded.split('/').map(decodeURIComponent);
+  } catch {
+    return null;
+  }
+  if (segments.length < 3) return null;
+  const [scope, name, ...rest] = segments;
+  const path = rest.join('/');
+  if (!scope || !name || !path || !isSkillScope(scope)) return null;
+  return { scope, name, path };
 }

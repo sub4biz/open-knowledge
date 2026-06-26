@@ -154,6 +154,10 @@ mock.module('@/components/ConflictsSection', () => ({
   ConflictsSection: () => <div data-testid="conflicts-section" />,
 }));
 
+mock.module('@/components/SkillsSidebarSection', () => ({
+  SkillsSidebarSection: () => <div data-testid="skills-sidebar-section" />,
+}));
+
 mock.module('@/components/ProjectSwitcher', () => ({
   ProjectSwitcher: () => <button type="button">Project switcher</button>,
 }));
@@ -294,6 +298,9 @@ mock.module('@/components/ui/sidebar', () => ({
   ),
   SidebarMenu: ElementPassThrough,
   SidebarMenuItem: ElementPassThrough,
+  SidebarGroup: ElementPassThrough,
+  SidebarGroupContent: ElementPassThrough,
+  SidebarGroupLabel: ElementPassThrough,
   SidebarRail: ({ enableToggle }: { enableToggle?: boolean }) => (
     <button data-enable-toggle={String(enableToggle)} data-testid="sidebar-rail" type="button" />
   ),

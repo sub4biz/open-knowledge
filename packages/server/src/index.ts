@@ -75,6 +75,9 @@ export {
   CC1_CONTRACT_VERSION,
   CC1Broadcaster,
   isConfigDoc,
+  isLinkIndexExcludedDoc,
+  isManagedArtifactDoc,
+  isReservedForUserTree,
   isSystemDoc,
   SYSTEM_DOC_NAME,
 } from './cc1-broadcast.ts';
@@ -422,6 +425,13 @@ export {
   type SingleFileOpenPlan,
 } from './single-file-open.ts';
 export {
+  BUNDLE_IDS,
+  BUNDLE_SCOPE,
+  BUNDLE_SKILL_NAME,
+  bundleSkillMdPath,
+  USER_GLOBAL_BUNDLE_IDS,
+} from './skill-bundles.ts';
+export {
   type BuildAndOpenSkillOptions,
   type BuildAndOpenSkillResult,
   type BuildAndOpenSkillStatus,
@@ -439,6 +449,13 @@ export {
   type SkillInstallEventOutcome,
   type SkillInstallEventSurface,
 } from './skill-install-events.ts';
+export {
+  isProjectSkillManaged,
+  readSkillManagement,
+  type SkillManagement,
+  skillManagementPath,
+  writeSkillManagement,
+} from './skill-management.ts';
 export {
   readAllTargets,
   readServerPackageVersion,

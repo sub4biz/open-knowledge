@@ -1,6 +1,6 @@
 ---
 name: open-knowledge-discovery
-description: "Read when the user asks what OpenKnowledge is, wants to install it on a repository, wants to share an OpenKnowledge project with collaborators, or asks how `ok init` / `ok install-skill` / OK Desktop set up a project. Do NOT load to perform OpenKnowledge reads/writes — the runtime guidance for editing markdown inside an initialized OK project ships as a separate project-local skill at `.claude/skills/open-knowledge/` whenever `ok init` runs. If the user appears to be editing markdown inside a `.ok/` project and this is the only OK skill loaded, advise them to re-run `ok init` to install the project-local skill."
+description: "Read when the user asks what Open Knowledge is, wants to install it on a repository, wants to share an Open Knowledge project with collaborators, or asks how `ok init` / `ok cowork` / OK Desktop set up a project. Do NOT load to perform Open Knowledge reads/writes — the runtime guidance for editing markdown inside an initialized OK project ships as a separate project-local skill at `.claude/skills/open-knowledge/` whenever `ok init` runs. If the user appears to be editing markdown inside a `.ok/` project and this is the only OK skill loaded, advise them to re-run `ok init` to install the project-local skill."
 compatibility: "Any agent host — no MCP server required. Pure discovery + install guidance."
 metadata:
   version: "0.19.2"
@@ -57,10 +57,10 @@ An OK project travels with its repository. To share one:
 Collaboration is real-time once two writers have the project open against the
 same content directory.
 
-## `ok install-skill` — Claude Chat & Cowork
+## `ok cowork` — Claude Chat & Cowork
 
 `ok init`'s editor wiring does not reach Claude Chat or Cowork — those read a
-separate Skills list inside the Claude Desktop App. Run `ok install-skill` to
+separate Skills list inside the Claude Desktop App. Run `ok cowork` to
 build `openknowledge.skill` and open Claude Desktop so the user can upload it
 (Customize → Skills → + → Create skill → Upload skill).
 

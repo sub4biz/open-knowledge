@@ -634,6 +634,50 @@ describe('buildHandoffInput — shared surface helper (US-011)', () => {
   });
 });
 
+describe('buildSkillHandoffInput + selectScopedPrompt — skill scope (author-with-AI)', () => {
+  test('null workspace or empty name returns null', async () => {
+    const { buildSkillHandoffInput } = await import('./useHandoffDispatch');
+    expect(
+      buildSkillHandoffInput({ skillName: 'x', scope: 'project', workspace: null }),
+    ).toBeNull();
+    expect(
+      buildSkillHandoffInput({
+        skillName: '',
+        scope: 'project',
+        workspace: { contentDir: '/repo', pathSeparator: '/' },
+      }),
+    ).toBeNull();
+  });
+
+  test('carries the skill name + scope; no doc path (agent reaches it via OK MCP)', async () => {
+    const { buildSkillHandoffInput } = await import('./useHandoffDispatch');
+    const input = buildSkillHandoffInput({
+      skillName: 'commit-helper',
+      scope: 'global',
+      workspace: { contentDir: '/Users/sarah/proj', pathSeparator: '/' },
+    });
+    expect(input).toEqual({
+      docContext: null,
+      skill: { name: 'commit-helper', scope: 'global' },
+      projectDir: '/Users/sarah/proj',
+      docPath: '',
+    });
+  });
+
+  test('selectScopedPrompt routes a skill input to composeSkillPrompt', async () => {
+    const { buildSkillHandoffInput, selectScopedPrompt } = await import('./useHandoffDispatch');
+    const input = buildSkillHandoffInput({
+      skillName: 'commit-helper',
+      scope: 'project',
+      workspace: { contentDir: '/repo', pathSeparator: '/' },
+    });
+    if (!input) throw new Error('expected a non-null skill input');
+    expect(selectScopedPrompt(input, 'claude-code', true)).toBe(
+      'Use your open-knowledge-write-skill skill to author the project Open Knowledge skill `commit-helper`. Edit it with the Open Knowledge tools. Open the OK editor in web view.',
+    );
+  });
+});
+
 describe('buildProjectScopedHandoffInput — empty-state cards helper', () => {
   test('null workspace returns null (cards render disabled while resolving)', async () => {
     const { buildProjectScopedHandoffInput } = await import('./useHandoffDispatch');
@@ -1464,7 +1508,7 @@ describe('composeTerminalLaunchPrompt — docked-terminal bare launch is load + 
     expect(composeTerminalLaunchPrompt(input, 'cursor')).toBe(claudeOut);
   });
 
-  test('typed instruction is preserved per CLI (keeps the directive composer, no "stop")', async () => {
+  test('typed instruction is preserved per CLI, led by the terminal-surface preamble', async () => {
     const { composeTerminalLaunchPrompt, selectScopedPrompt } = await import(
       './useHandoffDispatch'
     );
@@ -1475,17 +1519,18 @@ describe('composeTerminalLaunchPrompt — docked-terminal bare launch is load + 
       instruction: 'summarize the open questions',
     };
     expect(composeTerminalLaunchPrompt(input, 'claude')).toBe(
-      selectScopedPrompt(input, 'claude-code', false),
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'claude-code', false)}`,
     );
     expect(composeTerminalLaunchPrompt(input, 'codex')).toBe(
-      selectScopedPrompt(input, 'codex', false),
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'codex', false)}`,
     );
     expect(composeTerminalLaunchPrompt(input, 'cursor')).toBe(
-      selectScopedPrompt(input, 'cursor', false),
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'cursor', false)}`,
     );
     const claudeOut = composeTerminalLaunchPrompt(input, 'claude');
     expect(claudeOut).toContain('summarize the open questions');
-    expect(claudeOut).not.toContain(OK_TERMINAL_SURFACE_PREAMBLE);
+    expect(claudeOut).toContain(OK_TERMINAL_SURFACE_PREAMBLE);
+    expect(claudeOut).not.toContain('Then stop.');
   });
 
   test('composer (compose scope) threads the typed instruction — NOT a bare launch', async () => {
@@ -1504,18 +1549,18 @@ describe('composeTerminalLaunchPrompt — docked-terminal bare launch is load + 
       docPath: '/proj/notes/work-log.md',
     };
     expect(composeTerminalLaunchPrompt(input, 'claude')).toBe(
-      selectScopedPrompt(input, 'claude-code', false),
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'claude-code', false)}`,
     );
     expect(composeTerminalLaunchPrompt(input, 'codex')).toBe(
-      selectScopedPrompt(input, 'codex', false),
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'codex', false)}`,
     );
     expect(composeTerminalLaunchPrompt(input, 'cursor')).toBe(
-      selectScopedPrompt(input, 'cursor', false),
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'cursor', false)}`,
     );
     const claudeOut = composeTerminalLaunchPrompt(input, 'claude');
     expect(claudeOut).toContain('What does this file do?');
     expect(claudeOut).not.toBe(composeTerminalBareLaunchPrompt('notes/work-log.md'));
-    expect(claudeOut).not.toContain(OK_TERMINAL_SURFACE_PREAMBLE);
+    expect(claudeOut).toContain(OK_TERMINAL_SURFACE_PREAMBLE);
   });
 
   test('whitespace-only instruction is treated as a bare launch', async () => {
@@ -1547,9 +1592,11 @@ describe('composeTerminalLaunchPrompt — docked-terminal bare launch is load + 
       docPath: '',
     };
     const out = composeTerminalLaunchPrompt(input, 'claude');
-    expect(out).toBe(selectScopedPrompt(input, 'claude-code', false));
+    expect(out).toBe(
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'claude-code', false)}`,
+    );
     expect(out).toContain('a fishing log');
-    expect(out).not.toContain(OK_TERMINAL_SURFACE_PREAMBLE);
+    expect(out).toContain(OK_TERMINAL_SURFACE_PREAMBLE);
   });
 
   test('empty create brief still routes to the directive composer (createDescription !== undefined)', async () => {
@@ -1564,9 +1611,11 @@ describe('composeTerminalLaunchPrompt — docked-terminal bare launch is load + 
       docPath: '',
     };
     const out = composeTerminalLaunchPrompt(input, 'claude');
-    expect(out).toBe(selectScopedPrompt(input, 'claude-code', false));
+    expect(out).toBe(
+      `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, 'claude-code', false)}`,
+    );
     expect(out).not.toBe(composeTerminalBareLaunchPrompt(null));
-    expect(out).not.toContain(OK_TERMINAL_SURFACE_PREAMBLE);
+    expect(out).toContain(OK_TERMINAL_SURFACE_PREAMBLE);
   });
 
   test('bare terminal launch never carries the web-view preview trailer', async () => {

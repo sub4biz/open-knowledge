@@ -27,7 +27,7 @@ import { LINEAGE_EPOCH_KEY } from './auth-token-schema.ts';
 import type { BacklinkIndex } from './backlink-index.ts';
 import { getMsSinceLastUserTx, isDocQuiescent } from './bridge-quiescence.ts';
 import { assertBridgeInvariant } from './bridge-watchdog.ts';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isConfigDoc, isManagedArtifactDoc, isSystemDoc } from './cc1-broadcast.ts';
 import { type ConfigPersistenceCtx, loadConfigDoc, storeConfigDoc } from './config-persistence.ts';
 import type { ContributorEntry } from './contributor-tracker.ts';
 import {
@@ -43,6 +43,12 @@ import { applyDiskContentToDoc, FILE_WATCHER_ORIGIN } from './external-change.ts
 import { contentHash, registerWrite } from './file-watcher.ts';
 import { tracedMkdir, tracedRename, tracedUnlinkSync, tracedWriteFile } from './fs-traced.ts';
 import { getLogger } from './logger.ts';
+import {
+  loadManagedArtifactDoc,
+  type ManagedArtifactCtx,
+  managedArtifactContributorAttribution,
+  storeManagedArtifactDoc,
+} from './managed-artifact-persistence.ts';
 import { mdManager, schema } from './md-manager.ts';
 import {
   incrementDeferredStoreFailures,
@@ -309,6 +315,7 @@ export interface PersistenceHandle {
   flushContributors: () => Promise<void>;
   waitForPendingCommits: () => Promise<void>;
   readonly configPersistenceCtx: ConfigPersistenceCtx;
+  readonly managedArtifactCtx: ManagedArtifactCtx;
 }
 
 export function createPersistenceExtension(options?: PersistenceOptions): PersistenceHandle {
@@ -338,6 +345,15 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
     homedirOverride: options?.configHomedirOverride,
     onConfigRejected: options?.onConfigRejected,
     ephemeral,
+  };
+
+  const managedArtifactLkgCache = new Map<string, string>();
+  const managedArtifactCtx: ManagedArtifactCtx = {
+    projectDir,
+    homedirOverride: options?.configHomedirOverride,
+    lkgCache: managedArtifactLkgCache,
+    setReconciledBase,
+    getReconciledBase,
   };
 
   const tripwireResetFailedDocs = new Set<string>();
@@ -1181,6 +1197,10 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
         loadConfigDoc(document, documentName, configPersistenceCtx);
         return;
       }
+      if (isManagedArtifactDoc(documentName)) {
+        loadManagedArtifactDoc(document, documentName, managedArtifactCtx);
+        return;
+      }
       ensureHistograms();
       const started = Date.now();
       return withSpan(
@@ -1275,6 +1295,31 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
         await storeConfigDoc(document, documentName, lastTransactionOrigin, configPersistenceCtx);
         return;
       }
+      if (isManagedArtifactDoc(documentName)) {
+        const outcome = await storeManagedArtifactDoc(
+          document,
+          documentName,
+          lastTransactionOrigin,
+          managedArtifactCtx,
+        );
+        if (outcome === 'persisted') {
+          const writer = resolveWriterFromOrigin(lastTransactionOrigin, getPrincipal);
+          if (writer && writer.id !== SERVICE_WRITER.id && !writer.id.startsWith('agent-')) {
+            const attribution = managedArtifactContributorAttribution(documentName);
+            if (attribution) {
+              recordContributor(
+                attribution.docKey,
+                writer.id,
+                writer.name,
+                writer.id,
+                attribution.subject,
+              );
+              scheduleGitCommit();
+            }
+          }
+        }
+        return;
+      }
       if (isBatchInProgress()) {
         deferStore({ document, documentName, lastTransactionOrigin });
         return;
@@ -1333,5 +1378,6 @@ export function createPersistenceExtension(options?: PersistenceOptions): Persis
     takeStoreDivergence,
     markAgentWriteStore,
     configPersistenceCtx,
+    managedArtifactCtx,
   };
 }

@@ -3,6 +3,7 @@ import { basename, dirname, join, posix, resolve, sep, win32 } from 'node:path';
 import {
   ALL_EDITOR_IDS as CORE_ALL_EDITOR_IDS,
   EDITOR_LABELS as CORE_EDITOR_LABELS,
+  HOSTS_WITH_USER_SKILL_DIR as CORE_HOSTS_WITH_USER_SKILL_DIR,
   type EditorId as CoreEditorId,
 } from '@inkeep/open-knowledge-core';
 import { MCP_SERVER_NAME } from '@inkeep/open-knowledge-server';
@@ -10,6 +11,9 @@ import { MCP_SERVER_NAME } from '@inkeep/open-knowledge-server';
 export type EditorId = CoreEditorId;
 export const ALL_EDITOR_IDS: readonly EditorId[] = CORE_ALL_EDITOR_IDS;
 export const EDITOR_LABELS: Record<EditorId, string> = CORE_EDITOR_LABELS;
+/** Re-export of core's derived list — the host-dir sweep set for `repair-skills`
+ *  (CLI) + `skill-reclaim` (desktop). Both import it from the package surface. */
+export const HOSTS_WITH_USER_SKILL_DIR = CORE_HOSTS_WITH_USER_SKILL_DIR;
 
 const DEV_MCP_SERVER_COMMAND = 'node';
 const DEV_MCP_ENV = {
@@ -282,7 +286,7 @@ export const EDITOR_TARGETS: Record<EditorId, EditorMcpTarget> = {
     scope: 'global',
     detectPath: (_cwd, home) => dirname(resolveCodexConfigPath({ home })),
     projectConfigPath: (cwd) => join(cwd, '.codex', 'config.toml'),
-    projectSkillPath: (cwd) => join(cwd, '.agents', 'skills', 'open-knowledge', 'SKILL.md'),
+    projectSkillPath: (cwd) => join(cwd, '.codex', 'skills', 'open-knowledge', 'SKILL.md'),
   },
   opencode: {
     id: 'opencode',
@@ -295,7 +299,7 @@ export const EDITOR_TARGETS: Record<EditorId, EditorMcpTarget> = {
     scope: 'global',
     detectPath: (_cwd, home) => dirname(resolveOpenCodeConfigPath({ home })),
     projectConfigPath: (cwd) => join(cwd, 'opencode.json'),
-    projectSkillPath: (cwd) => join(cwd, '.agents', 'skills', 'open-knowledge', 'SKILL.md'),
+    projectSkillPath: (cwd) => join(cwd, '.opencode', 'skills', 'open-knowledge', 'SKILL.md'),
   },
 };
 

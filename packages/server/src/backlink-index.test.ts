@@ -185,6 +185,44 @@ describe('BacklinkIndex', () => {
     }
   });
 
+  test('normalizes skill file links to the content doc and template links to the artifact', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-artifact-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown(
+        'work-log',
+        'Touched [the skill](.ok/skills/my-skill/SKILL.md) and [the tpl](notes/.ok/templates/daily.md).\n',
+      );
+      expect(index.getBacklinks('.ok/skills/my-skill/SKILL')).toEqual([
+        expect.objectContaining({ source: 'work-log' }),
+      ]);
+      expect(index.getBacklinks('__template__/notes/daily')).toEqual([
+        expect.objectContaining({ source: 'work-log' }),
+      ]);
+      expect(index.getBacklinks('__skill__/project/my-skill')).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('indexes a managed-artifact doc (skill) own outgoing links', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-skill-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown('__skill__/project/my-skill', 'See [[architecture]].\n');
+      expect(index.getForwardLinks('__skill__/project/my-skill')).toEqual(['architecture']);
+      expect(index.getBacklinks('architecture')).toEqual([
+        expect.objectContaining({ source: '__skill__/project/my-skill' }),
+      ]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
   test('renameDocument moves edges from old doc name to new', () => {
     const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-rename-'));
     const contentDir = join(projectDir, 'content');
@@ -540,6 +578,290 @@ describe('BacklinkIndex', () => {
         target: 'external:https://example.com/docs',
       });
       expect(neighborhood.links).toContainEqual({ source: 'beta', target: 'alpha' });
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('BacklinkIndex structural skill-bundle edges', () => {
+  const SKILL = '.ok/skills/demo/SKILL';
+  const REF = '.ok/skills/demo/references/notes';
+
+  test('connects a SKILL doc and its reference with NO authored link between them', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-skill-struct-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown(SKILL, 'See `references/notes.md` for detail.\n');
+      index.updateDocumentFromMarkdown(REF, '# Notes\n\nStandalone body, no links.\n');
+
+      expect(index.getBacklinks(REF)).toEqual([{ source: SKILL, anchor: null, snippet: null }]);
+      expect(index.getBacklinks(SKILL)).toEqual([{ source: REF, anchor: null, snippet: null }]);
+      expect(index.getForwardLinks(SKILL)).toEqual([REF]);
+      expect(index.getForwardLinks(REF)).toEqual([SKILL]);
+      expect(index.getBacklinkCount(REF)).toBe(1);
+
+      const neighborhood = index.getLinkGraphNeighborhood(SKILL, 1);
+      expect(new Set(neighborhood.nodes.map((n) => n.id))).toEqual(new Set([REF, SKILL]));
+      expect(neighborhood.links).toContainEqual({ source: SKILL, target: REF });
+      expect(neighborhood.links).toHaveLength(1);
+
+      expect(index.getOrphans([SKILL, REF])).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('a wiki-link reference still works (no regression, no duplicate edge)', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-skill-wiki-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown(SKILL, 'See [[references/notes]].\n');
+      index.updateDocumentFromMarkdown(REF, '# Notes\n');
+
+      expect(index.getForwardLinks(SKILL)).toEqual([REF]);
+      const backlinks = index.getBacklinks(REF);
+      expect(backlinks).toHaveLength(1);
+      expect(backlinks[0]?.source).toBe(SKILL);
+      expect(backlinks[0]?.snippet).toBe('See references/notes.');
+
+      const neighborhood = index.getLinkGraphNeighborhood(SKILL, 1);
+      expect(neighborhood.links).toEqual([{ source: SKILL, target: REF }]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('NON-skill docs sharing a normal folder are NOT auto-connected (scope control)', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-nonskill-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown('notes/alpha', '# Alpha\n');
+      index.updateDocumentFromMarkdown('notes/beta', '# Beta\n');
+      index.updateDocumentFromMarkdown('notes/references/x', '# X\n');
+
+      expect(index.getBacklinks('notes/beta')).toEqual([]);
+      expect(index.getForwardLinks('notes/alpha')).toEqual([]);
+      expect(index.getBacklinks('notes/references/x')).toEqual([]);
+      expect(index.getOrphans(['notes/alpha', 'notes/beta', 'notes/references/x'])).toEqual([
+        'notes/alpha',
+        'notes/beta',
+        'notes/references/x',
+      ]);
+      const neighborhood = index.getLinkGraphNeighborhood('notes/alpha', 2);
+      expect(neighborhood.links).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('scripts/** and cross-skill refs do not draw structural edges', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-skill-scope2-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown(SKILL, '# Demo\n');
+      index.updateDocumentFromMarkdown('.ok/skills/demo/scripts/run', '# run\n');
+      index.updateDocumentFromMarkdown('.ok/skills/other/references/notes', '# other\n');
+
+      expect(index.getForwardLinks(SKILL)).toEqual([]);
+      expect(index.getBacklinks(SKILL)).toEqual([]);
+      expect(index.getBacklinks('.ok/skills/other/references/notes')).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('deleting a reference removes the structural edge', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-skill-del-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown(SKILL, '# Demo\n');
+      index.updateDocumentFromMarkdown(REF, '# Notes\n');
+      expect(index.getForwardLinks(SKILL)).toEqual([REF]);
+
+      index.deleteDocument(REF);
+      expect(index.getForwardLinks(SKILL)).toEqual([]);
+      expect(index.getBacklinks(SKILL)).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('renaming a reference moves the structural edge to the new name', () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-skill-ren-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    const REF2 = '.ok/skills/demo/references/renamed';
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.updateDocumentFromMarkdown(SKILL, '# Demo\n');
+      index.updateDocumentFromMarkdown(REF, '# Notes\n');
+      expect(index.getForwardLinks(SKILL)).toEqual([REF]);
+
+      index.renameDocument(REF, REF2, '# Notes\n');
+      expect(index.getForwardLinks(SKILL)).toEqual([REF2]);
+      expect(index.getBacklinks(REF2)).toEqual([{ source: SKILL, anchor: null, snippet: null }]);
+      expect(index.getBacklinks(REF)).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('BacklinkIndex GLOBAL structural skill-bundle edges', () => {
+  const G_SKILL = '__skill__/global/demo';
+  const G_REF = '__skill__/global/demo/references/notes';
+
+  function makeIndex(): { index: BacklinkIndex; projectDir: string } {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-gskill-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    return { index: new BacklinkIndex({ projectDir, contentDir }), projectDir };
+  }
+
+  test('connects a global SKILL doc and its reference via the structural edge', () => {
+    const { index, projectDir } = makeIndex();
+    try {
+      index.registerGlobalSkillBundleNode(G_SKILL);
+      index.registerGlobalSkillBundleNode(G_REF);
+
+      expect(index.getBacklinks(G_REF)).toEqual([{ source: G_SKILL, anchor: null, snippet: null }]);
+      expect(index.getBacklinks(G_SKILL)).toEqual([{ source: G_REF, anchor: null, snippet: null }]);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
+      expect(index.getForwardLinks(G_REF)).toEqual([G_SKILL]);
+      expect(index.getBacklinkCount(G_REF)).toBe(1);
+
+      const { nodes, links } = index.getLinkGraph();
+      expect(new Set(nodes.map((n) => n.id))).toEqual(new Set([G_SKILL, G_REF]));
+      expect(links).toContainEqual({ source: G_SKILL, target: G_REF });
+      expect(links).toHaveLength(1);
+
+      const neighborhood = index.getLinkGraphNeighborhood(G_SKILL, 1);
+      expect(neighborhood.links).toContainEqual({ source: G_SKILL, target: G_REF });
+      expect(index.getOrphans([G_SKILL, G_REF])).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('NEGATIVE CONTROL: a global reference body NEVER links into the project KB', () => {
+    const { index, projectDir } = makeIndex();
+    try {
+      index.updateDocumentFromMarkdown('architecture', '# Architecture\n');
+      index.registerGlobalSkillBundleNode(G_SKILL);
+      index.updateDocumentFromMarkdown(G_REF, 'See [[architecture]] and [[notes2]].\n');
+
+      expect(index.getBacklinks('architecture')).toEqual([]);
+      expect(index.getForwardLinks(G_REF)).toEqual([G_SKILL]);
+      expect(index.getBacklinks('notes2')).toEqual([]);
+      index.updateDocumentFromMarkdown(G_SKILL, 'Body links [[architecture]].\n');
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
+      expect(index.getBacklinks('architecture')).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('deleting / renaming a global reference moves the structural edge', () => {
+    const { index, projectDir } = makeIndex();
+    const G_REF2 = '__skill__/global/demo/references/renamed';
+    try {
+      index.registerGlobalSkillBundleNode(G_SKILL);
+      index.registerGlobalSkillBundleNode(G_REF);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
+
+      index.renameDocument(G_REF, G_REF2, '# Notes\n');
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF2]);
+      expect(index.getBacklinks(G_REF)).toEqual([]);
+
+      index.deleteDocument(G_REF2);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([]);
+      expect(index.getBacklinks(G_SKILL)).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('global and project bundles of the same name never cross-connect', () => {
+    const { index, projectDir } = makeIndex();
+    try {
+      index.updateDocumentFromMarkdown('.ok/skills/demo/SKILL', '# Project demo\n');
+      index.updateDocumentFromMarkdown('.ok/skills/demo/references/notes', '# Project notes\n');
+      index.registerGlobalSkillBundleNode(G_SKILL);
+      index.registerGlobalSkillBundleNode(G_REF);
+
+      expect(index.getForwardLinks('.ok/skills/demo/SKILL')).toEqual([
+        '.ok/skills/demo/references/notes',
+      ]);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
+      expect(index.getBacklinks(G_REF)).toEqual([{ source: G_SKILL, anchor: null, snippet: null }]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('ingestGlobalSkillBundles registers SKILL + references from disk (idempotent)', async () => {
+    const { index, projectDir } = makeIndex();
+    const homeSkills = join(projectDir, 'home', '.ok', 'skills');
+    const demoDir = join(homeSkills, 'demo');
+    mkdirSync(join(demoDir, 'references', 'sub'), { recursive: true });
+    writeFileSync(join(demoDir, 'SKILL.md'), '---\nname: demo\n---\n# Demo\n');
+    writeFileSync(join(demoDir, 'references', 'notes.md'), '# Notes\n');
+    writeFileSync(join(demoDir, 'references', 'sub', 'deep.md'), '# Deep\n');
+    mkdirSync(join(demoDir, 'scripts'), { recursive: true });
+    writeFileSync(join(demoDir, 'scripts', 'run.sh'), '#!/bin/sh\n');
+    try {
+      await index.ingestGlobalSkillBundles([homeSkills]);
+
+      const G_REF_DEEP = '__skill__/global/demo/references/sub/deep';
+      expect(new Set(index.getForwardLinks(G_SKILL))).toEqual(new Set([G_REF, G_REF_DEEP]));
+      expect(index.getBacklinks(G_REF)).toEqual([{ source: G_SKILL, anchor: null, snippet: null }]);
+      expect(index.getBacklinks('__skill__/global/demo/scripts/run')).toEqual([]);
+
+      await index.ingestGlobalSkillBundles([homeSkills]);
+      expect(new Set(index.getForwardLinks(G_SKILL))).toEqual(new Set([G_REF, G_REF_DEEP]));
+
+      rmSync(join(demoDir, 'references', 'notes.md'));
+      await index.ingestGlobalSkillBundles([homeSkills]);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF_DEEP]);
+      expect(index.getBacklinks(G_REF)).toEqual([]);
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  test('global nodes survive a content rebuild/reconcile (re-ingest restores them)', async () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-backlinks-gskill-rebuild-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+    const homeSkills = join(projectDir, 'home', '.ok', 'skills');
+    const demoDir = join(homeSkills, 'demo');
+    mkdirSync(join(demoDir, 'references'), { recursive: true });
+    writeFileSync(join(demoDir, 'SKILL.md'), '# Demo\n');
+    writeFileSync(join(demoDir, 'references', 'notes.md'), '# Notes\n');
+    try {
+      const index = new BacklinkIndex({ projectDir, contentDir });
+      index.registerGlobalSkillBundleNode(G_SKILL);
+      index.registerGlobalSkillBundleNode(G_REF);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
+
+      await index.rebuildFromDisk();
+      expect(index.getForwardLinks(G_SKILL)).toEqual([]);
+      await index.ingestGlobalSkillBundles([homeSkills]);
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
+
+      await index.reconcileWithDisk();
+      expect(index.getForwardLinks(G_SKILL)).toEqual([G_REF]);
     } finally {
       rmSync(projectDir, { recursive: true, force: true });
     }

@@ -23,6 +23,7 @@ import { FolderOverview } from '@/components/FolderOverview';
 import { LargeFileEditorState } from '@/components/LargeFileEditorState';
 import { MountStalledAffordance } from '@/components/MountStalledAffordance';
 import { PropertyProvider, useProperties } from '@/components/PropertyContext';
+import { SkillFileViewer } from '@/components/SkillFileViewer';
 import { SettingsDialogShell } from '@/components/settings/SettingsDialogShell';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { useDocumentContext, useDocumentTransition } from '@/editor/DocumentContext';
@@ -376,6 +377,15 @@ function EditorAreaInner({
         key={activeTarget.assetPath}
         assetPath={activeTarget.assetPath}
         mediaKind={activeTarget.mediaKind}
+      />
+    );
+  } else if (activeTarget?.kind === 'skill-file') {
+    viewContent = (
+      <SkillFileViewer
+        key={`${activeTarget.scope}/${activeTarget.name}/${activeTarget.path}`}
+        scope={activeTarget.scope}
+        name={activeTarget.name}
+        path={activeTarget.path}
       />
     );
   } else if (!activeProvider || !activeDocName) {

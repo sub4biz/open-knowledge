@@ -18,11 +18,11 @@ import { bugReportCommand } from './commands/bug-report.ts';
 import { cleanCommand } from './commands/clean.ts';
 import { cloneCommand } from './commands/clone.ts';
 import { configCommand } from './commands/config.ts';
+import { coworkCommand } from './commands/cowork.ts';
 import { createRealDetectDeps, detectDesktop, launchDesktop } from './commands/desktop-dispatch.ts';
 import { diagnoseCommand } from './commands/diagnose.ts';
 import { embeddingsCommand } from './commands/embeddings/index.ts';
 import { initCommand } from './commands/init.ts';
-import { installSkillCommand } from './commands/install-skill.ts';
 import { mcpCommand } from './commands/mcp.ts';
 import { openCommand } from './commands/open.ts';
 import { previewCommand } from './commands/preview.ts';
@@ -39,6 +39,7 @@ import {
   scanRootArgv,
 } from './commands/single-file-dispatch.ts';
 import { createRealSingleFileOpenDeps, runSingleFileOpen } from './commands/single-file-open.ts';
+import { skillsCommand } from './commands/skills.ts';
 import { runStartCommand, startCommand } from './commands/start.ts';
 import { statusCommand } from './commands/status.ts';
 import { stopCommand } from './commands/stop.ts';
@@ -128,9 +129,11 @@ program.addCommand(initCommand());
 
 program.addCommand(seedCommand());
 
-program.addCommand(installSkillCommand());
+program.addCommand(coworkCommand(), { hidden: true });
 
 program.addCommand(repairSkillsCommand());
+
+program.addCommand(skillsCommand());
 
 const preview = previewCommand(() => resolvedConfig);
 program.addCommand(preview);

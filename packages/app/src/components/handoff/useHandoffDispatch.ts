@@ -9,12 +9,15 @@ import {
   composeFilePrompt,
   composeFolderPrompt,
   composeSelectionPrompt,
+  composeSkillPrompt,
   composeTerminalBareLaunchPrompt,
   type DocContext,
   type HandoffOutcome,
   type HandoffPayload,
   type HandoffScope,
   type HandoffTarget,
+  OK_TERMINAL_SURFACE_PREAMBLE,
+  type SkillScope,
   type TargetData,
   TERMINAL_CLIS,
   type TerminalCli,
@@ -86,6 +89,11 @@ export interface HandoffDispatchInput {
    *  it lives in and the user's instruction. Set for selection scope only;
    *  absent for file / folder / project scope. */
   readonly selection?: SelectionContext;
+  /** Skill-scope payload — the skill's identity + which store it lives in.
+   *  Set by `buildSkillHandoffInput`; absent for every other scope. Routes
+   *  `selectScopedPrompt` to `composeSkillPrompt` (author-with-AI: hand the
+   *  draft to an agent to write via the `open-knowledge-write-skill` skill). */
+  readonly skill?: { readonly name: string; readonly scope: SkillScope };
   /** Ask-scope payload — the active doc's relative path plus the user's typed
    *  instruction, with NO selection. Set for the bottom "Ask AI" composer
    *  only; absent for every other scope. A dedicated discriminator rather than
@@ -209,6 +217,20 @@ export function buildSelectionHandoffInput(args: {
     },
     projectDir: contentDir,
     docPath: joinWorkspacePath(contentDir, relativePath, pathSeparator),
+  };
+}
+
+export function buildSkillHandoffInput(args: {
+  readonly skillName: string;
+  readonly scope: SkillScope;
+  readonly workspace: Workspace | null;
+}): HandoffDispatchInput | null {
+  if (!args.workspace?.contentDir || !args.skillName) return null;
+  return {
+    docContext: null,
+    skill: { name: args.skillName, scope: args.scope },
+    projectDir: args.workspace.contentDir,
+    docPath: '',
   };
 }
 
@@ -396,6 +418,9 @@ export function selectScopedPrompt(
   if (input.selection) {
     return composeSelectionPrompt({ ...input.selection, target });
   }
+  if (input.skill) {
+    return composeSkillPrompt(input.skill.name, input.skill.scope, autoOpen);
+  }
   if (input.ask) {
     return composeAskPrompt(input.ask.relativePath, input.ask.instruction, autoOpen, target);
   }
@@ -418,7 +443,7 @@ export function selectScopedPrompt(
 export function composeTerminalLaunchPrompt(input: HandoffDispatchInput, cli: TerminalCli): string {
   const hasInstruction = typeof input.instruction === 'string' && input.instruction.trim() !== '';
   if (input.compose !== undefined || input.createDescription !== undefined || hasInstruction) {
-    return selectScopedPrompt(input, TERMINAL_CLIS[cli].handoffTarget, false);
+    return `${OK_TERMINAL_SURFACE_PREAMBLE} ${selectScopedPrompt(input, TERMINAL_CLIS[cli].handoffTarget, false)}`;
   }
   return composeTerminalBareLaunchPrompt(input.docContext?.relativePath ?? null);
 }

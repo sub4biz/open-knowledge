@@ -235,6 +235,21 @@ describe('TagIndex', () => {
     }
   });
 
+  test('managed-artifact docs are indexed for tags', () => {
+    const { contentDir, cleanup } = tempContentDir();
+    try {
+      const idx = new TagIndex({ contentDir });
+      idx.updateDocumentFromMarkdown('__skill__/project/my-skill', '#authoring guidance\n');
+      idx.updateDocumentFromMarkdown('__template__/docs/my-template', '#scaffold note\n');
+      expect(idx.getDocsForTag('authoring')).toEqual(['__skill__/project/my-skill']);
+      expect(idx.getDocsForTag('scaffold')).toEqual(['__template__/docs/my-template']);
+      idx.deleteDocument('__skill__/project/my-skill');
+      expect(idx.getDocsForTag('authoring')).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+
   test("getDocsForTagWithMatches surfaces each doc's authored tags under the prefix", () => {
     const { contentDir, cleanup } = tempContentDir();
     try {

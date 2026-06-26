@@ -13,6 +13,7 @@ const EXPECTED_TOOLS = [
   'search',
   'history',
   'links',
+  'skills',
   'config',
   'palette',
   'preview_url',
@@ -21,6 +22,7 @@ const EXPECTED_TOOLS = [
   'edit',
   'delete',
   'move',
+  'install',
   'checkpoint',
   'restore_version',
   'conflicts',
@@ -83,13 +85,13 @@ function captureRegistered(): string[] {
   return names;
 }
 
-describe('registerAllTools — 17-tool surface (SPEC.md §9.1 / AC8)', () => {
-  test('registers exactly 17 tools', () => {
+describe('registerAllTools — 19-tool surface (SPEC.md §9.1 / AC8 + PRD-6935 install + skills read)', () => {
+  test('registers exactly 19 tools', () => {
     const names = captureRegistered();
-    expect(names.length).toBe(17);
+    expect(names.length).toBe(19);
   });
 
-  test('the 17 expected tool names are all present', () => {
+  test('the 19 expected tool names are all present', () => {
     const names = new Set(captureRegistered());
     for (const expected of EXPECTED_TOOLS) {
       expect(names).toContain(expected);

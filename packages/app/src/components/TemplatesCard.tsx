@@ -5,7 +5,6 @@ import { InheritedBadge } from '@/components/FrontmatterRow';
 import { NewItemDialog } from '@/components/NewItemDialog';
 import { NewTemplateDialog } from '@/components/NewTemplateDialog';
 import { TemplateDeleteDialog } from '@/components/TemplateDeleteDialog';
-import { TemplateEditDialog } from '@/components/TemplateEditDialog';
 import { TemplateRow } from '@/components/TemplateRow';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,8 @@ import type {
   FolderConfigSnapshot,
   TemplateMenuEntry,
 } from '@/hooks/use-folder-config';
+import { templateDocName } from '@/lib/managed-artifact-doc-name';
+import { openManagedArtifactTab } from '@/lib/open-managed-artifact-tab';
 
 interface Props {
   folderPath: string;
@@ -25,7 +26,6 @@ interface Props {
 }
 
 export function TemplatesCard({ folderPath, state, onChange, folderConfigHandle }: Props) {
-  const [editTarget, setEditTarget] = useState<TemplateMenuEntry | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TemplateMenuEntry | null>(null);
   const [createFromTemplate, setCreateFromTemplate] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
@@ -95,7 +95,9 @@ export function TemplatesCard({ folderPath, state, onChange, folderConfigHandle 
                   key={tpl.path}
                   template={tpl}
                   onCreate={() => setCreateFromTemplate(tpl.name)}
-                  onEdit={() => setEditTarget(tpl)}
+                  onEdit={() =>
+                    openManagedArtifactTab(templateDocName(tpl.source_folder, tpl.name))
+                  }
                   onDelete={() => setDeleteTarget(tpl)}
                   badge={
                     tpl.scope === 'inherited' ? (
@@ -111,14 +113,6 @@ export function TemplatesCard({ folderPath, state, onChange, folderConfigHandle 
           )}
         </div>
       </section>
-      <TemplateEditDialog
-        folderPath={folderPath}
-        template={editTarget}
-        onOpenChange={(open) => {
-          if (!open) setEditTarget(null);
-        }}
-        onSaved={onChange}
-      />
       <TemplateDeleteDialog
         template={deleteTarget}
         onOpenChange={(open) => {
@@ -131,7 +125,10 @@ export function TemplatesCard({ folderPath, state, onChange, folderConfigHandle 
         existingNames={new Set(templates.map((tpl) => tpl.name))}
         open={newOpen}
         onOpenChange={setNewOpen}
-        onCreated={onChange}
+        onCreated={(createdName) => {
+          onChange();
+          openManagedArtifactTab(templateDocName(folderPath, createdName));
+        }}
       />
       <NewItemDialog
         open={createFromTemplate !== null}

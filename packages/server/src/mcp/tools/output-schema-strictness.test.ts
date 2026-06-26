@@ -183,3 +183,54 @@ describe('MCP outputSchema strictness — auto-discovered registerTool sweep (no
     return validate(probe) as { valid: boolean; errorMessage?: string };
   }
 });
+
+describe('move outputSchema admits the cross-level skill-move payloads (CORR-1)', () => {
+  function moveOutputJsonSchema(): Record<string, unknown> {
+    const cwd = newProject();
+    const captured: Array<{ name: string; outputSchema?: unknown }> = [];
+    const server = {
+      registerTool(name: string, cfg: { outputSchema?: unknown }) {
+        captured.push({ name, outputSchema: cfg.outputSchema });
+      },
+      tool() {},
+    } as unknown as ServerInstance;
+    registerAllTools(server, {
+      config: BASE_CONFIG,
+      resolveCwd: async () => cwd,
+      serverUrl: undefined,
+    });
+    const move = captured.find((r) => r.name === 'move');
+    if (!move?.outputSchema) throw new Error('move tool did not register an outputSchema');
+    return compileOutputSchemaForClient(move.outputSchema);
+  }
+
+  const crossScopeSuccess = {
+    ok: true,
+    kind: 'skill',
+    committed: false,
+    crossScope: true,
+    text: 'Moved skill "trip-log" (Project) → "trip-log" (Global). …',
+  };
+  const crossScopePartialFailure = {
+    ok: false,
+    kind: 'skill',
+    error: 'source delete failed',
+    bothScopes: true,
+    text: 'Partially moved skill … exists in BOTH levels …',
+  };
+
+  for (const [label, payload] of [
+    ['cross-level success', crossScopeSuccess],
+    ['cross-level partial-failure (both levels)', crossScopePartialFailure],
+  ] as const) {
+    test(`${label} structuredContent validates against the compiled move schema`, () => {
+      const validator = new AjvJsonSchemaValidator();
+      const validate = validator.getValidator(moveOutputJsonSchema());
+      const result = validate(payload) as { valid: boolean; errorMessage?: string };
+      expect(result.valid).toBe(true);
+      if (!result.valid) {
+        expect(result.errorMessage).not.toMatch(/additional propert/i);
+      }
+    });
+  }
+});

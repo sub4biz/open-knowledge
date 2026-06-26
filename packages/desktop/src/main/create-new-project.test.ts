@@ -461,12 +461,20 @@ describe('runCreateNew — installs the project-local skill (PRD-6733)', () => {
       existsSync(join(result.projectDir, '.cursor', 'skills', 'open-knowledge', 'SKILL.md')),
     ).toBe(true);
     expect(
-      existsSync(join(result.projectDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md')),
+      existsSync(join(result.projectDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md')),
+    ).toBe(true);
+    expect(
+      existsSync(join(result.projectDir, '.opencode', 'skills', 'open-knowledge', 'SKILL.md')),
     ).toBe(true);
 
     const skillWrites = result.aiIntegrations.integrations.filter(
       (o) => o.integration === 'project-skill' && o.action === 'written',
     );
-    expect(skillWrites.map((o) => o.editorId).sort()).toEqual(['claude', 'codex', 'cursor']);
+    expect(skillWrites.map((o) => o.editorId).sort()).toEqual([
+      'claude',
+      'codex',
+      'cursor',
+      'opencode',
+    ]);
   });
 });

@@ -585,4 +585,57 @@ describe('POST /api/test-rescan-backlinks', () => {
       rmSync(projectDir, { recursive: true, force: true });
     }
   });
+
+  test('admits skill/template link targets and resolves their titles', async () => {
+    const projectDir = mkdtempSync(join(tmpdir(), 'ok-graph-skill-'));
+    const contentDir = join(projectDir, 'content');
+    mkdirSync(contentDir, { recursive: true });
+
+    try {
+      writeFileSync(
+        join(contentDir, 'alpha.md'),
+        '# Alpha\n\nSee [[.ok/skills/my-skill/SKILL]].\n',
+        'utf-8',
+      );
+      const skillDir = join(contentDir, '.ok', 'skills', 'my-skill');
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, 'SKILL.md'), '# My Skill\n\nGuidance.\n', 'utf-8');
+
+      const fileIndex = new Map<string, FileIndexEntry>([
+        [
+          'alpha',
+          {
+            size: 10,
+            modified: new Date(0).toISOString(),
+            canonicalPath: '',
+            inode: 0,
+            aliases: [],
+          },
+        ],
+        [
+          '.ok/skills/my-skill/SKILL',
+          {
+            size: 10,
+            modified: new Date(0).toISOString(),
+            canonicalPath: join(skillDir, 'SKILL.md'),
+            inode: 0,
+            aliases: [],
+          },
+        ],
+      ]);
+      const backlinkIndex = new BacklinkIndex({ projectDir, contentDir });
+      await backlinkIndex.rebuildFromDisk();
+
+      const forward = JSON.parse(
+        (await callRoute(contentDir, '/api/forward-links?docName=alpha', fileIndex, backlinkIndex))
+          .body,
+      ) as { forwardLinks: Array<{ kind: string; docName: string; title: string }> };
+
+      const skillLink = forward.forwardLinks.find((l) => l.docName === '.ok/skills/my-skill/SKILL');
+      expect(skillLink).toBeDefined();
+      expect(skillLink?.title).toBe('My Skill');
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
 });

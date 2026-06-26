@@ -10,26 +10,24 @@ import {
 import { homedir } from 'node:os';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import {
+  BUNDLE_SKILL_NAME,
+  type BundleId,
   readServerPackageVersion,
   readTargetVersion,
   recordSkillInstallEvent,
   resolveBundledSkillDir,
   type SkillInstallEvent,
+  USER_GLOBAL_BUNDLE_IDS,
   writeTargetVersion,
 } from '@inkeep/open-knowledge-server';
 import { Command } from 'commander';
 import { assertProjectPathSafe } from '../integrations/write-project-skill.ts';
-import { CHAIN_VERSION_SENTINEL, EDITOR_TARGETS, type EditorId } from './editors.ts';
-
-const HOSTS_WITH_USER_SKILL_DIR: ReadonlyArray<{
-  readonly hostDir: string;
-  readonly editorId: string;
-}> = [
-  { hostDir: '.claude', editorId: 'claude' },
-  { hostDir: '.cursor', editorId: 'cursor' },
-  { hostDir: '.agents', editorId: 'codex' },
-  { hostDir: '.agents', editorId: 'opencode' },
-];
+import {
+  CHAIN_VERSION_SENTINEL,
+  EDITOR_TARGETS,
+  type EditorId,
+  HOSTS_WITH_USER_SKILL_DIR,
+} from './editors.ts';
 
 const USER_SKILL_DIR_NAME = 'open-knowledge-discovery';
 const PROJECT_SKILL_DIR_NAME = 'open-knowledge';
@@ -82,7 +80,7 @@ const defaultFsOps: RepairSkillsFsOps = {
 
 export interface RepairSkillsDeps {
   resolveProjectBundledSkillDir?(): string;
-  resolveDiscoveryBundledSkillDir?(): string;
+  resolveUserBundledSkillDir?(bundle: BundleId): string;
   readBundledVersion?(): Promise<string>;
   readRecordedVersion?(home: string): Promise<string | null>;
   writeRecordedVersion?(home: string, version: string): Promise<void>;
@@ -91,8 +89,7 @@ export interface RepairSkillsDeps {
 
 const defaultDeps: Required<RepairSkillsDeps> = {
   resolveProjectBundledSkillDir: () => resolveBundledSkillDir('project', { checkDesktop: false }),
-  resolveDiscoveryBundledSkillDir: () =>
-    resolveBundledSkillDir('discovery', { checkDesktop: false }),
+  resolveUserBundledSkillDir: (bundle) => resolveBundledSkillDir(bundle, { checkDesktop: false }),
   readBundledVersion: () => readServerPackageVersion(),
   readRecordedVersion: (home) => readTargetVersion(home, 'cli-hosts'),
   writeRecordedVersion: (home, version) =>
@@ -179,6 +176,104 @@ function copyDirContents(sourceDir: string, destDir: string, fs: RepairSkillsFsO
       fs.writeFileSync(dst, fs.readFileSync(src));
     }
   }
+}
+
+function installUserBundleToHostDirs(
+  home: string,
+  bundleDirName: string,
+  sourceDir: string,
+  fs: RepairSkillsFsOps,
+  logger: (event: RepairSkillsLogEvent) => void,
+  version: string,
+): { entries: UserSkillEntry[]; centralWritten: boolean } {
+  const entries: UserSkillEntry[] = [];
+  const centralDest = join(home, '.agents', 'skills', bundleDirName);
+  const centralExistedBefore = fs.existsSync(centralDest);
+  let centralWritten = false;
+  try {
+    replaceDir(sourceDir, centralDest, fs);
+    centralWritten = true;
+    entries.push({
+      kind: 'central',
+      path: centralDest,
+      outcome: centralExistedBefore ? 'overwritten' : 'written',
+    });
+    logger({
+      event: 'user-skill-reclaim-central-written',
+      scope: 'user',
+      path: centralDest,
+      preexisting: centralExistedBefore,
+      version,
+    });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    entries.push({ kind: 'central', path: centralDest, outcome: 'failed', error });
+    logger({ event: 'user-skill-reclaim-central-failed', scope: 'user', path: centralDest, error });
+  }
+
+  for (const host of HOSTS_WITH_USER_SKILL_DIR) {
+    const hostRoot = join(home, host.hostDir);
+    const hostDest = join(hostRoot, 'skills', bundleDirName);
+    if (hostDest === centralDest) {
+      entries.push({
+        kind: 'host',
+        editorId: host.editorId,
+        hostDir: host.hostDir,
+        path: hostDest,
+        outcome: 'skipped-collapsed-with-central',
+      });
+      continue;
+    }
+    if (!fs.existsSync(hostRoot)) {
+      entries.push({
+        kind: 'host',
+        editorId: host.editorId,
+        hostDir: host.hostDir,
+        path: hostDest,
+        outcome: 'skipped-host-absent',
+      });
+      continue;
+    }
+    const existedBefore = fs.existsSync(hostDest);
+    try {
+      replaceDir(sourceDir, hostDest, fs);
+      entries.push({
+        kind: 'host',
+        editorId: host.editorId,
+        hostDir: host.hostDir,
+        path: hostDest,
+        outcome: existedBefore ? 'overwritten' : 'written',
+      });
+      logger({
+        event: 'user-skill-reclaim-host-written',
+        scope: 'user',
+        editorId: host.editorId,
+        hostDir: host.hostDir,
+        path: hostDest,
+        preexisting: existedBefore,
+        version,
+      });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      entries.push({
+        kind: 'host',
+        editorId: host.editorId,
+        hostDir: host.hostDir,
+        path: hostDest,
+        outcome: 'failed',
+        error,
+      });
+      logger({
+        event: 'user-skill-reclaim-host-failed',
+        scope: 'user',
+        editorId: host.editorId,
+        hostDir: host.hostDir,
+        path: hostDest,
+        error,
+      });
+    }
+  }
+  return { entries, centralWritten };
 }
 
 function editorWiredForOk(configPath: string | undefined, fs: RepairSkillsFsOps): boolean {
@@ -316,119 +411,50 @@ async function runUserSweep(
     return { outcome: 'skipped', reason: 'version-current' };
   }
 
-  let sourceDir: string;
-  try {
-    sourceDir = deps.resolveDiscoveryBundledSkillDir();
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    logger({ event: 'user-skill-reclaim-bundle-missing', scope: 'user', error });
+  const resolvedBundles: Array<{ id: BundleId; sourceDir: string }> = [];
+  let lastResolveError: string | null = null;
+  for (const bundleId of USER_GLOBAL_BUNDLE_IDS) {
+    try {
+      resolvedBundles.push({ id: bundleId, sourceDir: deps.resolveUserBundledSkillDir(bundleId) });
+    } catch (err) {
+      lastResolveError = err instanceof Error ? err.message : String(err);
+    }
+  }
+  if (resolvedBundles.length === 0) {
+    logger({
+      event: 'user-skill-reclaim-bundle-missing',
+      scope: 'user',
+      error: lastResolveError ?? 'no user-global bundles',
+    });
     recordEventSoft({
       ts: nowIso(),
       surface: 'cli-start',
       target: 'cli-hosts',
-      bundle: 'discovery',
       outcome: 'failed',
-      reason: `bundle-missing:${error}`,
+      reason: `bundle-missing:${lastResolveError}`,
     });
     return { outcome: 'skipped', reason: 'bundle-missing' };
   }
 
   const entries: UserSkillEntry[] = [];
-
-  const centralDest = join(home, ...CENTRAL_USER_SKILL_REL);
-  const centralExistedBefore = fs.existsSync(centralDest);
-  try {
-    replaceDir(sourceDir, centralDest, fs);
-    entries.push({
-      kind: 'central',
-      path: centralDest,
-      outcome: centralExistedBefore ? 'overwritten' : 'written',
-    });
-    logger({
-      event: 'user-skill-reclaim-central-written',
-      scope: 'user',
-      path: centralDest,
-      preexisting: centralExistedBefore,
-      version: bundledVersion,
-    });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    entries.push({ kind: 'central', path: centralDest, outcome: 'failed', error });
-    logger({
-      event: 'user-skill-reclaim-central-failed',
-      scope: 'user',
-      path: centralDest,
-      error,
-    });
+  let everyCentralWritten = resolvedBundles.length === USER_GLOBAL_BUNDLE_IDS.length;
+  for (const { id, sourceDir } of resolvedBundles) {
+    const result = installUserBundleToHostDirs(
+      home,
+      BUNDLE_SKILL_NAME[id],
+      sourceDir,
+      fs,
+      logger,
+      bundledVersion,
+    );
+    entries.push(...result.entries);
+    if (!result.centralWritten) everyCentralWritten = false;
   }
 
-  for (const host of HOSTS_WITH_USER_SKILL_DIR) {
-    const hostRoot = join(home, host.hostDir);
-    const hostDest = join(hostRoot, 'skills', USER_SKILL_DIR_NAME);
-    if (hostDest === centralDest) {
-      entries.push({
-        kind: 'host',
-        editorId: host.editorId,
-        hostDir: host.hostDir,
-        path: hostDest,
-        outcome: 'skipped-collapsed-with-central',
-      });
-      continue;
-    }
-    if (!fs.existsSync(hostRoot)) {
-      entries.push({
-        kind: 'host',
-        editorId: host.editorId,
-        hostDir: host.hostDir,
-        path: hostDest,
-        outcome: 'skipped-host-absent',
-      });
-      continue;
-    }
-    const existedBefore = fs.existsSync(hostDest);
-    try {
-      replaceDir(sourceDir, hostDest, fs);
-      entries.push({
-        kind: 'host',
-        editorId: host.editorId,
-        hostDir: host.hostDir,
-        path: hostDest,
-        outcome: existedBefore ? 'overwritten' : 'written',
-      });
-      logger({
-        event: 'user-skill-reclaim-host-written',
-        scope: 'user',
-        editorId: host.editorId,
-        hostDir: host.hostDir,
-        path: hostDest,
-        preexisting: existedBefore,
-        version: bundledVersion,
-      });
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      entries.push({
-        kind: 'host',
-        editorId: host.editorId,
-        hostDir: host.hostDir,
-        path: hostDest,
-        outcome: 'failed',
-        error,
-      });
-      logger({
-        event: 'user-skill-reclaim-host-failed',
-        scope: 'user',
-        editorId: host.editorId,
-        hostDir: host.hostDir,
-        path: hostDest,
-        error,
-      });
-    }
-  }
-
-  const centralEntry = entries.find((e) => e.kind === 'central');
-  const anyWriteSucceeded =
-    centralEntry?.outcome === 'written' || centralEntry?.outcome === 'overwritten';
-  if (anyWriteSucceeded) {
+  const anyCentralWritten = entries.some(
+    (e) => e.kind === 'central' && (e.outcome === 'written' || e.outcome === 'overwritten'),
+  );
+  if (everyCentralWritten && anyCentralWritten) {
     let stateWriteError: string | null = null;
     try {
       await deps.writeRecordedVersion(home, bundledVersion);
@@ -446,22 +472,23 @@ async function runUserSweep(
         error: stateWriteError,
       });
     }
-    recordEventSoft({
-      ts: nowIso(),
-      surface: 'cli-start',
-      target: 'cli-hosts',
-      bundle: 'discovery',
-      outcome: stateWriteError === null ? 'installed' : 'failed',
-      version: bundledVersion,
-      ...(stateWriteError === null ? {} : { reason: `state-write-failed:${stateWriteError}` }),
-    });
+    for (const { id } of resolvedBundles) {
+      recordEventSoft({
+        ts: nowIso(),
+        surface: 'cli-start',
+        target: 'cli-hosts',
+        bundle: id,
+        outcome: stateWriteError === null ? 'installed' : 'failed',
+        version: bundledVersion,
+        ...(stateWriteError === null ? {} : { reason: `state-write-failed:${stateWriteError}` }),
+      });
+    }
   } else {
     const anyHostFailed = entries.some((e) => e.kind === 'host' && e.outcome === 'failed');
     recordEventSoft({
       ts: nowIso(),
       surface: 'cli-start',
       target: 'cli-hosts',
-      bundle: 'discovery',
       outcome: 'failed',
       version: bundledVersion,
       reason: anyHostFailed ? 'all-writes-failed' : 'no-hosts-installed',

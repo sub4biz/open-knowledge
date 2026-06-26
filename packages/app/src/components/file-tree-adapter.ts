@@ -67,16 +67,17 @@ export function documentsTreePathSignature(documents: readonly FileEntry[]): str
 export function collectTreeFolderPathsFromDocuments(documents: readonly FileEntry[]): string[] {
   const folderPaths = new Set<string>();
   for (const entry of documents) {
-    if (isFolderEntry(entry)) {
-      const folderPath = folderPathToTreeDirectoryPath(entry.path);
-      if (folderPath) folderPaths.add(folderPath);
-    }
     const path = isFolderEntry(entry)
       ? entry.path
       : isAssetEntry(entry)
         ? entry.path
         : entry.docName;
     const segments = path.split('/').filter(Boolean);
+    if (segments.includes('.ok')) continue;
+    if (isFolderEntry(entry)) {
+      const folderPath = folderPathToTreeDirectoryPath(entry.path);
+      if (folderPath) folderPaths.add(folderPath);
+    }
     const folderSegmentLimit = isFolderEntry(entry) ? segments.length : segments.length - 1;
     for (let i = 1; i <= folderSegmentLimit; i++) {
       folderPaths.add(`${segments.slice(0, i).join('/')}/`);

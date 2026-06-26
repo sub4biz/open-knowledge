@@ -638,6 +638,7 @@ export function GraphView({
         ? {
             displayState: 'doc' as const,
             hashDocName: node.docName,
+            hash: null,
           }
         : resolveTargetNavigationIntent(node.docName, {
             pages,
@@ -1176,10 +1177,11 @@ export function GraphView({
               if (node.docName) {
                 const navigationIntent = navigationIntentByNodeId.get(node.id);
                 window.location.assign(
-                  hashFromDocName(
-                    navigationIntent?.hashDocName ?? node.docName,
-                    node.anchor ?? null,
-                  ),
+                  navigationIntent?.hash ??
+                    hashFromDocName(
+                      navigationIntent?.hashDocName ?? node.docName,
+                      node.anchor ?? null,
+                    ),
                 );
               }
             }}

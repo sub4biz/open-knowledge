@@ -29,6 +29,17 @@ msgstr " Your selection could not be restored."
 msgid " Your selection has been restored."
 msgstr " Your selection has been restored."
 
+#. placeholder {0}: skill.name
+#. placeholder {1}: label(result.hosts)
+#: src/components/skill-actions.tsx
+msgid "\"{0}\" install refreshed ({1})"
+msgstr "\"{0}\" install refreshed ({1})"
+
+#. placeholder {0}: skill.name
+#: src/components/skill-actions.tsx
+msgid "\"{0}\" uninstalled — back to a draft"
+msgstr "\"{0}\" uninstalled — back to a draft"
+
 #: src/components/DocumentErrorBoundary.tsx
 msgid "\"{docName}\" doesn't exist."
 msgstr "\"{docName}\" doesn't exist."
@@ -321,6 +332,10 @@ msgid "{packName} initialized ({projectEntries, plural, one {# entry} other {# e
 msgstr "{packName} initialized ({projectEntries, plural, one {# entry} other {# entries}})"
 
 #: src/components/SeedDialog.tsx
+msgid "{packName} skill installed."
+msgstr "{packName} skill installed."
+
+#: src/components/SeedDialog.tsx
 msgid "{packName} was already set up. Nothing to do."
 msgstr "{packName} was already set up. Nothing to do."
 
@@ -465,6 +480,14 @@ msgstr "A reusable starting point for new documents in this folder."
 msgid "A short line shown under the name in the template list."
 msgstr "A short line shown under the name in the template list."
 
+#: src/components/SkillRenameDialog.tsx
+msgid "A skill with that name already exists."
+msgstr "A skill with that name already exists."
+
+#: src/components/NewSkillDialog.tsx
+msgid "A skill with this name already exists."
+msgstr "A skill with this name already exists."
+
 #: src/components/empty-state/CreatePromptComposer.tsx
 msgid "A team knowledge base, a personal wiki, project docs..."
 msgstr "A team knowledge base, a personal wiki, project docs..."
@@ -493,6 +516,12 @@ msgstr "Accept their deletion"
 #: src/components/settings/SettingsDialogShell.tsx
 msgid "Account"
 msgstr "Account"
+
+#. placeholder {0}: skill.name
+#: src/components/SkillRow.tsx
+#: src/components/SkillsSidebarSection.tsx
+msgid "Actions for {0}"
+msgstr "Actions for {0}"
 
 #: src/components/TemplateRow.tsx
 msgid "Actions for {label}"
@@ -768,6 +797,10 @@ msgstr "Automatic"
 msgid "Available"
 msgstr "Available"
 
+#: src/components/settings/SkillsManagerSection.tsx
+msgid "Available in every project on this computer."
+msgstr "Available in every project on this computer."
+
 #: src/components/settings/SharingSection.tsx
 msgid "Available in the OpenKnowledge desktop app. From a terminal, use<0> ok config-sharing status</0> / <1>share</1> / <2>unshare</2>."
 msgstr "Available in the OpenKnowledge desktop app. From a terminal, use<0> ok config-sharing status</0> / <1>share</1> / <2>unshare</2>."
@@ -933,13 +966,15 @@ msgstr "Can't nest projects. An OpenKnowledge project already exists at <0>{root
 #: src/components/InstallInClaudeDesktopDialog.tsx
 #: src/components/MountStalledAffordance.tsx
 #: src/components/NewItemDialog.tsx
+#: src/components/NewSkillDialog.tsx
 #: src/components/NewTemplateDialog.tsx
 #: src/components/PublishToGitHubDialog.tsx
 #: src/components/SeedDialog.tsx
 #: src/components/settings/SearchSection.tsx
 #: src/components/ShareBranchSwitchDialog.tsx
 #: src/components/ShareReceiveDialog.tsx
-#: src/components/TemplateEditDialog.tsx
+#: src/components/SkillRenameDialog.tsx
+#: src/components/SkillUpdateDialog.tsx
 #: src/components/TimelinePanel.tsx
 #: src/components/TrashFailureModal.tsx
 #: src/editor/components/CodePreviewEditModal.tsx
@@ -999,6 +1034,10 @@ msgstr "Choose agent"
 #: src/components/settings/SharingSection.tsx
 msgid "Choose whether this project's OpenKnowledge setup, including its AI-tool connections, is saved with the project so teammates get it too, or kept only on your computer."
 msgstr "Choose whether this project's OpenKnowledge setup, including its AI-tool connections, is saved with the project so teammates get it too, or kept only on your computer."
+
+#: src/components/settings/SkillTargetsPicker.tsx
+msgid "Choose which editors every skill in this project installs into."
+msgstr "Choose which editors every skill in this project installs into."
 
 #: src/components/handoff/AgentSplitButton.tsx
 msgid "Claude"
@@ -1384,6 +1423,10 @@ msgstr "Copied"
 msgid "Copied full path"
 msgstr "Copied full path"
 
+#: src/components/skill-actions.tsx
+msgid "Copied path"
+msgstr "Copied path"
+
 #: src/components/FileSidebar.tsx
 #: src/components/FileTree.tsx
 msgid "Copied relative path"
@@ -1435,6 +1478,10 @@ msgstr "Copy full path, No workspace"
 #: src/components/FileTree.tsx
 msgid "Copy path"
 msgstr "Copy path"
+
+#: src/components/skill-actions.tsx
+msgid "Copy Path"
+msgstr "Copy Path"
 
 #: src/components/PublishToGitHubDialog.tsx
 msgid "Copy share link"
@@ -1575,6 +1622,10 @@ msgstr "Couldn't connect OpenKnowledge tools to Claude Code. Please try again."
 msgid "Couldn't construct the share URL. Try Done and re-share."
 msgstr "Couldn't construct the share URL. Try Done and re-share."
 
+#: src/components/skill-actions.tsx
+msgid "Couldn't copy path"
+msgstr "Couldn't copy path"
+
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "Couldn't copy: {detail}"
 msgstr "Couldn't copy: {detail}"
@@ -1583,9 +1634,18 @@ msgstr "Couldn't copy: {detail}"
 msgid "Couldn't copy. Select the URL above to copy it manually."
 msgstr "Couldn't copy. Select the URL above to copy it manually."
 
+#. placeholder {0}: result.error
+#: src/components/NewSkillDialog.tsx
+msgid "Couldn't create skill: {0}"
+msgstr "Couldn't create skill: {0}"
+
 #: src/components/TemplateForm.tsx
 msgid "Couldn't create template: {error}"
 msgstr "Couldn't create template: {error}"
+
+#: src/components/SkillDeleteDialog.tsx
+msgid "Couldn't delete skill: {error}"
+msgstr "Couldn't delete skill: {error}"
 
 #: src/components/TemplateDeleteDialog.tsx
 msgid "Couldn't delete template: {error}"
@@ -1595,7 +1655,18 @@ msgstr "Couldn't delete template: {error}"
 msgid "Couldn't disconnect — please try again."
 msgstr "Couldn't disconnect — please try again."
 
-#: src/components/TextViewer.tsx
+#. placeholder {0}: skill.name
+#. placeholder {1}: result.error
+#: src/components/skill-actions.tsx
+msgid "Couldn't duplicate \"{0}\": {1}"
+msgstr "Couldn't duplicate \"{0}\": {1}"
+
+#. placeholder {0}: result.error
+#: src/components/skill-actions.tsx
+msgid "Couldn't install skill: {0}"
+msgstr "Couldn't install skill: {0}"
+
+#: src/components/ViewerStatusPane.tsx
 msgid "Couldn't load {fileName}"
 msgstr "Couldn't load {fileName}"
 
@@ -1611,6 +1682,10 @@ msgstr "Couldn't load docs — type @ again to retry"
 msgid "Couldn't load document"
 msgstr "Couldn't load document"
 
+#: src/components/SkillsSidebarSection.tsx
+msgid "Couldn't load files"
+msgstr "Couldn't load files"
+
 #: src/components/PackCardGrid.tsx
 msgid "Couldn't load starter packs: {error}"
 msgstr "Couldn't load starter packs: {error}"
@@ -1618,6 +1693,15 @@ msgstr "Couldn't load starter packs: {error}"
 #: src/components/template-menu-rows.tsx
 msgid "Couldn't load templates"
 msgstr "Couldn't load templates"
+
+#: src/components/SkillsSidebarSection.tsx
+msgid "Couldn't load this skill's files."
+msgstr "Couldn't load this skill's files."
+
+#. placeholder {0}: result.error
+#: src/components/ManagedArtifactProperties.tsx
+msgid "Couldn't move skill: {0}"
+msgstr "Couldn't move skill: {0}"
 
 #: src/components/TrashFailureModal.tsx
 msgid "Couldn't move to Trash"
@@ -1651,6 +1735,22 @@ msgstr "Couldn't reconnect after server restart"
 msgid "Couldn't remove <0>{targetGitPath}</0>: {removeGitError}"
 msgstr "Couldn't remove <0>{targetGitPath}</0>: {removeGitError}"
 
+#. placeholder {0}: skill.name
+#. placeholder {1}: result.error
+#: src/components/SkillRenameDialog.tsx
+msgid "Couldn't rename \"{0}\": {1}"
+msgstr "Couldn't rename \"{0}\": {1}"
+
+#. placeholder {0}: result.error
+#: src/components/ManagedArtifactProperties.tsx
+msgid "Couldn't rename skill: {0}"
+msgstr "Couldn't rename skill: {0}"
+
+#. placeholder {0}: result.error
+#: src/components/ManagedArtifactProperties.tsx
+msgid "Couldn't rename template: {0}"
+msgstr "Couldn't rename template: {0}"
+
 #: src/components/DiffViewBoundary.tsx
 msgid "Couldn't resolve the conflict for {filePath}."
 msgstr "Couldn't resolve the conflict for {filePath}."
@@ -1682,6 +1782,21 @@ msgstr "Couldn't send the selection — please try again."
 #: src/components/BottomComposer.tsx
 msgid "Couldn't send your prompt — please try again."
 msgstr "Couldn't send your prompt — please try again."
+
+#. placeholder {0}: result.error
+#: src/components/skill-actions.tsx
+msgid "Couldn't uninstall skill: {0}"
+msgstr "Couldn't uninstall skill: {0}"
+
+#. placeholder {0}: err instanceof Error ? err.message : String(err)
+#: src/components/settings/SkillTargetsPicker.tsx
+msgid "Couldn't update skill targets: {0}"
+msgstr "Couldn't update skill targets: {0}"
+
+#. placeholder {0}: result.error
+#: src/components/SkillUpdateDialog.tsx
+msgid "Couldn't update skill: {0}"
+msgstr "Couldn't update skill: {0}"
 
 #: src/components/ConsentDialogBody.tsx
 msgid "Counting markdown files"
@@ -1737,6 +1852,10 @@ msgstr "Create new tag #{tagValue}"
 msgid "Create page"
 msgstr "Create page"
 
+#: src/components/NewSkillDialog.tsx
+msgid "Create skill"
+msgstr "Create skill"
+
 #: src/components/empty-state/empty-state-copy.ts
 msgid "Create something great."
 msgstr "Create something great."
@@ -1773,6 +1892,7 @@ msgstr "created template"
 
 #: src/components/CreateProjectDialog.tsx
 #: src/components/NewItemDialog.tsx
+#: src/components/NewSkillDialog.tsx
 #: src/components/NewTemplateDialog.tsx
 msgid "Creating"
 msgstr "Creating"
@@ -1811,6 +1931,7 @@ msgid "Default properties"
 msgstr "Default properties"
 
 #: src/components/DeleteConfirmationDialog.tsx
+#: src/components/skill-actions.tsx
 #: src/components/TemplateRow.tsx
 #: src/editor/extensions/JsxComponentView.tsx
 msgid "Delete"
@@ -1885,6 +2006,11 @@ msgstr "Describe what you want to create to continue"
 msgid "Describe what you're working on and the agent sets it up for you."
 msgstr "Describe what you're working on and the agent sets it up for you."
 
+#: src/components/TemplateProperties.tsx
+msgid "description"
+msgstr "description"
+
+#: src/components/NewSkillDialog.tsx
 #: src/components/TemplateForm.tsx
 msgid "Description"
 msgstr "Description"
@@ -1908,6 +2034,10 @@ msgstr "Detached HEAD — checkout a branch to resume"
 #: src/editor/components/Callout.tsx
 msgid "Details"
 msgstr "Details"
+
+#: src/components/settings/SkillTargetsPicker.tsx
+msgid "Detected from the editors this project is set up for. Adjust to control where every skill installs."
+msgstr "Detected from the editors this project is set up for. Adjust to control where every skill installs."
 
 #: src/components/McpConsentDialogBody.tsx
 msgid "Detected on this machine"
@@ -1941,6 +2071,10 @@ msgstr "Disable semantic search"
 #: src/components/SyncStatusBadge.tsx
 msgid "Disable sync"
 msgstr "Disable sync"
+
+#: src/components/TemplateProperties.tsx
+msgid "Disambiguates similarly-named templates in the menu."
+msgstr "Disambiguates similarly-named templates in the menu."
 
 #: src/components/settings/AccountSection.tsx
 msgid "Disconnect"
@@ -2038,6 +2172,11 @@ msgstr "Download started"
 msgid "Downloads {shareOwner}/{shareRepo} from GitHub."
 msgstr "Downloads {shareOwner}/{shareRepo} from GitHub."
 
+#: src/components/SkillEditorActions.tsx
+#: src/components/SkillStateBadge.tsx
+msgid "Draft"
+msgstr "Draft"
+
 #: src/components/empty-state/use-create-suggestions.ts
 msgid "Draft a spec"
 msgstr "Draft a spec"
@@ -2060,6 +2199,7 @@ msgid "Drag item {0} to reorder"
 msgstr "Drag item {0} to reorder"
 
 #: src/components/FileTree.tsx
+#: src/components/skill-actions.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
 
@@ -2079,6 +2219,11 @@ msgstr "Duplicate succeeded but the sidebar may be out of date — refresh to re
 msgid "Duplicate the focused file-tree item when focus is in the Files sidebar."
 msgstr "Duplicate the focused file-tree item when focus is in the Files sidebar."
 
+#. placeholder {0}: result.name
+#: src/components/skill-actions.tsx
+msgid "Duplicated to \"{0}\""
+msgstr "Duplicated to \"{0}\""
+
 #: src/components/settings/OkignoreSection.tsx
 msgid "e.g. drafts/ or *.draft.md"
 msgstr "e.g. drafts/ or *.draft.md"
@@ -2091,6 +2236,7 @@ msgstr "e.g. server.ts"
 msgid "Each selected tool gets an OpenKnowledge MCP entry."
 msgstr "Each selected tool gets an OpenKnowledge MCP entry."
 
+#: src/components/skill-actions.tsx
 #: src/components/TemplateForm.tsx
 #: src/components/TemplateRow.tsx
 #: src/editor/extensions/InternalLinkPropPanel.tsx
@@ -2107,10 +2253,6 @@ msgstr "Edit {0} source"
 msgid "Edit {keyName}"
 msgstr "Edit {keyName}"
 
-#: src/components/TemplateEditDialog.tsx
-msgid "Edit {templateLabel}"
-msgstr "Edit {templateLabel}"
-
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 msgid "Edit markdown link"
 msgstr "Edit markdown link"
@@ -2118,10 +2260,6 @@ msgstr "Edit markdown link"
 #: src/editor/extensions/CodeBlockView.tsx
 msgid "Edit source"
 msgstr "Edit source"
-
-#: src/components/TemplateEditDialog.tsx
-msgid "Edit template"
-msgstr "Edit template"
 
 #: src/editor/slash-command/embed-starter-items.tsx
 msgid "Edit this HTML — the preview updates live."
@@ -2147,7 +2285,7 @@ msgstr "editing [[{realCurrentDoc}]]"
 msgid "Editing broken MDX source: {reason}"
 msgstr "Editing broken MDX source: {reason}"
 
-#: src/components/EditorToolbar.tsx
+#: src/components/EditorModeToggle.tsx
 msgid "Editor mode"
 msgstr "Editor mode"
 
@@ -2158,6 +2296,10 @@ msgstr "Editor selection"
 #: src/components/EditorFooter.tsx
 msgid "Editor status bar"
 msgstr "Editor status bar"
+
+#: src/components/settings/SkillTargetsPicker.tsx
+msgid "Editors to install skills into"
+msgstr "Editors to install skills into"
 
 #: src/editor/slash-command/component-items.tsx
 msgid "Edits at the source land here — no copy-paste drift."
@@ -2388,7 +2530,7 @@ msgstr "Failed to load docs. Press Escape and re-open to retry."
 msgid "Failed to load documents"
 msgstr "Failed to load documents"
 
-#: src/components/TextViewer.tsx
+#: src/components/use-viewer-text.ts
 msgid "Failed to load file"
 msgstr "Failed to load file"
 
@@ -2434,13 +2576,19 @@ msgstr "Failed to load project templates"
 msgid "Failed to load recent projects."
 msgstr "Failed to load recent projects."
 
+#. placeholder {0}: state.message
+#: src/components/settings/SkillTargetsPicker.tsx
+msgid "Failed to load skill targets: {0}"
+msgstr "Failed to load skill targets: {0}"
+
+#. placeholder {0}: state.message
+#: src/components/settings/SkillsManagerSection.tsx
+msgid "Failed to load skills: {0}"
+msgstr "Failed to load skills: {0}"
+
 #: src/components/CommandPalette.tsx
 msgid "Failed to load tags. Press Escape and re-open to retry."
 msgstr "Failed to load tags. Press Escape and re-open to retry."
-
-#: src/components/TemplateEditDialog.tsx
-msgid "Failed to load template: {errorMessage}"
-msgstr "Failed to load template: {errorMessage}"
 
 #: src/components/TemplatesCard.tsx
 msgid "Failed to load templates: {message}"
@@ -2641,6 +2789,7 @@ msgstr "Fold, unfold, fold all, or unfold all source ranges."
 
 #: src/components/ShareBranchSwitchDialog.tsx
 #: src/components/ShareReceiveDialog.tsx
+#: src/components/TemplateProperties.tsx
 msgid "folder"
 msgstr "folder"
 
@@ -2704,6 +2853,10 @@ msgstr "Full guide"
 msgid "Full path"
 msgstr "Full path"
 
+#: src/components/skill-actions.tsx
+msgid "Full Path"
+msgstr "Full Path"
+
 #: src/lib/keyboard-shortcuts.ts
 msgid "General"
 msgstr "General"
@@ -2733,12 +2886,17 @@ msgid "GitHub sign-in is missing or expired. Reconnect to resume syncing."
 msgstr "GitHub sign-in is missing or expired. Reconnect to resume syncing."
 
 #: src/lib/keyboard-shortcuts.ts
+#: src/lib/skill-scope.ts
 msgid "Global"
 msgstr "Global"
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Global outside text fields"
 msgstr "Global outside text fields"
+
+#: src/lib/skill-scope.ts
+msgid "Global Skill"
+msgstr "Global Skill"
 
 #: src/components/DocumentErrorBoundary.tsx
 #: src/components/LargeFileEditorState.tsx
@@ -2938,6 +3096,10 @@ msgstr "Ignore patterns"
 msgid "Ignore patterns (raw text)"
 msgstr "Ignore patterns (raw text)"
 
+#: src/components/SkillsSidebarSection.tsx
+msgid "Import"
+msgstr "Import"
+
 #: src/components/SeedDialog.tsx
 msgid "In a subfolder"
 msgstr "In a subfolder"
@@ -3061,6 +3223,8 @@ msgstr "Insert, delete, move, copy, and indent source editor lines through CodeM
 
 #: src/components/InstallInClaudeDesktopDialog.tsx
 #: src/components/settings/SettingsDialogBody.tsx
+#: src/components/skill-actions.tsx
+#: src/components/SkillRow.tsx
 msgid "Install"
 msgstr "Install"
 
@@ -3088,6 +3252,34 @@ msgstr "Install handoff failed: {msg}"
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Install in Claude Desktop"
 msgstr "Install in Claude Desktop"
+
+#: src/components/SkillEditorActions.tsx
+msgid "Install on"
+msgstr "Install on"
+
+#: src/components/SkillEditorActions.tsx
+msgid "Install on all"
+msgstr "Install on all"
+
+#: src/components/settings/SkillTargetsPicker.tsx
+msgid "Install skills into"
+msgstr "Install skills into"
+
+#: src/components/SkillEditorActions.tsx
+#: src/components/SkillRow.tsx
+#: src/components/SkillStateBadge.tsx
+msgid "Installed"
+msgstr "Installed"
+
+#. placeholder {0}: skill.name
+#. placeholder {1}: label(added)
+#: src/components/skill-actions.tsx
+msgid "Installed \"{0}\" into {1}"
+msgstr "Installed \"{0}\" into {1}"
+
+#: src/components/SkillRow.tsx
+msgid "Installed into"
+msgstr "Installed into"
 
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "Installing"
@@ -3179,6 +3371,10 @@ msgstr "Layout options"
 msgid "Let Tab leave the source editor instead of indenting."
 msgstr "Let Tab leave the source editor instead of indenting."
 
+#: src/components/SkillProperties.tsx
+msgid "Level"
+msgstr "Level"
+
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Light, dark, or follow the OS."
 msgstr "Light, dark, or follow the OS."
@@ -3217,13 +3413,14 @@ msgid "List"
 msgstr "List"
 
 #: src/components/PageHeaderWidgets.tsx
+#: src/components/SkillsSidebarSection.tsx
 #: src/editor/components/TagDialog.tsx
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "Loading"
 msgstr "Loading"
 
-#: src/components/TextViewer.tsx
+#: src/components/ViewerStatusPane.tsx
 msgid "Loading {fileName}"
 msgstr "Loading {fileName}"
 
@@ -3378,11 +3575,11 @@ msgstr "Map the architecture"
 msgid "Mark a block as the source of truth. Mirror references elsewhere render this content read-only and update live as you edit here."
 msgstr "Mark a block as the source of truth. Mirror references elsewhere render this content read-only and update live as you edit here."
 
-#: src/components/EditorToolbar.tsx
+#: src/components/EditorModeToggle.tsx
 msgid "Markdown"
 msgstr "Markdown"
 
-#: src/components/EditorToolbar.tsx
+#: src/components/EditorModeToggle.tsx
 msgid "Markdown source"
 msgstr "Markdown source"
 
@@ -3503,6 +3700,16 @@ msgstr "Move to the previous visual-editor find result."
 msgid "Move up"
 msgstr "Move up"
 
+#. placeholder {0}: scopeLabels[next]
+#: src/components/ManagedArtifactProperties.tsx
+msgid "Moved \"{name}\" to {0}"
+msgstr "Moved \"{name}\" to {0}"
+
+#. placeholder {0}: scopeLabels[next]
+#: src/components/ManagedArtifactProperties.tsx
+msgid "Moved \"{name}\" to {0} ({skipped} binary file(s) not copied)"
+msgstr "Moved \"{name}\" to {0} ({skipped} binary file(s) not copied)"
+
 #: src/components/FolderTimelineCard.tsx
 msgid "moved template"
 msgstr "moved template"
@@ -3511,8 +3718,15 @@ msgstr "moved template"
 msgid "Multi-page PDF viewer with toolbar controls (thumbnails, page nav, zoom)."
 msgstr "Multi-page PDF viewer with toolbar controls (thumbnails, page nav, zoom)."
 
+#: src/components/SkillProperties.tsx
+#: src/components/TemplateProperties.tsx
+msgid "name"
+msgstr "name"
+
 #: src/components/AuthModal.tsx
 #: src/components/FolderOverview.tsx
+#: src/components/NewSkillDialog.tsx
+#: src/components/SkillRenameDialog.tsx
 #: src/editor/slash-command/items.tsx
 msgid "Name"
 msgstr "Name"
@@ -3624,6 +3838,12 @@ msgstr "New project"
 msgid "New property name"
 msgstr "New property name"
 
+#: src/components/NewSkillDialog.tsx
+#: src/components/settings/SkillsManagerSection.tsx
+#: src/components/SkillsSidebarSection.tsx
+msgid "New skill"
+msgstr "New skill"
+
 #: src/components/EditorTabs.tsx
 msgid "New tab"
 msgstr "New tab"
@@ -3657,6 +3877,10 @@ msgstr "No changes"
 #: src/components/ConnectingBanner.tsx
 msgid "No collab server for this worktree — run <0>ok start</0> here, or reopen the project."
 msgstr "No collab server for this worktree — run <0>ok start</0> here, or reopen the project."
+
+#: src/components/SkillRow.tsx
+msgid "No description yet — add one so agents know when to use this skill."
+msgstr "No description yet — add one so agents know when to use this skill."
 
 #: src/components/ActivityPanelBurstRow.tsx
 msgid "No diff."
@@ -3697,6 +3921,10 @@ msgstr "No git remote"
 #: src/components/settings/SharingSection.tsx
 msgid "No git repository — config sharing does not apply here."
 msgstr "No git repository — config sharing does not apply here."
+
+#: src/components/settings/SkillsManagerSection.tsx
+msgid "No global skills yet."
+msgstr "No global skills yet."
 
 #: src/editor/wiki-link-suggestion/WikiLinkSuggestionMenu.tsx
 msgid "No headings in {pageTarget}"
@@ -3801,6 +4029,10 @@ msgstr "No pages matched \"{semanticQueryText}\" by meaning."
 msgid "No patterns yet. Type a folder or file name below to start hiding files."
 msgstr "No patterns yet. Type a folder or file name below to start hiding files."
 
+#: src/components/settings/SkillsManagerSection.tsx
+msgid "No project skills yet. Author one to teach agents a repeatable task scoped to this knowledge base."
+msgstr "No project skills yet. Author one to teach agents a repeatable task scoped to this knowledge base."
+
 #: src/components/settings/ProjectTemplatesSection.tsx
 msgid "No project templates yet. Create one to make it available everywhere in this project. Folder-scoped templates live on each folder's overview page."
 msgstr "No project templates yet. Create one to make it available everywhere in this project. Folder-scoped templates live on each folder's overview page."
@@ -3817,6 +4049,10 @@ msgstr "no response"
 #: src/editor/slash-command/SlashCommandMenu.tsx
 msgid "No results"
 msgstr "No results"
+
+#: src/components/SkillsSidebarSection.tsx
+msgid "No skills yet."
+msgstr "No skills yet."
 
 #: src/components/PackCardGrid.tsx
 msgid "No starter packs available."
@@ -3882,6 +4118,7 @@ msgstr "Not detected"
 msgid "Not installed"
 msgstr "Not installed"
 
+#: src/components/SkillsSidebarSection.tsx
 #: src/lib/install-server-drift-listener.ts
 msgid "Not now"
 msgstr "Not now"
@@ -4045,7 +4282,7 @@ msgid "Open emoji picker for {keyName}"
 msgstr "Open emoji picker for {keyName}"
 
 #: src/components/AssetPreview.tsx
-#: src/components/TextViewer.tsx
+#: src/components/ViewerStatusPane.tsx
 msgid "Open file"
 msgstr "Open file"
 
@@ -4070,6 +4307,11 @@ msgstr "Open in {shareBranch}"
 #: src/components/ShareBranchSwitchDialog.tsx
 msgid "Open in current branch"
 msgstr "Open in current branch"
+
+#. placeholder {0}: state.importable
+#: src/components/SkillsSidebarSection.tsx
+msgid "Open Knowledge can manage {0} editor skill(s) for this project — import them into the knowledge base?"
+msgstr "Open Knowledge can manage {0} editor skill(s) for this project — import them into the knowledge base?"
 
 #: src/components/GraphPanel.tsx
 msgid "Open link"
@@ -4462,6 +4704,7 @@ msgid "project"
 msgstr "project"
 
 #: src/components/CommandPalette.tsx
+#: src/lib/skill-scope.ts
 msgid "Project"
 msgstr "Project"
 
@@ -4477,6 +4720,10 @@ msgstr "Project name"
 #: src/components/SeedDialog.tsx
 msgid "Project root"
 msgstr "Project root"
+
+#: src/lib/skill-scope.ts
+msgid "Project Skill"
+msgstr "Project Skill"
 
 #: src/components/settings/ProjectTemplatesSection.tsx
 msgid "Project templates"
@@ -4503,6 +4750,7 @@ msgid "Project-level pages with no outgoing graph edges."
 msgstr "Project-level pages with no outgoing graph edges."
 
 #: src/components/PropertyPanel.tsx
+#: src/components/TemplateProperties.tsx
 msgid "Properties"
 msgstr "Properties"
 
@@ -4650,6 +4898,10 @@ msgstr "Reject"
 msgid "Relative path"
 msgstr "Relative path"
 
+#: src/components/skill-actions.tsx
+msgid "Relative Path"
+msgstr "Relative Path"
+
 #: src/components/FileTree.tsx
 msgid "Relaunching to install the update…"
 msgstr "Relaunching to install the update…"
@@ -4731,6 +4983,8 @@ msgid "Removing"
 msgstr "Removing"
 
 #: src/components/FileTree.tsx
+#: src/components/skill-actions.tsx
+#: src/components/SkillRenameDialog.tsx
 msgid "Rename"
 msgstr "Rename"
 
@@ -4742,6 +4996,10 @@ msgstr "Rename {keyName}"
 msgid "Rename {label}"
 msgstr "Rename {label}"
 
+#: src/components/SkillRenameDialog.tsx
+msgid "Rename skill"
+msgstr "Rename skill"
+
 #: src/components/FileTree.tsx
 msgid "Rename succeeded but the sidebar may be out of date — refresh to resync"
 msgstr "Rename succeeded but the sidebar may be out of date — refresh to resync"
@@ -4749,6 +5007,18 @@ msgstr "Rename succeeded but the sidebar may be out of date — refresh to resyn
 #: src/components/EditorTabs.tsx
 msgid "Rename succeeded but the tabstrip may be out of date — refresh to resync"
 msgstr "Rename succeeded but the tabstrip may be out of date — refresh to resync"
+
+#: src/components/SkillRenameDialog.tsx
+msgid "Renamed to \"{trimmed}\""
+msgstr "Renamed to \"{trimmed}\""
+
+#: src/components/SkillRenameDialog.tsx
+msgid "Renames the folder on disk and the id agents use to invoke it."
+msgstr "Renames the folder on disk and the id agents use to invoke it."
+
+#: src/components/SkillRenameDialog.tsx
+msgid "Renaming"
+msgstr "Renaming"
 
 #: src/components/TemplateForm.tsx
 msgid "Renaming changes the file on disk and the id agents use to pick this template."
@@ -4919,6 +5189,7 @@ msgstr "Reveal in File Explorer, {hint}"
 
 #: src/components/FileSidebar.tsx
 #: src/components/FileTree.tsx
+#: src/components/skill-actions.tsx
 msgid "Reveal in Finder"
 msgstr "Reveal in Finder"
 
@@ -4960,7 +5231,6 @@ msgstr "Sandboxed HTML embed — write HTML, see the rendered preview live."
 
 #: src/components/AuthModal.tsx
 #: src/components/settings/EmbeddingsKeySection.tsx
-#: src/components/TemplateEditDialog.tsx
 #: src/editor/components/CodePreviewEditModal.tsx
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 #: src/editor/extensions/WikiLinkPropPanel.tsx
@@ -4998,13 +5268,16 @@ msgid "Saves the file to <0>~/Downloads/openknowledge.skill</0> and opens the Cl
 msgstr "Saves the file to <0>~/Downloads/openknowledge.skill</0> and opens the Claude Desktop App. Requires Node.js or Bun on your PATH."
 
 #: src/components/settings/EmbeddingsKeySection.tsx
-#: src/components/TemplateEditDialog.tsx
 msgid "Saving"
 msgstr "Saving"
 
 #: src/components/SeedDialog.tsx
 msgid "Scaffold directly under this project."
 msgstr "Scaffold directly under this project."
+
+#: src/components/NewSkillDialog.tsx
+msgid "Scope"
+msgstr "Scope"
 
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Scope: "
@@ -5285,6 +5558,10 @@ msgstr "Shared default"
 msgid "Shared repositories"
 msgstr "Shared repositories"
 
+#: src/components/settings/SkillsManagerSection.tsx
+msgid "Shared via git with everyone working on this project."
+msgstr "Shared via git with everyone working on this project."
+
 #: src/components/PublishToGitHubDialog.tsx
 msgid "Sharing a doc needs a GitHub repository. Create one for this project."
 msgstr "Sharing a doc needs a GitHub repository. Create one for this project."
@@ -5394,6 +5671,38 @@ msgstr "Sign-in stream ended without confirmation — please try again"
 msgid "Single page"
 msgstr "Single page"
 
+#. placeholder {0}: skill.name
+#: src/components/SkillDeleteDialog.tsx
+msgid "skill \"{0}\""
+msgstr "skill \"{0}\""
+
+#. placeholder {0}: target.name
+#: src/components/SkillDeleteDialog.tsx
+msgid "Skill \"{0}\" deleted"
+msgstr "Skill \"{0}\" deleted"
+
+#: src/components/NewSkillDialog.tsx
+msgid "Skill \"{trimmedName}\" created"
+msgstr "Skill \"{trimmedName}\" created"
+
+#: src/components/SkillProperties.tsx
+msgid "Skill level"
+msgstr "Skill level"
+
+#: src/components/ManagedArtifactProperties.tsx
+msgid "Skill renamed"
+msgstr "Skill renamed"
+
+#: src/components/settings/SettingsDialogShell.tsx
+#: src/components/settings/SkillsManagerSection.tsx
+#: src/components/SkillsSidebarSection.tsx
+msgid "Skills"
+msgstr "Skills"
+
+#: src/components/settings/SkillsManagerSection.tsx
+msgid "Skills teach agents repeatable tasks. Author them here; install a skill to project it into your editors' skill folders."
+msgstr "Skills teach agents repeatable tasks. Author them here; install a skill to project it into your editors' skill folders."
+
 #. Secondary button — dismisses the dialog without wiring any tools
 #: src/components/AuthModal.tsx
 #: src/components/McpConsentDialogBody.tsx
@@ -5420,7 +5729,7 @@ msgstr "Something went wrong loading the settings panel."
 msgid "Something went wrong opening \"{docName}\"."
 msgstr "Something went wrong opening \"{docName}\"."
 
-#: src/components/TextViewer.tsx
+#: src/components/use-viewer-text.ts
 msgid "Something went wrong opening this file (HTTP {status})."
 msgstr "Something went wrong opening this file (HTTP {status})."
 
@@ -5444,7 +5753,7 @@ msgstr "Source editor search panel"
 msgid "Source find results"
 msgstr "Source find results"
 
-#: src/components/EditorToolbar.tsx
+#: src/components/EditorModeToggle.tsx
 msgid "Source mode requires a live connection — your edits are saved and will appear when you reconnect."
 msgstr "Source mode requires a live connection — your edits are saved and will appear when you reconnect."
 
@@ -5679,13 +5988,13 @@ msgstr "Task list"
 msgid "Task List"
 msgstr "Task List"
 
+#: src/components/NewSkillDialog.tsx
+msgid "Teach agents a repeatable task. You can edit the body after creating."
+msgstr "Teach agents a repeatable task. You can edit the body after creating."
+
 #: src/components/CreateProjectDialog.tsx
 msgid "Team Wiki"
 msgstr "Team Wiki"
-
-#: src/components/TemplateEditDialog.tsx
-msgid "Template"
-msgstr "Template"
 
 #: src/components/TemplateDeleteDialog.tsx
 msgid "Template \"{label}\" deleted"
@@ -5703,6 +6012,7 @@ msgstr "Template \"{trimmedTitle}\" created"
 msgid "Template list"
 msgstr "Template list"
 
+#: src/components/ManagedArtifactProperties.tsx
 #: src/components/TemplateForm.tsx
 msgid "Template renamed"
 msgstr "Template renamed"
@@ -5792,6 +6102,11 @@ msgstr "The file is in your Trash; the file-watcher will reconcile."
 msgid "The file on disk, and the id agents use. It can't be changed later."
 msgstr "The file on disk, and the id agents use. It can't be changed later."
 
+#: src/components/NewSkillDialog.tsx
+#: src/components/SkillProperties.tsx
+msgid "The folder on disk and the id agents use to invoke this skill."
+msgstr "The folder on disk and the id agents use to invoke this skill."
+
 #: src/components/SeedDialog.tsx
 msgid "The folders and templates are in place; there's nothing left to scaffold."
 msgstr "The folders and templates are in place; there's nothing left to scaffold."
@@ -5799,6 +6114,15 @@ msgstr "The folders and templates are in place; there's nothing left to scaffold
 #: src/editor/slash-command/items.tsx
 msgid "The formula <0>c = √(a² + b²)</0> renders inline."
 msgstr "The formula <0>c = √(a² + b²)</0> renders inline."
+
+#: src/components/TemplateProperties.tsx
+msgid "The menu label agents pick this template by (required)."
+msgstr "The menu label agents pick this template by (required)."
+
+#. placeholder {0}: phase.plan.packSkill.name
+#: src/components/SeedDialog.tsx
+msgid "The pack skill <0>{0}</0> will be (re)installed."
+msgstr "The pack skill <0>{0}</0> will be (re)installed."
 
 #: src/editor/components/PreviewBlockedNotice.tsx
 msgid "The preview blocks resources that don't meet its security rules (for example plain http:// URLs, or code that uses eval). The content above may render incompletely."
@@ -5815,6 +6139,10 @@ msgstr "The repository is private and your GitHub account doesn't have access to
 #: src/components/ShareReceiveDialog.tsx
 msgid "The repository was moved, renamed, or deleted."
 msgstr "The repository was moved, renamed, or deleted."
+
+#: src/components/TemplateProperties.tsx
+msgid "The template's filename (without `.md`)."
+msgstr "The template's filename (without `.md`)."
 
 #: src/components/TerminalGate.tsx
 msgid "The terminal is turned off for this project. Turn it back on to run commands here."
@@ -5866,15 +6194,19 @@ msgstr "This branch is checked out in:"
 msgid "This document is already active in the editor. Use Open to collapse the graph."
 msgstr "This document is already active in the editor. Use Open to collapse the graph."
 
-#: src/components/TextViewer.tsx
+#: src/components/use-viewer-text.ts
 msgid "This file can't be opened in the text editor."
 msgstr "This file can't be opened in the text editor."
 
-#: src/components/TextViewer.tsx
+#: src/components/use-viewer-text.ts
 msgid "This file could not be found."
 msgstr "This file could not be found."
 
-#: src/components/TextViewer.tsx
+#: src/components/use-viewer-text.ts
+msgid "This file is binary and can't be shown as text."
+msgstr "This file is binary and can't be shown as text."
+
+#: src/components/use-viewer-text.ts
 msgid "This file is too large to open in the built-in text editor (1 MB limit). Use Open file below to open it in another app."
 msgstr "This file is too large to open in the built-in text editor (1 MB limit). Use Open file below to open it in another app."
 
@@ -5905,6 +6237,11 @@ msgstr "This page doesn't link to anything yet."
 #: src/components/ConsentDialogBody.tsx
 msgid "This path is on an external volume (/Volumes/...). OpenKnowledge will lose track of files when the drive ejects."
 msgstr "This path is on an external volume (/Volumes/...). OpenKnowledge will lose track of files when the drive ejects."
+
+#. placeholder {0}: skill.path
+#: src/components/SkillDeleteDialog.tsx
+msgid "This permanently removes {0}. Agents that invoke this skill by name will fail until it's recreated."
+msgstr "This permanently removes {0}. Agents that invoke this skill by name will fail until it's recreated."
 
 #: src/components/TemplateDeleteDialog.tsx
 msgid "This permanently removes {path}. Agents that reference this template by name will fail until it's recreated or replaced by one in a parent folder."
@@ -5943,6 +6280,17 @@ msgstr "This project's running server doesn't support live editing. Restart Open
 msgid "This project's server (v{0}) is newer than this app (v{1})."
 msgstr "This project's server (v{0}) is newer than this app (v{1})."
 
+#. placeholder {0}: skill.bundledVersion ?? ''
+#. placeholder {1}: skill.installedVersion
+#: src/components/SkillUpdateDialog.tsx
+msgid "This replaces the current skill content with the bundled version {0} (you have {1}). Any local edits will be replaced — your current version is saved to history first, so you can restore it."
+msgstr "This replaces the current skill content with the bundled version {0} (you have {1}). Any local edits will be replaced — your current version is saved to history first, so you can restore it."
+
+#. placeholder {0}: skill.bundledVersion ?? ''
+#: src/components/SkillUpdateDialog.tsx
+msgid "This replaces the current skill content with the bundled version {0}. Any local edits will be replaced — your current version is saved to history first, so you can restore it."
+msgstr "This replaces the current skill content with the bundled version {0}. Any local edits will be replaced — your current version is saved to history first, so you can restore it."
+
 #: src/components/settings/SearchSection.tsx
 msgid "This sends content off your machine"
 msgstr "This sends content off your machine"
@@ -5967,6 +6315,10 @@ msgstr "This will replace the current document content with the version from <0>
 #: src/components/TimelinePanel.tsx
 msgid "Timeline"
 msgstr "Timeline"
+
+#: src/components/TemplateProperties.tsx
+msgid "title"
+msgstr "title"
 
 #: src/components/TemplateForm.tsx
 #: src/editor/extensions/CodeBlockView.tsx
@@ -6160,6 +6512,20 @@ msgstr "Undone all edits on {docName}"
 msgid "Unified diff"
 msgstr "Unified diff"
 
+#: src/components/skill-actions.tsx
+msgid "Uninstall"
+msgstr "Uninstall"
+
+#: src/components/SkillEditorActions.tsx
+msgid "Uninstall everywhere"
+msgstr "Uninstall everywhere"
+
+#. placeholder {0}: skill.name
+#. placeholder {1}: label(removed)
+#: src/components/skill-actions.tsx
+msgid "Uninstalled \"{0}\" from {1}"
+msgstr "Uninstalled \"{0}\" from {1}"
+
 #: src/components/FolderTimelineCard.tsx
 msgid "Unknown"
 msgstr "Unknown"
@@ -6196,13 +6562,56 @@ msgstr "Unrecognized link"
 msgid "Unrecognized wiki link"
 msgstr "Unrecognized wiki link"
 
+#: src/components/SkillUpdateDialog.tsx
+msgid "Update"
+msgstr "Update"
+
+#. placeholder {0}: skillDisplayName(skill.name)
+#: src/components/SkillUpdateDialog.tsx
+msgid "Update \"{0}\"?"
+msgstr "Update \"{0}\"?"
+
+#: src/components/SkillsSidebarSection.tsx
+msgid "Update available"
+msgstr "Update available"
+
+#. placeholder {0}: skill.bundledVersion ? ` (${skill.bundledVersion})` : ''
+#: src/components/SkillsSidebarSection.tsx
+msgid "Update available{0}"
+msgstr "Update available{0}"
+
+#: src/components/skill-actions.tsx
+msgid "Update skill"
+msgstr "Update skill"
+
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 msgid "Update the destination and optional section anchor."
 msgstr "Update the destination and optional section anchor."
 
+#. placeholder {0}: skill.name
+#. placeholder {1}: label(added)
+#. placeholder {2}: label(removed)
+#: src/components/skill-actions.tsx
+msgid "Updated \"{0}\": added {1}, removed {2}"
+msgstr "Updated \"{0}\": added {1}, removed {2}"
+
+#. placeholder {0}: result.version
+#: src/components/SkillUpdateDialog.tsx
+msgid "Updated \"{display}\" to {0} — your previous version is in history if you need to restore it."
+msgstr "Updated \"{display}\" to {0} — your previous version is in history if you need to restore it."
+
+#. placeholder {0}: result.version
+#: src/components/SkillUpdateDialog.tsx
+msgid "Updated \"{display}\" to {0}."
+msgstr "Updated \"{display}\" to {0}."
+
 #: src/components/FolderTimelineCard.tsx
 msgid "updated folder properties"
 msgstr "updated folder properties"
+
+#: src/components/SkillUpdateDialog.tsx
+msgid "Updating"
+msgstr "Updating"
 
 #: src/components/PageHeaderWidgets.tsx
 msgid "Upload {keyName}"
@@ -6260,9 +6669,22 @@ msgstr "Use a starter pack"
 msgid "Use Cmd/Ctrl+C to copy the link below, or open OK in the desktop app."
 msgstr "Use Cmd/Ctrl+C to copy the link below, or open OK in the desktop app."
 
+#: src/components/TemplateProperties.tsx
+msgid "Use letters, digits, <0>_</0> and <1>-</1> only."
+msgstr "Use letters, digits, <0>_</0> and <1>-</1> only."
+
 #: src/components/TemplateForm.tsx
 msgid "Use letters, digits, <0>-</0> or <1>_</1> only."
 msgstr "Use letters, digits, <0>-</0> or <1>_</1> only."
+
+#: src/components/SkillProperties.tsx
+#: src/components/SkillRenameDialog.tsx
+msgid "Use lowercase letters, digits, and <0>-</0> only."
+msgstr "Use lowercase letters, digits, and <0>-</0> only."
+
+#: src/components/NewSkillDialog.tsx
+msgid "Use lowercase letters, digits, and hyphens only."
+msgstr "Use lowercase letters, digits, and hyphens only."
 
 #: src/components/settings/SettingsDialogShell.tsx
 msgid "User"
@@ -6289,11 +6711,11 @@ msgstr "View as text"
 msgid "Visibility"
 msgstr "Visibility"
 
-#: src/components/EditorToolbar.tsx
+#: src/components/EditorModeToggle.tsx
 msgid "Visual"
 msgstr "Visual"
 
-#: src/components/EditorToolbar.tsx
+#: src/components/EditorModeToggle.tsx
 #: src/lib/keyboard-shortcuts.ts
 msgid "Visual editor"
 msgstr "Visual editor"
@@ -6341,6 +6763,10 @@ msgstr "We'll build <0>openknowledge.skill</0>, save it to <1>~/Downloads</1>, a
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "We'll create a repository and start syncing — no terminal needed."
 msgstr "We'll create a repository and start syncing — no terminal needed."
+
+#: src/components/NewSkillDialog.tsx
+msgid "What agents match on to decide when to use the skill."
+msgstr "What agents match on to decide when to use the skill."
 
 #: src/components/ConfigSharingInfoTooltip.tsx
 msgid "What config sharing covers"
@@ -6404,6 +6830,7 @@ msgid "Word wrap"
 msgstr "Word wrap"
 
 #: src/components/McpConsentDialogBody.tsx
+#: src/components/SkillEditorActions.tsx
 msgid "Working"
 msgstr "Working"
 

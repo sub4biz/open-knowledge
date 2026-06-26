@@ -1,7 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { OK_DIR } from '@inkeep/open-knowledge-core';
+import {
+  EDITOR_PROJECT_SKILL_ROOT,
+  type EditorId,
+  INSTALLED_SKILLS_REL,
+  OK_DIR,
+  parseInstalledSkills,
+} from '@inkeep/open-knowledge-core';
 import { resolveGitDirDetailed } from '@inkeep/open-knowledge-core/shadow-repo-layout';
 import { ALL_EDITOR_IDS, EDITOR_TARGETS } from '../commands/editors.ts';
 
@@ -37,6 +43,21 @@ export function getOkArtifactPaths(projectRoot: string): readonly string[] {
     }
   }
   paths.push(CLAUDE_LAUNCH_JSON);
+
+  const markerPath = join(projectRoot, ...INSTALLED_SKILLS_REL);
+  if (existsSync(markerPath)) {
+    try {
+      const marker = parseInstalledSkills(readFileSync(markerPath, 'utf-8'));
+      if (marker) {
+        for (const [name, entry] of Object.entries(marker.skills)) {
+          for (const host of entry.hosts) {
+            const root = EDITOR_PROJECT_SKILL_ROOT[host as EditorId];
+            if (root) paths.push(`${root}/${name}/`);
+          }
+        }
+      }
+    } catch {}
+  }
 
   return Array.from(new Set(paths));
 }

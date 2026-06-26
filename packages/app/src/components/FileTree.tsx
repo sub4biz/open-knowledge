@@ -1002,6 +1002,7 @@ export interface FileTreeHandle {
   collapseAll(): void;
   getFolderState(): { folderCount: number; expandedCount: number };
   isCreationTargetCleared(): boolean;
+  clearCreationTarget(): void;
   subscribe(listener: () => void): () => void;
 }
 
@@ -1046,7 +1047,13 @@ async function fetchShowAllDepth1Listing(
   }
 }
 
-export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
+export function FileTree({
+  ref,
+  onContentHeightChange,
+}: {
+  ref?: Ref<FileTreeHandle | null>;
+  onContentHeightChange?: (px: number) => void;
+}) {
   const { t, i18n } = useLingui();
   const {
     activeDocName,
@@ -1957,6 +1964,47 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
     treePathsSignature,
   );
 
+  useEffect(() => {
+    if (!onContentHeightChange) return;
+    let raf = 0;
+    let attachRaf = 0;
+    const getList = () =>
+      (fileTreeHostRef.current
+        ?.querySelector(FILE_TREE_TAG_NAME)
+        ?.shadowRoot?.querySelector('[data-file-tree-virtualized-list]') as HTMLElement | null) ??
+      null;
+    const report = () => {
+      const list = getList();
+      if (!list) return;
+      const h = Number.parseFloat(list.style.height);
+      if (Number.isFinite(h)) onContentHeightChange(h);
+    };
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(report);
+    };
+    const mo = new MutationObserver(report);
+    const tryAttach = () => {
+      const list = getList();
+      if (list) {
+        mo.observe(list, { attributes: true, attributeFilter: ['style'] });
+        report();
+      } else {
+        attachRaf = requestAnimationFrame(tryAttach);
+      }
+    };
+    tryAttach();
+    const unsub = model.subscribe(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(attachRaf);
+      mo.disconnect();
+      unsub();
+      window.removeEventListener('resize', measure);
+    };
+  }, [onContentHeightChange, model]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: setCreationDirCleared is a stable state setter; baseActiveTreePath is the sole trigger.
   useEffect(() => {
     setCreationDirCleared(false);
@@ -2837,6 +2885,9 @@ export function FileTree({ ref }: { ref?: Ref<FileTreeHandle | null> }) {
       },
       isCreationTargetCleared() {
         return creationDirClearedRef.current;
+      },
+      clearCreationTarget() {
+        setCreationDirCleared(true);
       },
       subscribe(listener: () => void) {
         handleListenersRef.current.add(listener);

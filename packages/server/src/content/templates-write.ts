@@ -12,6 +12,7 @@ import {
   composeTemplateFile,
   stripFrontmatter,
   TEMPLATE_IDENTITY_KEY,
+  TEMPLATE_NAME_REGEX,
   type TemplateIdentity,
   unwrapFrontmatterFences,
 } from '@inkeep/open-knowledge-core';
@@ -61,12 +62,26 @@ interface DeleteTemplateInput {
   name: string;
 }
 
-const NAME_RE = /^[A-Za-z0-9_-]+$/;
+const NAME_RE = TEMPLATE_NAME_REGEX;
 
-export function applyTemplateWrite(input: WriteTemplateInput): TemplateWriteResult {
-  const validation = validateInputs(input.projectDir, input.folder, input.name);
-  if (!validation.ok) return { ok: false, error: validation.error };
+export type TemplateContentResult =
+  | { ok: true; content: string; warnings: string[] }
+  | { ok: false; error: { code: string; message: string } };
 
+export function composeTemplateContent(input: {
+  name: string;
+  body: string;
+  frontmatter: TemplateFrontmatter;
+}): TemplateContentResult {
+  if (!NAME_RE.test(input.name)) {
+    return {
+      ok: false,
+      error: {
+        code: 'BAD_NAME',
+        message: `Template name must match /^[A-Za-z0-9_-]+$/ (got: ${JSON.stringify(input.name)}). Use letters, digits, underscores, or hyphens — no slashes, dots, or spaces.`,
+      },
+    };
+  }
   const titleCheck = validateTitle(input.frontmatter.title);
   if (!titleCheck.ok) return { ok: false, error: titleCheck.error };
 
@@ -75,12 +90,6 @@ export function applyTemplateWrite(input: WriteTemplateInput): TemplateWriteResu
 
   const reservedCheck = validateNoReservedDocKey(input.body);
   if (!reservedCheck.ok) return { ok: false, error: reservedCheck.error };
-
-  const { templatesDir, filePath } = templatePaths(
-    input.projectDir,
-    validation.folderRel,
-    input.name,
-  );
 
   const identity: TemplateIdentity = {};
   if (input.frontmatter.title !== undefined) identity.title = input.frontmatter.title;
@@ -91,6 +100,37 @@ export function applyTemplateWrite(input: WriteTemplateInput): TemplateWriteResu
     identity.tags = input.frontmatter.tags;
   }
   const content = composeTemplateFile(identity, input.body);
+
+  const warnings: string[] = [];
+  if (
+    input.frontmatter.description === undefined ||
+    typeof input.frontmatter.description !== 'string' ||
+    input.frontmatter.description.length === 0
+  ) {
+    warnings.push(
+      'Template frontmatter.description is missing — `description` disambiguates between similarly-named templates in the menu. Recommended but not required.',
+    );
+  }
+  return { ok: true, content, warnings };
+}
+
+export function applyTemplateWrite(input: WriteTemplateInput): TemplateWriteResult {
+  const validation = validateInputs(input.projectDir, input.folder, input.name);
+  if (!validation.ok) return { ok: false, error: validation.error };
+
+  const composed = composeTemplateContent({
+    name: input.name,
+    body: input.body,
+    frontmatter: input.frontmatter,
+  });
+  if (!composed.ok) return { ok: false, error: composed.error };
+  const { content, warnings } = composed;
+
+  const { templatesDir, filePath } = templatePaths(
+    input.projectDir,
+    validation.folderRel,
+    input.name,
+  );
 
   try {
     mkdirSync(templatesDir, { recursive: true });
@@ -121,17 +161,6 @@ export function applyTemplateWrite(input: WriteTemplateInput): TemplateWriteResu
         message: `Failed to write template at ${relPathOf(input.projectDir, filePath)}: ${(err as Error).message}`,
       },
     };
-  }
-
-  const warnings: string[] = [];
-  if (
-    input.frontmatter.description === undefined ||
-    typeof input.frontmatter.description !== 'string' ||
-    input.frontmatter.description.length === 0
-  ) {
-    warnings.push(
-      'Template frontmatter.description is missing — `description` disambiguates between similarly-named templates in the menu. Recommended but not required.',
-    );
   }
 
   return {

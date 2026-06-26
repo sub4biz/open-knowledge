@@ -77,6 +77,17 @@ describe('file-tree-adapter', () => {
     ).toEqual(['docs/', 'docs/nested/', 'empty/', 'empty/child/']);
   });
 
+  test('excludes .ok/** from collected folder paths (skills are not tree folders)', () => {
+    expect(
+      collectTreeFolderPathsFromDocuments([
+        doc('docs/guide'),
+        doc('.ok/skills/my-skill/SKILL'),
+        { kind: 'folder', path: '.ok/skills/my-skill', size: 0, modified: '' },
+        doc('notes/.ok/templates/daily'),
+      ]),
+    ).toEqual(['docs/']);
+  });
+
   test('computes active ancestor paths using Trees directory slash convention', () => {
     expect(computeTreeAncestorPaths('README.md')).toEqual([]);
     expect(computeTreeAncestorPaths('docs/guide.md')).toEqual(['docs/']);

@@ -4,9 +4,9 @@ import { readdir, readFile as readFileAsync } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
-import { LINKABLE_ASSET_EXTENSIONS } from '@inkeep/open-knowledge-core';
+import { LINKABLE_ASSET_EXTENSIONS, SKILL_CONTENT_ROOT } from '@inkeep/open-knowledge-core';
 import ignore, { type Ignore } from 'ignore';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isReservedForUserTree } from './cc1-broadcast.ts';
 import { isSupportedDocFile, stripDocExtension } from './doc-extensions.ts';
 import { getLogger } from './logger.ts';
 import { toPosix } from './path-utils.ts';
@@ -72,6 +72,11 @@ const BUILTIN_SKIP_DIRS = new Set([
   '.ok',
   '.open-knowledge',
   '.openknowledge',
+  '.claude',
+  '.cursor',
+  '.codex',
+  '.agents',
+  '.opencode',
   'Library',
   'Applications',
   '.Trash',
@@ -83,6 +88,11 @@ const ALWAYS_SKIP_DIRS = new Set<string>([
   '.ok',
   '.open-knowledge',
   '.openknowledge',
+  '.claude',
+  '.cursor',
+  '.codex',
+  '.agents',
+  '.opencode',
 ]);
 
 function pathHasAlwaysSkipSegment(relativePath: string): boolean {
@@ -90,6 +100,23 @@ function pathHasAlwaysSkipSegment(relativePath: string): boolean {
     if (ALWAYS_SKIP_DIRS.has(segment)) return true;
   }
   return false;
+}
+
+function isSkillContentFile(relativePath: string): boolean {
+  return relativePath.startsWith(`${SKILL_CONTENT_ROOT}/`);
+}
+
+function isSkillContentAncestorDir(relativePath: string): boolean {
+  return (
+    relativePath === '.ok' ||
+    relativePath === SKILL_CONTENT_ROOT ||
+    relativePath.startsWith(`${SKILL_CONTENT_ROOT}/`)
+  );
+}
+
+function globBlocksSkillContent(pattern: string): boolean {
+  const p = pattern.replace(/^\/+/, '').replace(/\/+$/, '').trim();
+  return p === '.ok' || p === '.ok/**' || p === '**/.ok' || p === '**/.ok/**';
 }
 
 const BUILTIN_SKIP_FILES = new Set<string>(['.DS_Store', '.localized']);
@@ -374,7 +401,7 @@ export function createContentFilter(opts: ContentFilterOptions): ContentFilter {
     }
 
     const newWatcherGlobs = newRootPatterns.filter(
-      (p) => p.length > 0 && !p.startsWith('!') && !p.startsWith('#'),
+      (p) => p.length > 0 && !p.startsWith('!') && !p.startsWith('#') && !globBlocksSkillContent(p),
     );
 
     ig = newIg;
@@ -410,7 +437,7 @@ export function createContentFilter(opts: ContentFilterOptions): ContentFilter {
 
   function isReservedDocName(relativePath: string): boolean {
     const docName = stripDocExtension(relativePath);
-    return isSystemDoc(docName) || isConfigDoc(docName);
+    return isReservedForUserTree(docName);
   }
 
   function isRejectedByConfigurableRules(relativePath: string): boolean {
@@ -426,12 +453,19 @@ export function createContentFilter(opts: ContentFilterOptions): ContentFilter {
     isExcluded(relativePath: string, opts?: ContentFilterReadOpts): boolean {
       if (isReservedDocName(relativePath)) return true;
 
+      if (isSecretBearingFile(relativePath)) return true;
+      if (pathHasSecretBearingDirSegment(relativePath)) return true;
+
+      if (!opts?.bypassFilters && isSkillContentFile(relativePath)) {
+        if (singleDocRelPath !== undefined) return relativePath !== singleDocRelPath;
+        if (isSupportedDocFile(relativePath)) return false;
+        const ext = extname(relativePath).slice(1).toLowerCase();
+        return !LINKABLE_ASSET_EXTENSIONS.has(ext);
+      }
+
       if (pathHasAlwaysSkipSegment(relativePath)) return true;
 
       if (isAlwaysSkipFile(relativePath)) return true;
-
-      if (isSecretBearingFile(relativePath)) return true;
-      if (pathHasSecretBearingDirSegment(relativePath)) return true;
 
       if (singleDocRelPath !== undefined) return relativePath !== singleDocRelPath;
 
@@ -452,8 +486,9 @@ export function createContentFilter(opts: ContentFilterOptions): ContentFilter {
     },
 
     isDirExcluded(relativePath: string, opts?: ContentFilterReadOpts): boolean {
-      if (pathHasAlwaysSkipSegment(relativePath)) return true;
       if (pathHasSecretBearingDirSegment(relativePath)) return true;
+      if (!opts?.bypassFilters && isSkillContentAncestorDir(relativePath)) return false;
+      if (pathHasAlwaysSkipSegment(relativePath)) return true;
       if (singleDocRelPath !== undefined) {
         return !isSingleDocAncestorDir(relativePath, singleDocRelPath);
       }
@@ -470,10 +505,11 @@ export function createContentFilter(opts: ContentFilterOptions): ContentFilter {
 
     isPathIgnored(relativePath: string, opts?: ContentFilterReadOpts): boolean {
       if (isReservedDocName(relativePath)) return true;
-      if (pathHasAlwaysSkipSegment(relativePath)) return true;
-      if (isAlwaysSkipFile(relativePath)) return true;
       if (isSecretBearingFile(relativePath)) return true;
       if (pathHasSecretBearingDirSegment(relativePath)) return true;
+      if (isSkillContentFile(relativePath)) return false;
+      if (pathHasAlwaysSkipSegment(relativePath)) return true;
+      if (isAlwaysSkipFile(relativePath)) return true;
       if (opts?.bypassFilters) return false;
       return isRejectedByConfigurableRules(relativePath);
     },
@@ -770,7 +806,7 @@ export async function createContentFilterAsync(opts: ContentFilterOptions): Prom
 
   function isReservedDocName(relativePath: string): boolean {
     const docName = stripDocExtension(relativePath);
-    return isSystemDoc(docName) || isConfigDoc(docName);
+    return isReservedForUserTree(docName);
   }
   function isRejectedByConfigurableRules(relativePath: string): boolean {
     for (const segment of relativePath.split('/')) {
@@ -832,7 +868,7 @@ export async function createContentFilterAsync(opts: ContentFilterOptions): Prom
 
     ig = newIg;
     watcherIgnoreGlobs = newRootPatterns.filter(
-      (p) => p.length > 0 && !p.startsWith('!') && !p.startsWith('#'),
+      (p) => p.length > 0 && !p.startsWith('!') && !p.startsWith('#') && !globBlocksSkillContent(p),
     );
     dirCount.clear();
     for (const [k, v] of newDirCount) dirCount.set(k, v);
@@ -843,10 +879,16 @@ export async function createContentFilterAsync(opts: ContentFilterOptions): Prom
   return {
     isExcluded(relativePath: string, opts?: ContentFilterReadOpts): boolean {
       if (isReservedDocName(relativePath)) return true;
-      if (pathHasAlwaysSkipSegment(relativePath)) return true;
-      if (isAlwaysSkipFile(relativePath)) return true;
       if (isSecretBearingFile(relativePath)) return true;
       if (pathHasSecretBearingDirSegment(relativePath)) return true;
+      if (!opts?.bypassFilters && isSkillContentFile(relativePath)) {
+        if (singleDocRelPath !== undefined) return relativePath !== singleDocRelPath;
+        if (isSupportedDocFile(relativePath)) return false;
+        const skillExt = extname(relativePath).slice(1).toLowerCase();
+        return !LINKABLE_ASSET_EXTENSIONS.has(skillExt);
+      }
+      if (pathHasAlwaysSkipSegment(relativePath)) return true;
+      if (isAlwaysSkipFile(relativePath)) return true;
       if (singleDocRelPath !== undefined) return relativePath !== singleDocRelPath;
       if (opts?.bypassFilters) return false;
       if (isRejectedByConfigurableRules(relativePath)) return true;
@@ -861,8 +903,9 @@ export async function createContentFilterAsync(opts: ContentFilterOptions): Prom
     },
 
     isDirExcluded(relativePath: string, opts?: ContentFilterReadOpts): boolean {
-      if (pathHasAlwaysSkipSegment(relativePath)) return true;
       if (pathHasSecretBearingDirSegment(relativePath)) return true;
+      if (!opts?.bypassFilters && isSkillContentAncestorDir(relativePath)) return false;
+      if (pathHasAlwaysSkipSegment(relativePath)) return true;
       if (singleDocRelPath !== undefined) {
         return !isSingleDocAncestorDir(relativePath, singleDocRelPath);
       }
@@ -879,10 +922,11 @@ export async function createContentFilterAsync(opts: ContentFilterOptions): Prom
 
     isPathIgnored(relativePath: string, opts?: ContentFilterReadOpts): boolean {
       if (isReservedDocName(relativePath)) return true;
-      if (pathHasAlwaysSkipSegment(relativePath)) return true;
-      if (isAlwaysSkipFile(relativePath)) return true;
       if (isSecretBearingFile(relativePath)) return true;
       if (pathHasSecretBearingDirSegment(relativePath)) return true;
+      if (isSkillContentFile(relativePath)) return false;
+      if (pathHasAlwaysSkipSegment(relativePath)) return true;
+      if (isAlwaysSkipFile(relativePath)) return true;
       if (opts?.bypassFilters) return false;
       return isRejectedByConfigurableRules(relativePath);
     },

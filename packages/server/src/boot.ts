@@ -34,6 +34,7 @@ import { mountMcpAndApi } from './mcp-mount.ts';
 import { MissingOkConfigError } from './missing-ok-config-error.ts';
 import { createServer, type ServerInstance, type ServerOptions } from './server-factory.ts';
 import { installServerMemoryGauge } from './server-memory-telemetry.ts';
+import { reconcileSkillInstalls } from './skill-reconcile.ts';
 import { initTelemetry, shutdownTelemetry, withSpan } from './telemetry.ts';
 import {
   initToleranceTelemetryWriter,
@@ -519,6 +520,37 @@ async function bootServerInner(opts: BootServerOptions): Promise<BootedServer> {
       throw new AggregateError(errors, 'bootServer destroy completed with errors');
     }
   };
+
+  try {
+    const r = await reconcileSkillInstalls({
+      projectDir,
+      skillsRoot: resolve(opts.contentDir, OK_DIR, 'skills'),
+    });
+    const changed =
+      r.healed.length +
+      r.adopted.length +
+      r.replaced.length +
+      r.collided.length +
+      r.orphansRemoved.length;
+    if (changed > 0) {
+      log.info?.(
+        {
+          event: 'installed-skills-reconciled',
+          healed: r.healed.length,
+          adopted: r.adopted.length,
+          replaced: r.replaced.length,
+          collided: r.collided.length,
+          orphansRemoved: r.orphansRemoved.length,
+        },
+        `Reconciled ${changed} editor skill entr${changed === 1 ? 'y' : 'ies'} to the symlink model.`,
+      );
+    }
+  } catch (err) {
+    log.warn?.(
+      { event: 'installed-skills-reconcile-failed', error: String(err) },
+      'Installed-skills reconcile failed (non-fatal).',
+    );
+  }
 
   return {
     httpServer,

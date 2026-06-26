@@ -1,5 +1,5 @@
 import { HocuspocusAuthRejection } from './auth-token-schema.ts';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isReservedForUserTree } from './cc1-broadcast.ts';
 import {
   incrementAuthDocDeleted,
   incrementAuthRemovalGuardError,
@@ -25,7 +25,7 @@ export async function runRemovalRedirectGuard(
   deps: RemovalRedirectGuardDeps,
 ): Promise<void> {
   try {
-    if (isSystemDoc(documentName) || isConfigDoc(documentName)) return;
+    if (isReservedForUserTree(documentName)) return;
 
     const originEntry = deps.recentlyRemovedDocs.get(documentName);
     if (originEntry === undefined) {

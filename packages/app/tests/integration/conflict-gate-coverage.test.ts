@@ -18,6 +18,11 @@ const REQUIRED_HANDLERS = [
   'handleTemplatePut',
   'handleTemplateDelete',
   'handleTemplateMove',
+  'handleSkill',
+  'handleSkillPut',
+  'handleSkillFile',
+  'handleSkillFilePut',
+  'handleSkillUpdate',
 ];
 
 const EXEMPT_HANDLERS = new Set([
@@ -75,6 +80,12 @@ const EXEMPT_HANDLERS = new Set([
   'handleHandoffDispatchRoute',
   'handleInstallSkill',
   'handleSkillInstallState',
+  'handleSkillsList',
+  'handleSkillInstall',
+  'handleSkillUninstall',
+  'handleSkillTargets',
+  'handleSkillRestore',
+  'handleSkillsManagement',
   'handleSeedPlan',
   'handleSeedApply',
   'handleSeedPacks',
@@ -132,13 +143,17 @@ describe('conflict-gate coverage (FR9)', () => {
         continue;
       }
       const directGate =
-        body.includes('respondDocInConflict(') || body.includes('checkTemplateConflictGate(');
+        body.includes('respondDocInConflict(') ||
+        body.includes('checkTemplateConflictGate(') ||
+        body.includes('checkSkillDocConflictGate(');
       const spineRouting =
         body.includes('applyAgentMarkdownWrite(') || body.includes('applyAgentUndo(');
       const dispatcherRouting =
         body.includes('handleTemplatePut(') ||
         body.includes('handleTemplateDelete(') ||
-        body.includes('handleTemplateMove(');
+        body.includes('handleTemplateMove(') ||
+        body.includes('handleSkillPut(') ||
+        body.includes('handleSkillFilePut(');
       if (!directGate && !spineRouting && !dispatcherRouting) {
         failures.push(
           `${handler}: missing conflict gate — must call respondDocInConflict(...) directly, route through applyAgentMarkdownWrite/applyAgentUndo, or dispatch to a gated sub-handler`,

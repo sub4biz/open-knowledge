@@ -3,7 +3,7 @@ import { type Dirent, lstatSync, readdirSync, realpathSync, type Stats, statSync
 import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, extname, join, relative } from 'node:path';
 import { LINKABLE_ASSET_EXTENSIONS } from '@inkeep/open-knowledge-core';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isConfigDoc, isReservedForUserTree, isSystemDoc } from './cc1-broadcast.ts';
 import type { ContentFilter } from './content-filter.ts';
 import {
   forgetDocExtension,
@@ -701,7 +701,7 @@ export function updateFileIndex(event: DiskEvent, fileIndex: Map<string, FileInd
     return;
   }
   const docName = event.kind === 'rename' ? event.newDocName : event.docName;
-  if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+  if (isReservedForUserTree(docName)) return;
   switch (event.kind) {
     case 'create':
     case 'update':

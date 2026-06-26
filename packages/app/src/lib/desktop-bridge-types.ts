@@ -32,6 +32,10 @@ export interface OkScaffoldPlan {
   created: OkScaffoldFileEntry[];
   skipped: OkScaffoldSkipEntry[];
   warnings: string[];
+  /** The pack's project-local skill, when it ships one. `pending` = the skill
+   *  source is absent from `.ok/skills/` and apply would (re)author it, so the
+   *  pack isn't fully set up even if its folders/templates exist. */
+  packSkill?: { name: string; pending: boolean };
 }
 interface OkScaffoldApplyError {
   path: string;

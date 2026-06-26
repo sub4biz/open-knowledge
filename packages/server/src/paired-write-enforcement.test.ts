@@ -38,7 +38,11 @@ const KNOWN_PAIRED_WRITE_ORIGINS = new Set<string>([
   'undoOrigin',
 ]);
 
-const KNOWN_PAIRED_WRITE_ORIGIN_PROPS = new Set<string>(['session.origin', 'session.undoOrigin']);
+const KNOWN_PAIRED_WRITE_ORIGIN_PROPS = new Set<string>([
+  'session.origin',
+  'session.undoOrigin',
+  'templateSession.origin',
+]);
 
 interface TransactCall {
   readonly file: string;

@@ -21,9 +21,8 @@ import {
   Type,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -240,6 +239,10 @@ export function BooleanWidget({ keyName, value, onCommit }: CommonWidgetProps<bo
   );
 }
 
+const Calendar = lazy(() =>
+  import('@/components/ui/calendar').then((m) => ({ default: m.Calendar })),
+);
+
 export function DateWidget({ keyName, value, onCommit, onSubmit }: CommonWidgetProps<string>) {
   const { t } = useLingui();
   const date = parseDate(value);
@@ -337,14 +340,18 @@ export function DateWidget({ keyName, value, onCommit, onSubmit }: CommonWidgetP
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto overflow-hidden p-0" align="end">
-          <Calendar
-            mode="single"
-            selected={date}
-            month={month}
-            onMonthChange={setMonth}
-            onSelect={handleCalendarSelect}
-            captionLayout="dropdown"
-          />
+          {/* Sized to the calendar's footprint so the popover doesn't resize
+              when the lazy chunk resolves. */}
+          <Suspense fallback={<div className="h-[19rem] w-[17rem]" />}>
+            <Calendar
+              mode="single"
+              selected={date}
+              month={month}
+              onMonthChange={setMonth}
+              onSelect={handleCalendarSelect}
+              captionLayout="dropdown"
+            />
+          </Suspense>
         </PopoverContent>
       </Popover>
     </div>

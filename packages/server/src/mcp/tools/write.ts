@@ -38,6 +38,7 @@ import {
   looseObjectArray,
   nestDocResult,
   normalizeDocName,
+  okReservedPathRedirect,
   outputSchemaWithText,
   previewAttachWarningField,
   previewUrlOutputField,
@@ -48,23 +49,31 @@ import {
   textPlusStructured,
   textResult,
 } from './shared.ts';
+import { writeSkill, writeSkillFile } from './skill-target.ts';
 import {
   DocExtensionArg,
   exactlyOneTargetError,
   FrontmatterArg,
   PositionArg,
+  resolveSkillFilePath,
   resolveTemplatePath,
+  SKILL_BODY_DESCRIBE,
+  SKILL_DESCRIPTION_DESCRIBE,
+  SKILL_FILES_DESCRIBE,
+  SKILL_NAME_DESCRIBE,
+  SkillScopeArg,
   splitTargetPath,
   TEMPLATE_CONTENT_DESCRIBE,
   TEMPLATE_PATH_DESCRIBE,
 } from './verb-schemas.ts';
 
 const BASE_DESCRIPTION = [
-  'Create or replace one thing. Pass EXACTLY ONE of `document`, `folder`, `template`, or `asset` (or `documents` for a batch of docs).',
+  'Create or replace one thing. Pass EXACTLY ONE of `document`, `folder`, `template`, `skill`, or `asset` (or `documents` for a batch of docs).',
   '',
   '- `document` — Create or overwrite a doc via the CRDT layer [Requires: Hocuspocus server]. `{ path, content }`, or `{ path, template }` to instantiate from a folder template (mutually exclusive with `content`). Optional `frontmatter` (its own YAML) and `position` (`replace` default for a new doc; required for an existing one) — note supplying `frontmatter` alongside literal `content` forces `position: replace` (the only position that persists a YAML block), overriding an explicit `append`/`prepend`. Example: `{ document: { path: "meetings/standup", content: "# Standup\\n..." } }`.',
   '- `folder` — Create a NEW folder (optionally with its own properties) [Requires: Hocuspocus server]. `{ path, frontmatter? }`. To change an EXISTING folder use `edit`. Example: `{ folder: { path: "ideas" } }`.',
   '- `template` — Create a reusable starting shape for new docs in a folder. `{ path: "<folder>/<name>", content, frontmatter: { title, description?, tags? } }`.',
+  '- `skill` — Create or overwrite an agent SKILL (`.ok/skills/<name>/SKILL.md`): reusable agent guidance you author in OK and `install` into your editors. `{ name, description, body, scope? }`. `name` is the identity (lowercase-hyphen); `description` is the trigger (when to use it). Example: `{ skill: { name: "trip-log", description: "Use when logging a fishing trip.", body: "# Steps\\n..." } }`.',
   '- `asset` — Upload a binary (image/file) via the media route [Requires: Hocuspocus server]. `{ path: "<folder>/<file.ext>", content(base64) | source(local path) }`.',
   '- `documents` — Batch: `[{ path, content?|template?, frontmatter?, position?, summary? }, ...]` written in order; the response reports each.',
   '- `summary` — Optional one-line user-outcome (≤80 chars) for the timeline, for a single `document`/`folder`/`template`/`asset` write. For a `documents` batch, give each entry its own `summary` instead (a top-level `summary` is ignored on the batch path). Avoid secrets or PII — persisted to git history.',
@@ -172,7 +181,13 @@ async function writeOneDoc(
   deps: WriteDeps,
 ): Promise<WriteOneResult> {
   const normalized = normalizeDocName(spec.path);
-  if (!normalized.ok) return { docName: spec.path, ok: false, error: normalized.error };
+  if (!normalized.ok) {
+    return {
+      docName: spec.path,
+      ok: false,
+      error: okReservedPathRedirect(spec.path) ?? normalized.error,
+    };
+  }
   const docName = normalized.docName;
   const identity = deps.identityRef?.current;
 
@@ -466,6 +481,108 @@ async function handleAsset(
   });
 }
 
+async function handleSkillWrite(
+  skill: {
+    name: string;
+    scope?: 'project' | 'global';
+    description?: string;
+    body?: string;
+    files?: Array<{ path: string; content: string }>;
+  },
+  summary: string | undefined,
+  url: string | undefined,
+  deps: WriteDeps,
+  lockDir: string,
+) {
+  const identity = deps.identityRef?.current;
+  const hasSkillMd = skill.description !== undefined;
+  const files = skill.files ?? [];
+  if (!hasSkillMd && files.length === 0) {
+    return textResult(
+      'Error: provide `description` (to author SKILL.md) and/or `files` (to write references/scripts) — a skill write with neither does nothing.',
+      true,
+    );
+  }
+  if (skill.body !== undefined && !hasSkillMd) {
+    return textResult(
+      'Error: `body` updates SKILL.md, so it needs a `description` too. To write a reference, use `files: [{ path: "references/...", content }]` instead.',
+      true,
+    );
+  }
+  for (const f of files) {
+    const resolved = resolveSkillFilePath(f.path);
+    if (!resolved.ok) return textResult(`Error: ${resolved.error}`, true);
+  }
+
+  const fileResults: Array<{
+    path: string;
+    ok: boolean;
+    kind?: string;
+    created?: boolean;
+    error?: string;
+  }> = [];
+
+  let skillMdResult: Awaited<ReturnType<typeof writeSkill>> | null = null;
+  if (hasSkillMd) {
+    skillMdResult = await writeSkill(url, {
+      name: skill.name,
+      scope: skill.scope,
+      description: skill.description as string,
+      body: skill.body,
+      summary,
+      identity,
+      lockDir,
+    });
+    if (skillMdResult.isError) return skillMdResult;
+  }
+
+  for (const f of files) {
+    const r = await writeSkillFile(url, {
+      name: skill.name,
+      scope: skill.scope,
+      path: f.path,
+      content: f.content,
+      summary,
+      identity,
+    });
+    const struct = (r as { structuredContent?: { skill?: { file?: Record<string, unknown> } } })
+      .structuredContent;
+    if (r.isError) {
+      fileResults.push({ path: f.path, ok: false, error: r.content[0]?.text ?? 'write failed' });
+    } else {
+      const file = struct?.skill?.file ?? {};
+      fileResults.push({
+        path: f.path,
+        ok: true,
+        ...(typeof file.kind === 'string' ? { kind: file.kind } : {}),
+        ...(typeof file.created === 'boolean' ? { created: file.created } : {}),
+      });
+    }
+  }
+
+  const fileOk = fileResults.filter((r) => r.ok).length;
+  const anyFileFailed = fileResults.some((r) => !r.ok);
+  const baseStructured =
+    ((skillMdResult as { structuredContent?: Record<string, unknown> } | null)?.structuredContent as
+      | Record<string, unknown>
+      | undefined) ?? {};
+  const baseSkill = (baseStructured.skill as Record<string, unknown> | undefined) ?? { ok: true };
+  const structured: Record<string, unknown> = {
+    ...baseStructured,
+    skill: { ...baseSkill, ...(files.length > 0 ? { files: fileResults } : {}) },
+  };
+
+  const lines: string[] = [];
+  if (hasSkillMd && skillMdResult) lines.push(skillMdResult.content[0]?.text ?? '');
+  if (files.length > 0) {
+    lines.push(`${fileOk}/${files.length} bundle file(s) written.`);
+    for (const r of fileResults) {
+      lines.push(r.ok ? `  ${r.path} (${r.kind ?? 'file'})` : `  Failed ${r.path}: ${r.error}`);
+    }
+  }
+  return textPlusStructured(lines.filter(Boolean).join('\n'), structured, anyFileFailed);
+}
+
 async function handleBatch(
   documents: DocSpec[],
   cwd: string,
@@ -664,6 +781,33 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
           .describe(
             'Create a TEMPLATE (a reusable starting shape for new docs in a folder). Example: { template: { path: "fishing-log/trip-log", content: "# {{date}}\\n", frontmatter: { title: "Trip Log" } } }',
           ),
+        skill: z
+          .object({
+            name: z.string().describe(SKILL_NAME_DESCRIBE),
+            description: z
+              .string()
+              .optional()
+              .describe(
+                `${SKILL_DESCRIPTION_DESCRIBE} Optional when writing ONLY \`files\` into an existing skill (omit to leave SKILL.md untouched).`,
+              ),
+            body: z.string().optional().describe(SKILL_BODY_DESCRIBE),
+            files: z
+              .array(
+                z.object({
+                  path: z
+                    .string()
+                    .describe('Skill-relative path under `references/` or `scripts/`.'),
+                  content: z.string().describe('Full text of the bundle file.'),
+                }),
+              )
+              .optional()
+              .describe(SKILL_FILES_DESCRIBE),
+            scope: SkillScopeArg.optional(),
+          })
+          .optional()
+          .describe(
+            'Create or overwrite an agent SKILL bundle (`.ok/skills/<name>/`). SKILL.md is authored via `description`+`body`; `references/**` and `scripts/**` via the `files` array. Example: { skill: { name: "trip-log", description: "Use when logging a fishing trip.", body: "# Steps\\n...", files: [{ path: "references/gear.md", content: "..." }] } }',
+          ),
         asset: z
           .object({
             path: z
@@ -722,6 +866,20 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
           })
           .optional()
           .describe('Template-create result.'),
+        skill: z
+          .object({
+            ok: z.boolean(),
+            path: z.string().optional(),
+            created: z
+              .boolean()
+              .optional()
+              .describe('true if created, false if an existing skill was overwritten.'),
+            files: looseObjectArray
+              .optional()
+              .describe('Per-bundle-file results `{ path, kind, created, ok, error? }`.'),
+          })
+          .optional()
+          .describe('Skill-create result (SKILL.md and/or bundle files).'),
         asset: z
           .object({
             ok: z.boolean(),
@@ -752,6 +910,13 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
         content: string;
         frontmatter: { title: string } & Record<string, unknown>;
       };
+      skill?: {
+        name: string;
+        scope?: 'project' | 'global';
+        description?: string;
+        body?: string;
+        files?: Array<{ path: string; content: string }>;
+      };
       asset?: { path: string; content?: string; source?: string };
       documents?: DocSpec[];
       summary?: string;
@@ -774,6 +939,7 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
           'document',
           'folder',
           'template',
+          'skill',
           'asset',
           'documents',
         ]);
@@ -786,6 +952,7 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
         'document',
         'folder',
         'template',
+        'skill',
         'asset',
       ]);
       if (teaching) return textResult(`Error: ${teaching}`, true);
@@ -805,6 +972,8 @@ export function register(server: ServerInstance, deps: WriteDeps): void {
       if (args.folder !== undefined) return handleFolder(args.folder, args.summary, url, deps);
       if (args.template !== undefined)
         return handleTemplate(args.template, args.summary, url, deps);
+      if (args.skill !== undefined)
+        return handleSkillWrite(args.skill, args.summary, url, deps, lockDir);
       return handleAsset(args.asset as NonNullable<typeof args.asset>, cwd, url, deps);
     },
   );

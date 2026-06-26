@@ -6,7 +6,6 @@ import type {
   InstallUserSkillResult,
 } from '@inkeep/open-knowledge-server';
 import {
-  detectClaudeDesktopPresence,
   ensureProjectGit,
   initContent,
   installUserSkill,
@@ -227,7 +226,6 @@ interface InitCommandResult {
    * Only set when `didGitInit` is also `true` AND no `.gitignore` was already
    * present at `projectRoot` — pre-existing files are never touched. */
   rootGitignoreCreated: boolean;
-  claudeDesktopDetected: boolean;
   mcpAction: 'written' | 'overwritten' | 'skipped-missing' | 'skipped-flag' | 'failed';
   mcpPath: string;
   mcpError?: string;
@@ -618,7 +616,6 @@ export async function runInit(options: InitCommandOptions = {}): Promise<InitCom
       legacyProjectConfigs: [],
       didGitInit: gitResult.didInit,
       rootGitignoreCreated: false,
-      claudeDesktopDetected: false,
       mcpAction: 'failed',
       mcpPath: fallbackPath,
       mcpError: `Content scaffolding failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -726,8 +723,6 @@ export async function runInit(options: InitCommandOptions = {}): Promise<InitCom
   const installSkill = options.installUserSkill ?? installUserSkill;
   const skillInstall = await installSkill({ home: options.home });
 
-  const claudeDesktopDetected = detectClaudeDesktopPresence({ home: options.home });
-
   const defaultAction: EditorMcpResult['action'] = skipMcp ? 'skipped-flag' : 'skipped-missing';
   const primary = editorResults.find((r) => r.editorId === 'claude') ??
     editorResults[0] ?? {
@@ -759,7 +754,6 @@ export async function runInit(options: InitCommandOptions = {}): Promise<InitCom
     skillInstall,
     didGitInit: gitResult.didInit,
     rootGitignoreCreated,
-    claudeDesktopDetected,
     mcpAction: primary.action,
     mcpPath: primary.configPath,
     mcpError: 'error' in primary ? (primary as EditorMcpResult).error : undefined,
@@ -1034,13 +1028,6 @@ export function formatInitResult(result: InitCommandResult, cwd: string): string
         );
         break;
     }
-  }
-
-  if (result.claudeDesktopDetected) {
-    lines.push('');
-    lines.push(
-      `Claude Desktop App detected. To enable in Claude Chat & Cowork, run: ${accent('ok install-skill')}`,
-    );
   }
 
   if (result.preview) {

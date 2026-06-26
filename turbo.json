@@ -59,6 +59,32 @@
         "../../biome-plugins/**"
       ]
     },
+    "test:integration:shard1": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "inputs": [
+        "src/editor/**/*.ts",
+        "src/editor/**/*.tsx",
+        "tests/integration/**/*.ts",
+        "tests/meta/**/*.ts",
+        "tests/lint-plugins/**/*.ts",
+        "../server/src/**/*.ts",
+        "../core/src/**/*.ts"
+      ]
+    },
+    "test:integration:shard2": {
+      "dependsOn": ["^build"],
+      "cache": true,
+      "inputs": [
+        "src/editor/**/*.ts",
+        "src/editor/**/*.tsx",
+        "tests/integration/**/*.ts",
+        "tests/meta/**/*.ts",
+        "tests/lint-plugins/**/*.ts",
+        "../server/src/**/*.ts",
+        "../core/src/**/*.ts"
+      ]
+    },
     "test:conversion": {
       "dependsOn": ["^build"],
       "cache": true,

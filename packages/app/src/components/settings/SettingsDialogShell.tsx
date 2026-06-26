@@ -70,6 +70,7 @@ export function SettingsDialogShell({ open, onOpenChange }: SettingsDialogShellP
         { id: 'search', label: t`Search` },
         ...(isOkDesktopHost ? [{ id: 'terminal', label: t`Terminal` }] : []),
         { id: 'project-templates', label: t`Templates` },
+        { id: 'skills', label: t`Skills` },
         { id: 'okignore', label: t`Ignore patterns` },
         { id: 'sharing', label: t`Config sharing` },
       ],

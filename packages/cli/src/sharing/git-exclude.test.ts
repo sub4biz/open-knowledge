@@ -47,7 +47,7 @@ describe('getOkArtifactPaths', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('returns the canonical ten-path artifact set when no config.yml exists', () => {
+  it('returns the canonical eleven-path artifact set when no config.yml exists', () => {
     const paths = getOkArtifactPaths(dir);
     expect(paths).toContain(`${OK_DIR}/`);
     expect(paths).toContain('.okignore');
@@ -57,9 +57,10 @@ describe('getOkArtifactPaths', () => {
     expect(paths).toContain('opencode.json');
     expect(paths).toContain('.claude/skills/open-knowledge/');
     expect(paths).toContain('.cursor/skills/open-knowledge/');
-    expect(paths).toContain('.agents/skills/open-knowledge/');
+    expect(paths).toContain('.codex/skills/open-knowledge/');
+    expect(paths).toContain('.opencode/skills/open-knowledge/');
     expect(paths).toContain('.claude/launch.json');
-    expect(paths).toHaveLength(10);
+    expect(paths).toHaveLength(11);
   });
 
   it('preserves a stable order so `ok config-sharing status` and unit-test snapshots are deterministic', () => {
@@ -77,7 +78,46 @@ describe('getOkArtifactPaths', () => {
     expect(paths).not.toContain('docs/.ok/');
     expect(paths).not.toContain('docs/.okignore');
     expect(paths.some((p) => p.includes('**'))).toBe(false);
-    expect(paths).toHaveLength(10);
+    expect(paths).toHaveLength(11);
+  });
+
+  it('excludes each installed skill projection per the OF3 marker (PRD-6934 C9 fix)', () => {
+    mkdirSync(join(dir, OK_DIR, 'local'), { recursive: true });
+    writeFileSync(
+      join(dir, OK_DIR, 'local', 'installed-skills.json'),
+      JSON.stringify({
+        schema: 1,
+        skills: {
+          'trip-log': {
+            hosts: ['claude', 'cursor'],
+            contentHash: 'abc',
+            scope: 'project',
+            scripts: false,
+            installedAt: '2026-06-05T00:00:00.000Z',
+          },
+          'fishing-pack': {
+            hosts: ['codex'],
+            contentHash: 'def',
+            scope: 'project',
+            scripts: true,
+            installedAt: '2026-06-05T00:00:00.000Z',
+          },
+        },
+      }),
+      'utf-8',
+    );
+    const paths = getOkArtifactPaths(dir);
+    expect(paths).toContain('.claude/skills/trip-log/');
+    expect(paths).toContain('.cursor/skills/trip-log/');
+    expect(paths).toContain('.codex/skills/fishing-pack/'); // codex → .codex
+    expect(paths).toContain('.claude/skills/open-knowledge/');
+  });
+
+  it('falls back to the bundle-only set when the marker is absent or corrupt', () => {
+    mkdirSync(join(dir, OK_DIR, 'local'), { recursive: true });
+    writeFileSync(join(dir, OK_DIR, 'local', 'installed-skills.json'), '{ corrupt', 'utf-8');
+    const paths = getOkArtifactPaths(dir);
+    expect(paths).toHaveLength(11); // corrupt marker → fail-soft, no per-skill paths
   });
 });
 

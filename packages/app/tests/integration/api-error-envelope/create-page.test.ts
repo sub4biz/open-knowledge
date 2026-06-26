@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { CreatePageSuccessSchema, ProblemDetailsSchema } from '@inkeep/open-knowledge-core';
 import { HARNESS_BOOT_TIMEOUT_MS } from '../harness-boot-timeout';
 import { createTestServer, type TestServer } from '../test-harness';
@@ -73,6 +75,31 @@ describe('create-page envelope (RFC 9457)', () => {
     if (parsed.success) {
       expect(parsed.data.type).toBe('urn:ok:error:reserved-doc-name');
     }
+  });
+
+  test('rejects a .ok/skills/** target and writes nothing', async () => {
+    const relPath = 'skills/phantom-from-create-page/SKILL.md';
+    const res = await postCreate({ path: `.ok/${relPath}` });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    const parsed = ProblemDetailsSchema.safeParse(body);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.type).toBe('urn:ok:error:reserved-doc-name');
+    }
+    expect(existsSync(join(server.contentDir, '.ok', relPath))).toBe(false);
+  });
+
+  test('rejects a bare .ok/-rooted target and writes nothing', async () => {
+    const res = await postCreate({ path: '.ok/local/sneaky.md' });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    const parsed = ProblemDetailsSchema.safeParse(body);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.type).toBe('urn:ok:error:reserved-doc-name');
+    }
+    expect(existsSync(join(server.contentDir, '.ok', 'local', 'sneaky.md'))).toBe(false);
   });
 
   test('path traversal emits urn:ok:error:path-escape', async () => {

@@ -1,3 +1,4 @@
+import { projectSkillContentDocName } from '@inkeep/open-knowledge-core';
 import { z } from 'zod';
 import { resolvePreviewUrlForTool } from './preview-url.ts';
 import type { ConfigOrResolver, ServerInstance, ServerUrlOrResolver } from './shared.ts';
@@ -42,9 +43,10 @@ const DESCRIPTION = [
   'Returns timeline entries from the shadow repo, sorted by timestamp descending.',
   'Each entry carries a `version` (40-char commit SHA) you pass straight to `restore_version({ document, version })` — same field name on both sides.',
   '',
-  '**Parameters (pass EXACTLY ONE of `document` / `folder`):**',
+  '**Parameters (pass EXACTLY ONE of `document` / `folder` / `skill`):**',
   '- `document` — Document name to query history for, typically without extension. A trailing `.md` or `.mdx` is stripped automatically.',
   '- `folder` — Folder path for the FOLDER timeline: attributed activity over the folder\'s `.ok/` artifacts (templates + frontmatter) — who created / edited / renamed / moved / deleted them, when. `""` = project root.',
+  "- `skill` — Skill NAME to query version history for (the attributed `.ok/skills/<name>/` versions). PROJECT-scope skills only — global skills are unversioned. Pass an entry's `version` to `restore_version({ skill, version })`.",
   '- `branch` (optional) — Branch name (default: current branch)',
   '- `limit` (optional) — Maximum entries to return (default 50, max 200)',
   '- `offset` (optional) — Number of entries to skip for pagination (default 0)',
@@ -74,6 +76,12 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
           .optional()
           .describe(
             'Folder path to query the FOLDER timeline for — attributed activity over the folder\'s `.ok/` artifacts (templates + frontmatter): created / edited / renamed / moved / deleted, by whom, when. Mutually exclusive with `document`. Use `""` for the project root.',
+          ),
+        skill: z
+          .string()
+          .optional()
+          .describe(
+            'Skill name to query version history for (`.ok/skills/<name>/`). Mutually exclusive with `document` / `folder`.',
           ),
         branch: z.string().optional().describe('Branch name (default: current branch)'),
         limit: z
@@ -120,6 +128,7 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
     async (args: {
       document?: string;
       folder?: string;
+      skill?: string;
       branch?: string;
       limit?: number;
       offset?: number;
@@ -138,15 +147,23 @@ export function register(server: ServerInstance, deps: GetHistoryDeps): void {
       const { cwd, url } = context;
       if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
 
-      const isFolder = args.folder !== undefined;
-      if (isFolder === (args.document !== undefined)) {
-        return textResult('Error: pass EXACTLY ONE of `document` or `folder`.', true);
+      const targetCount =
+        (args.document !== undefined ? 1 : 0) +
+        (args.folder !== undefined ? 1 : 0) +
+        (args.skill !== undefined ? 1 : 0);
+      if (targetCount !== 1) {
+        return textResult('Error: pass EXACTLY ONE of `document`, `folder`, or `skill`.', true);
       }
 
+      const isFolder = args.folder !== undefined;
       const params = new URLSearchParams();
       let previewDocName: string | null = null;
       if (isFolder) {
         params.set('folder', args.folder ?? '');
+      } else if (args.skill !== undefined) {
+        const docName = projectSkillContentDocName(args.skill);
+        params.set('docName', docName);
+        previewDocName = docName;
       } else {
         const normalized = normalizeDocName(args.document as string);
         if (!normalized.ok) return textResult(normalized.error, true);

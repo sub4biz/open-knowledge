@@ -26,7 +26,7 @@ const EXCLUDED_FILES: Record<string, string> = {
     '# Old Secrets\n\nLegacy notes on credential rotation: re-issue and refresh expired session secrets and login tokens.\n',
 };
 const HIDDEN_FILES: Record<string, string> = {
-  '.cursor/skills/auth-helper.md':
+  '.github/auth-helper.md':
     '# Auth Helper\n\nCredential rotation: re-issue and refresh expired session secrets and login tokens.\n',
 };
 const SERVED_PAGE_COUNT = Object.keys(SERVED_FILES).length;
@@ -172,7 +172,7 @@ describe('createServer boot — flag-ON semantic search (factory glue)', () => {
     expect(rotation?.signals.vector ?? 0).toBeGreaterThan(0.3);
 
     expect(result?.results?.find((r) => r.path === 'archive/old-secrets')).toBeUndefined();
-    const hiddenHit = result?.results?.find((r) => r.path.startsWith('.cursor/'));
+    const hiddenHit = result?.results?.find((r) => r.path.startsWith('.github/'));
     expect(hiddenHit, 'hidden dot-path is searchable').toBeDefined();
     expect(hiddenHit?.signals.vector, 'but a hidden dot-path is never embedded').toBeUndefined();
 
@@ -208,7 +208,7 @@ describe('createServer boot — flag-ON semantic search (factory glue)', () => {
     });
     for (const r of results ?? []) expect('vector' in r.signals).toBe(false);
     expect(results?.find((r) => r.path === 'guides/credential-rotation')).toBeUndefined();
-    expect(results?.find((r) => r.path.startsWith('.cursor/'))).toBeDefined();
+    expect(results?.find((r) => r.path.startsWith('.github/'))).toBeDefined();
     expect(semantic).toBeUndefined();
   });
 

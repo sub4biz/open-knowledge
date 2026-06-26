@@ -24,6 +24,7 @@ import {
   httpPut,
   nestDocResult,
   normalizeDocName,
+  okReservedPathRedirect,
   outputSchemaWithText,
   previewAttachWarningField,
   previewUrlOutputField,
@@ -35,19 +36,33 @@ import {
   textResult,
 } from './shared.ts';
 import {
+  fetchSkill,
+  readSkillFile,
+  type SkillScope,
+  writeSkill,
+  writeSkillFile,
+} from './skill-target.ts';
+import {
   exactlyOneTargetError,
   FrontmatterArg,
+  resolveSkillFilePath,
+  resolveSkillName,
   resolveTemplatePath,
+  SKILL_DESCRIPTION_DESCRIBE,
+  SKILL_FILE_DESCRIBE,
+  SKILL_NAME_DESCRIBE,
+  SkillScopeArg,
   TEMPLATE_PATH_DESCRIBE,
 } from './verb-schemas.ts';
 
 const BASE_DESCRIPTION = [
-  'Edit one thing in place. Pass EXACTLY ONE of `document`, `folder`, or `template`. Within each: a body edit (`find` + `replace`) OR a `frontmatter` merge-patch — not both in one call.',
+  'Edit one thing in place. Pass EXACTLY ONE of `document`, `folder`, `template`, or `skill`. Within each: a body edit (`find` + `replace`) OR a metadata patch — not both in one call.',
   '',
   '- `document` — Edit a doc [Requires: Hocuspocus server]. Body: `{ path, find, replace, occurrence? }` (occurrence = which match, 1 = first). Metadata: `{ path, frontmatter }` (merge-patch; `null` deletes a key). Body find/replace is body-only; frontmatter-intersecting finds are rejected.',
   '- `folder` — Edit a folder (folders have no body): `{ path, frontmatter }` (merge-patch).',
   '- `template` — Edit a template: `{ path: "<folder>/<name>", ... }`; body `find`/`replace`/`occurrence?` or metadata `frontmatter`.',
-  '- `summary` — Optional one-line user-outcome (≤80 chars) recorded in the timeline for any `document`, `folder`, or `template` edit. Avoid secrets or PII — persisted to git history.',
+  "- `skill` — Edit a SKILL: `{ name, ... }`; body `find`/`replace`/`occurrence?` OR a `description` change (a skill's only metadata leaf). Run `install` afterward to update your editors.",
+  '- `summary` — Optional one-line user-outcome (≤80 chars) recorded in the timeline for any `document`, `folder`, `template`, or `skill` edit. Avoid secrets or PII — persisted to git history.',
   '',
   'Responses may include `structuredContent.document.warnings` — advisory entries discriminated by `kind`: `content-divergence` / `disk-edit-reconciled` (write-integrity — re-read the doc with `exec("cat <path>")`) and `mermaid-parse-error` (the edit landed but that fence will not render — fix it and re-edit).',
 ].join('\n');
@@ -124,7 +139,7 @@ async function handleDocBody(
   autoOpen: boolean,
 ) {
   const normalized = normalizeDocName(doc.path);
-  if (!normalized.ok) return textResult(normalized.error, true);
+  if (!normalized.ok) return textResult(okReservedPathRedirect(doc.path) ?? normalized.error, true);
   const identity = deps.identityRef?.current;
 
   let offset: number | undefined;
@@ -189,7 +204,7 @@ async function handleDocFrontmatter(
   autoOpen: boolean,
 ) {
   const normalized = normalizeDocName(doc.path);
-  if (!normalized.ok) return textResult(normalized.error, true);
+  if (!normalized.ok) return textResult(okReservedPathRedirect(doc.path) ?? normalized.error, true);
   const identity = deps.identityRef?.current;
   const result = await httpPost(url, '/api/frontmatter-patch', {
     docName: normalized.docName,
@@ -387,6 +402,154 @@ async function handleTemplate(
   });
 }
 
+async function handleSkillFileEdit(
+  skill: {
+    name: string;
+    scope?: SkillScope;
+    file?: string;
+    find?: string;
+    replace?: string;
+    occurrence?: number;
+    description?: string;
+  },
+  url: string | undefined,
+  summary?: string,
+  identity?: AgentIdentity,
+) {
+  const resolved = resolveSkillName(skill.name);
+  if (!resolved.ok) return textResult(`Error: ${resolved.error}`, true);
+  const pathCheck = resolveSkillFilePath(skill.file as string);
+  if (!pathCheck.ok) return textResult(`Error: ${pathCheck.error}`, true);
+  if (skill.description !== undefined) {
+    return textResult(
+      'Error: `description` edits SKILL.md, not a bundle file. Drop `file`, or edit the file body with find+replace.',
+      true,
+    );
+  }
+  if (skill.find === undefined || skill.replace === undefined) {
+    return textResult(
+      'Error: a bundle-file edit needs `find` + `replace`: { skill: { name, file, find, replace } }.',
+      true,
+    );
+  }
+  if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
+
+  const scope = skill.scope ?? 'project';
+  const existing = await readSkillFile(url, scope, skill.name, pathCheck.path);
+  if (!existing.ok) {
+    return textResult(
+      `Error: skill file "${pathCheck.path}" not found in skill "${skill.name}" (${scope} scope). Create it with \`write({ skill: { name, files: [...] } })\` first.`,
+      true,
+    );
+  }
+  const occurrence = skill.occurrence ?? 1;
+  const idx = nthOccurrenceOffset(existing.text, skill.find, occurrence);
+  if (idx === -1) {
+    return textResult(
+      `Error: \`find\` occurs fewer than ${occurrence} time(s) in skill file "${pathCheck.path}".`,
+      true,
+    );
+  }
+  const newText =
+    existing.text.slice(0, idx) + skill.replace + existing.text.slice(idx + skill.find.length);
+  return writeSkillFile(url, {
+    name: skill.name,
+    scope,
+    path: pathCheck.path,
+    content: newText,
+    summary,
+    identity,
+  });
+}
+
+async function handleSkill(
+  skill: {
+    name: string;
+    scope?: SkillScope;
+    file?: string;
+    find?: string;
+    replace?: string;
+    occurrence?: number;
+    description?: string;
+  },
+  summary: string | undefined,
+  url: string | undefined,
+  deps: EditDeps,
+  lockDir: string,
+) {
+  const resolved = resolveSkillName(skill.name);
+  if (!resolved.ok) return textResult(`Error: ${resolved.error}`, true);
+
+  if (skill.file !== undefined) {
+    return handleSkillFileEdit(skill, url, summary, deps.identityRef?.current);
+  }
+
+  const hasBody = skill.find !== undefined || skill.replace !== undefined;
+  const hasDesc = skill.description !== undefined;
+  if (skill.find !== undefined && skill.replace === undefined) {
+    return textResult(
+      'Error: `find` needs a `replace`. Body edit: { skill: { name, find, replace } }.',
+      true,
+    );
+  }
+  if (skill.replace !== undefined && skill.find === undefined) {
+    return textResult(
+      'Error: `replace` needs a `find`. Body edit: { skill: { name, find, replace } }.',
+      true,
+    );
+  }
+  if (hasBody && hasDesc) {
+    return textResult(
+      'Error: Pick ONE: edit the body (find+replace) OR the `description`, not both in one call.',
+      true,
+    );
+  }
+  if (!hasBody && !hasDesc) {
+    return textResult(
+      'Error: Provide either a body edit (find+replace) or a `description` for { skill }.',
+      true,
+    );
+  }
+  if (!url) return textResult(HOCUSPOCUS_NOT_RUNNING_ERROR, true);
+
+  const scope = skill.scope ?? 'project';
+  const existing = await fetchSkill(url, scope, skill.name);
+  if (!existing.ok) {
+    return textResult(
+      `Error: skill "${skill.name}" not found in ${scope} scope. Create it with \`write({ skill })\` first.`,
+      true,
+    );
+  }
+
+  let newBody = existing.body;
+  let newDescription = existing.description;
+  if (hasDesc) {
+    newDescription = skill.description as string;
+  } else {
+    const occurrence = skill.occurrence ?? 1;
+    const idx = nthOccurrenceOffset(existing.body, skill.find as string, occurrence);
+    if (idx === -1) {
+      return textResult(
+        `Error: \`find\` occurs fewer than ${occurrence} time(s) in skill "${skill.name}".`,
+        true,
+      );
+    }
+    newBody =
+      existing.body.slice(0, idx) +
+      (skill.replace as string) +
+      existing.body.slice(idx + (skill.find as string).length);
+  }
+  return writeSkill(url, {
+    scope,
+    name: skill.name,
+    description: newDescription,
+    body: newBody,
+    summary,
+    identity: deps.identityRef?.current,
+    lockDir,
+  });
+}
+
 async function handleFolder(
   folder: { path: string; frontmatter: FrontmatterPatch },
   summary: string | undefined,
@@ -467,6 +630,18 @@ export function register(server: ServerInstance, deps: EditDeps): void {
           })
           .optional()
           .describe('Edit a TEMPLATE: body (find+replace) or frontmatter (patch).'),
+        skill: z
+          .object({
+            name: z.string().describe(SKILL_NAME_DESCRIBE),
+            file: z.string().optional().describe(SKILL_FILE_DESCRIBE),
+            ...bodyFields,
+            description: z.string().optional().describe(SKILL_DESCRIPTION_DESCRIBE),
+            scope: SkillScopeArg.optional(),
+          })
+          .optional()
+          .describe(
+            'Edit a SKILL: SKILL.md body (find+replace) OR its `description`; or pass `file` to find/replace inside ONE `references/**`+`scripts/**` bundle file.',
+          ),
         summary: summaryArgSchema,
         cwd: z.string().optional().describe(ROUTED_CWD_DESCRIPTION),
       },
@@ -489,6 +664,25 @@ export function register(server: ServerInstance, deps: EditDeps): void {
           .object({ ok: z.boolean(), path: z.string() })
           .optional()
           .describe('Template edit result.'),
+        skill: z
+          .object({
+            ok: z.boolean(),
+            path: z.string().optional(),
+            created: z
+              .boolean()
+              .optional()
+              .describe('Always false for an edit (the skill already existed).'),
+            file: z
+              .object({
+                path: z.string(),
+                kind: z.string().optional(),
+                created: z.boolean().optional(),
+              })
+              .optional()
+              .describe('Present for a bundle-file edit: the file edited.'),
+          })
+          .optional()
+          .describe('Skill edit result (SKILL.md or a bundle file).'),
         previewUrl: previewUrlOutputField.optional(),
         previewUrlSource: previewUrlSourceField,
         warning: previewAttachWarningField,
@@ -498,6 +692,9 @@ export function register(server: ServerInstance, deps: EditDeps): void {
       document?: { path: string } & BodyEdit & { frontmatter?: FrontmatterPatch };
       folder?: { path: string; frontmatter: FrontmatterPatch };
       template?: { path: string } & BodyEdit & { frontmatter?: FrontmatterPatch };
+      skill?: { name: string; scope?: SkillScope; file?: string } & BodyEdit & {
+          description?: string;
+        };
       summary?: string;
       cwd?: string;
     }) => {
@@ -516,6 +713,7 @@ export function register(server: ServerInstance, deps: EditDeps): void {
         'document',
         'folder',
         'template',
+        'skill',
       ]);
       if (teaching) return textResult(`Error: ${teaching}`, true);
 
@@ -536,6 +734,8 @@ export function register(server: ServerInstance, deps: EditDeps): void {
         return handleDocBody(args.document, args, cwd, contentDir, url, deps, autoOpen);
       }
       if (args.folder !== undefined) return handleFolder(args.folder, args.summary, url, deps);
+      if (args.skill !== undefined)
+        return handleSkill(args.skill, args.summary, url, deps, resolveLockDir(cwd));
       return handleTemplate(
         args.template as NonNullable<typeof args.template>,
         args.summary,

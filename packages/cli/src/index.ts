@@ -11,6 +11,7 @@ export {
   EDITOR_TARGETS,
   type EditorId,
   type EditorMcpTarget,
+  HOSTS_WITH_USER_SKILL_DIR,
   isEntryUpToDate,
   isOwnManagedEntry,
   type McpInstallOptions,

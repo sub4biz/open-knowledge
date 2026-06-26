@@ -91,7 +91,7 @@ export async function applySeed(plan: ScaffoldPlan, opts: SeedOptions = {}): Pro
     }
   }
 
-  const packSkillsInstalled = installPackSkill(projectDir, pack.id);
+  const packSkillsInstalled = await installPackSkill(projectDir, pack.id);
 
   return {
     applied,

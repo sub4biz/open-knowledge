@@ -15,6 +15,7 @@ import {
   CONFIG_DOC_NAMES,
   type ConfigValidationError,
   type DerivedViewChannel,
+  isManagedArtifactDocName,
   SYSTEM_DOC_NAME,
 } from '@inkeep/open-knowledge-core';
 import { getLogger } from './logger.ts';
@@ -39,6 +40,20 @@ const CONFIG_DOC_NAME_SET: ReadonlySet<string> = new Set(CONFIG_DOC_NAMES);
 
 export function isConfigDoc(documentName: string): boolean {
   return CONFIG_DOC_NAME_SET.has(documentName);
+}
+
+export function isManagedArtifactDoc(documentName: string): boolean {
+  return isManagedArtifactDocName(documentName);
+}
+
+export function isReservedForUserTree(documentName: string): boolean {
+  return (
+    isSystemDoc(documentName) || isConfigDoc(documentName) || isManagedArtifactDoc(documentName)
+  );
+}
+
+export function isLinkIndexExcludedDoc(documentName: string): boolean {
+  return isSystemDoc(documentName) || isConfigDoc(documentName);
 }
 
 export class CC1Broadcaster {

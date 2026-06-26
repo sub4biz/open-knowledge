@@ -16,7 +16,7 @@ interface Props {
   existingNames: ReadonlySet<string>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: () => void;
+  onCreated: (createdName: string) => void;
 }
 
 const EMPTY_INITIAL = {
@@ -60,15 +60,15 @@ function Body({
   folderPath: string;
   existingNames: ReadonlySet<string>;
   onOpenChange: (open: boolean) => void;
-  onCreated: () => void;
+  onCreated: (createdName: string) => void;
 }) {
   const form = useTemplateForm({
     mode: 'create',
     folderPath,
     initial: EMPTY_INITIAL,
     existingNames,
-    onCommitted: () => {
-      onCreated();
+    onCommitted: (createdName) => {
+      onCreated(createdName);
       onOpenChange(false);
     },
   });

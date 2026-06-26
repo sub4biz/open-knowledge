@@ -1,13 +1,18 @@
+import { parseManagedArtifactName, type SkillScope } from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { ListPlus, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button.tsx';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { EditorModeValue } from '@/editor/use-editor-mode.ts';
 import { formatShortcut, formatShortcutLabel } from '@/lib/keyboard-shortcuts';
+import { parseProjectSkillContentDocName } from '@/lib/managed-artifact-doc-name';
 import { EditorBreadcrumb } from './EditorBreadcrumb';
-import { Markdown } from './icons/markdown';
-import { Textbox } from './icons/textbox';
+import { EditorModeToggle } from './EditorModeToggle';
+
+const SkillEditorActions = lazy(async () => ({
+  default: (await import('./SkillEditorActions')).SkillEditorActions,
+}));
 
 interface EditorToolbarProps {
   activeDocName: string | null;
@@ -33,6 +38,14 @@ export function EditorToolbar({
   const { t } = useLingui();
   const panelShortcut = formatShortcut('toggle-document-panel');
   const panelShortcutLabel = formatShortcutLabel('toggle-document-panel');
+  const managed = activeDocName ? parseManagedArtifactName(activeDocName) : null;
+  const projectSkillName = activeDocName ? parseProjectSkillContentDocName(activeDocName) : null;
+  const activeSkill: { scope: SkillScope; name: string } | null =
+    managed?.kind === 'skill'
+      ? { scope: managed.scope, name: managed.name }
+      : projectSkillName
+        ? { scope: 'project', name: projectSkillName }
+        : null;
   return (
     <div data-testid="editor-toolbar" className="pointer-events-none absolute inset-x-0 top-0 z-10">
       {/*
@@ -52,62 +65,17 @@ export function EditorToolbar({
           Future siblings dropped into this cell must follow the same rule.
         */}
           <div className="pointer-events-auto flex min-w-0 items-center">
-            <EditorBreadcrumb docName={activeDocName} />
+            {/* Skills show their identity (name/scope) in the panel, so the
+                `.ok/skills/<name>` path breadcrumb is noise — suppress it for
+                both scopes to match the global-skill editor. */}
+            {activeSkill ? null : <EditorBreadcrumb docName={activeDocName} />}
           </div>
           <div className="pointer-events-auto flex justify-center">
-            <ToggleGroup
-              type="single"
-              value={isSourceMode ? 'source' : 'wysiwyg'}
-              onValueChange={(v: EditorModeValue | '') => {
-                if (v) onModeChange(v);
-              }}
-              aria-label={t`Editor mode`}
-              variant="segmented"
-              size="sm"
-              spacing={1}
-              className="shrink-0 data-[size=sm]:rounded-[10px] bg-muted p-0.5"
-            >
-              <Tooltip>
-                <ToggleGroupItem
-                  value="wysiwyg"
-                  aria-label={t`Visual editor`}
-                  className="size-7 px-0 dark:data-[state=on]:bg-foreground/15"
-                  asChild
-                >
-                  <TooltipTrigger>
-                    <Textbox className="size-4" />
-                  </TooltipTrigger>
-                </ToggleGroupItem>
-                <TooltipContent side="bottom">
-                  <Trans>Visual</Trans>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* Disabled <button> doesn't fire pointer events; wrap so the tooltip still triggers. */}
-                  <div>
-                    <ToggleGroupItem
-                      value="source"
-                      aria-label={t`Markdown source`}
-                      disabled={sourceDisabled}
-                      className="size-7 px-0 dark:data-[state=on]:bg-foreground/15"
-                    >
-                      <Markdown className="size-4" />
-                    </ToggleGroupItem>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {sourceDisabled ? (
-                    <Trans>
-                      Source mode requires a live connection — your edits are saved and will appear
-                      when you reconnect.
-                    </Trans>
-                  ) : (
-                    <Trans>Markdown</Trans>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </ToggleGroup>
+            <EditorModeToggle
+              isSourceMode={isSourceMode}
+              onModeChange={onModeChange}
+              sourceDisabled={sourceDisabled}
+            />
           </div>
           {/*
             Third column kept empty so the mode toggle stays centered in the
@@ -123,6 +91,11 @@ export function EditorToolbar({
         re-enables clicks under the toolbar's `pointer-events-none` root.
       */}
       <div className="pointer-events-auto absolute top-0 right-0 flex items-center justify-end gap-1 py-2 pr-2">
+        {activeSkill ? (
+          <Suspense fallback={null}>
+            <SkillEditorActions scope={activeSkill.scope} name={activeSkill.name} />
+          </Suspense>
+        ) : null}
         {showAddPropertyButton && (
           <Tooltip>
             <Button

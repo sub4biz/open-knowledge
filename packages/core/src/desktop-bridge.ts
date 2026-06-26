@@ -247,6 +247,9 @@ interface OkScaffoldPlan {
   created: OkScaffoldFileEntry[];
   skipped: OkScaffoldSkipEntry[];
   warnings: string[];
+  /** The pack's project-local skill, when it ships one. `pending` = the skill
+   *  source is absent from `.ok/skills/` and apply would (re)author it. */
+  packSkill?: { name: string; pending: boolean };
 }
 interface OkScaffoldApplyError {
   path: string;

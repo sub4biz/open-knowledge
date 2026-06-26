@@ -34,6 +34,7 @@ const REQUIRED_HANDLERS = [
   'handleDuplicatePath',
   'handleTrashCleanup',
   'handleUploadAsset',
+  'handleSkillUpdate',
 ];
 
 const EXEMPT_HANDLERS = new Set([
@@ -57,6 +58,14 @@ const EXEMPT_HANDLERS = new Set([
   'handleFolderConfig',
   'handleTemplate',
   'handleTemplatesList',
+  'handleSkill',
+  'handleSkillFile',
+  'handleSkillsList',
+  'handleSkillInstall',
+  'handleSkillUninstall',
+  'handleSkillTargets',
+  'handleSkillsManagement',
+  'handleSkillRestore',
   'handleSuggestLinks',
   'handlePageHeadings',
   'handleHistory',
@@ -165,10 +174,10 @@ describe('attribution sweep coverage (FR-5, D42)', () => {
       const body = extractHandlerBody(handler);
       if (body === null) continue;
       if (!body.includes('errorResponse(')) continue; // pre-migration; skip
-      const identityIdx = Math.max(
-        body.indexOf('extractAgentIdentity('),
-        body.indexOf('extractActorIdentity('),
-      );
+      const agentIdx = body.indexOf('extractAgentIdentity(');
+      const actorIdx = body.indexOf('extractActorIdentity(');
+      const presentIdxs = [agentIdx, actorIdx].filter((i) => i !== -1);
+      const identityIdx = presentIdxs.length === 0 ? -1 : Math.min(...presentIdxs);
       if (identityIdx === -1) continue; // already failed by the prior test
 
       const firstErrorIdx = body.indexOf('errorResponse(');

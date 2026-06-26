@@ -261,6 +261,18 @@ export async function resolveProjectServerContext(
   }
 }
 
+export function okReservedPathRedirect(path: string): string | null {
+  const p = path.replace(/^\/+/, '');
+  if (p !== '.ok' && !p.startsWith('.ok/')) return null;
+  if (p.startsWith('.ok/skills/')) {
+    return 'Skills are authored with the `skill` target, not a raw document path: `write({ skill: { name, description, body?, scope? } })` writes `.ok/skills/<name>/SKILL.md`. To author or improve a skill, use the `open-knowledge-write-skill` skill.';
+  }
+  if (p.startsWith('.ok/templates/')) {
+    return 'Templates are authored with the `template` target (`write({ template: { … } })`), not a raw document path.';
+  }
+  return 'Paths under `.ok/` are not addressable as documents. Edit folder config/frontmatter via the `folder` target, skills via the `skill` target, and templates via the `template` target.';
+}
+
 export function normalizeDocName(
   raw: string,
 ): { ok: true; docName: string } | { ok: false; error: string } {
@@ -339,15 +351,17 @@ export async function httpGet(
     if (res.ok) {
       return {
         ok: false,
+        httpStatus: res.status,
         error: `Server returned 2xx response with non-JSON body: ${detail}`,
       };
     }
     return {
       ok: false,
+      httpStatus: res.status,
       error: `Server returned HTTP ${res.status} with non-JSON body: ${detail}`,
     };
   }
-  return normalizeResponse(res, body);
+  return { ...normalizeResponse(res, body), httpStatus: res.status };
 }
 
 async function httpSend(

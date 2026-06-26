@@ -41,6 +41,7 @@ import {
 } from '@inkeep/open-knowledge-core';
 import {
   assertGitAvailable,
+  BUNDLE_SKILL_NAME,
   classifyFsPath,
   createEphemeralProjectDir,
   ensureProjectGit,
@@ -58,6 +59,7 @@ import {
   recordSkillInstallEvent,
   resolveBundledSkillDir,
   resolveLockDir,
+  USER_GLOBAL_BUNDLE_IDS,
   withSpan,
   writeTargetVersion,
 } from '@inkeep/open-knowledge-server';
@@ -2749,12 +2751,17 @@ function bootPrimaryInstance(): void {
         forceEnv: process.env.OK_M6B_FORCE ?? null,
         reclaimDisableEnv: process.env.OK_RECLAIM_DISABLE ?? null,
         deps: {
-          resolveBundledSkillDir: () =>
-            resolveBundledSkillDir('discovery', { checkDesktop: false }),
+          userGlobalBundles: USER_GLOBAL_BUNDLE_IDS.map((id) => ({
+            id,
+            name: BUNDLE_SKILL_NAME[id],
+          })),
+          resolveBundledSkillDir: (bundle) =>
+            resolveBundledSkillDir(bundle, { checkDesktop: false }),
           readServerPackageVersion,
           writeTargetVersion: (home, target, version, surface) =>
             writeTargetVersion(home, target, version, surface),
-          recordSkillInstallEvent: (event) => recordSkillInstallEvent(event),
+          recordSkillInstallEvent: (event) =>
+            recordSkillInstallEvent(event as Parameters<typeof recordSkillInstallEvent>[0]),
         },
       }).catch((err) => {
         console.warn('[main] user-skill reclaim failed', {

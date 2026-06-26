@@ -16,6 +16,7 @@ export interface ScaffoldPlan {
   created: FileEntry[];
   skipped: SkipEntry[];
   warnings: string[];
+  packSkill?: { name: string; pending: boolean };
 }
 
 export interface ApplyResult {

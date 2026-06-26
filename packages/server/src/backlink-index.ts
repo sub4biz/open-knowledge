@@ -6,12 +6,18 @@ import {
   classifyWikiLinkTarget,
   getWikiLinkText,
   isOrphanMode,
+  MANAGED_ARTIFACT_PREFIX_SKILL,
+  managedArtifactDocNameFromContentTarget,
   ORPHAN_MODES,
   type OrphanMode,
+  parseGlobalSkillBundleDoc,
+  parseProjectSkillBundleDoc,
   resolveInternalHref,
+  resolveSkillBundleWikiTarget,
+  skillLiveDocName,
   stripFrontmatter,
 } from '@inkeep/open-knowledge-core';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isLinkIndexExcludedDoc } from './cc1-broadcast.ts';
 import { getLocalDir } from './config/paths.ts';
 import type { ContentFilter } from './content-filter.ts';
 import { isSupportedDocFile, stripDocExtension } from './doc-extensions.ts';
@@ -126,6 +132,28 @@ function createEmptyState(): BranchGraphState {
     externalForward: new Map(),
     externalBackward: new Map(),
   };
+}
+
+function parseSkillBundleDocAnyScope(
+  docName: string,
+): { name: string; kind: 'skill' | 'reference'; skillDocName: string } | null {
+  const project = parseProjectSkillBundleDoc(docName);
+  if (project) {
+    return {
+      name: project.name,
+      kind: project.kind,
+      skillDocName: skillLiveDocName('project', project.name),
+    };
+  }
+  const global = parseGlobalSkillBundleDoc(docName);
+  if (global) {
+    return {
+      name: global.name,
+      kind: global.kind,
+      skillDocName: skillLiveDocName('global', global.name),
+    };
+  }
+  return null;
 }
 
 function mergeLinkMeta(
@@ -252,7 +280,10 @@ function readWikiLink(
   };
 }
 
-function extractWikiLinksFromLine(line: string): {
+function extractWikiLinksFromLine(
+  line: string,
+  sourceDocName: string,
+): {
   text: string;
   occurrences: InlineWikiLinkOccurrence[];
 } {
@@ -284,8 +315,10 @@ function extractWikiLinksFromLine(line: string): {
         flatText += label;
         const classified = classifyWikiLinkTarget(wikiLink.target, wikiLink.anchor);
         if (classified?.kind === 'doc') {
+          const target =
+            resolveSkillBundleWikiTarget(wikiLink.target, sourceDocName) ?? classified.docName;
           occurrences.push({
-            target: classified.docName,
+            target,
             anchor: classified.anchor,
             start,
             end: start + label.length,
@@ -531,7 +564,10 @@ export function extractMarkdownLinksFromMarkdown(
   return links;
 }
 
-export function extractWikiLinksFromMarkdown(markdown: string): ExtractedWikiLink[] {
+export function extractWikiLinksFromMarkdown(
+  markdown: string,
+  sourceDocName = '',
+): ExtractedWikiLink[] {
   const source = markdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
   const lines = source.split('\n');
   const links: ExtractedWikiLink[] = [];
@@ -547,7 +583,7 @@ export function extractWikiLinksFromMarkdown(markdown: string): ExtractedWikiLin
       if (nextFence) {
         fence = nextFence;
       } else {
-        const extracted = extractWikiLinksFromLine(line);
+        const extracted = extractWikiLinksFromLine(line, sourceDocName);
         links.push(
           ...extracted.occurrences.map(({ target, anchor, start, end }) => ({
             target,
@@ -738,6 +774,25 @@ export class BacklinkIndex {
     return state;
   }
 
+  private structuralBundleNeighbors(docName: string, branch = this.activeBranch): Set<string> {
+    const parsed = parseSkillBundleDocAnyScope(docName);
+    const neighbors = new Set<string>();
+    if (!parsed) return neighbors;
+    const state = this.getState(branch);
+    if (!state.forward.has(docName)) return neighbors;
+    if (parsed.kind === 'skill') {
+      for (const candidate of state.forward.keys()) {
+        const other = parseSkillBundleDocAnyScope(candidate);
+        if (other?.kind === 'reference' && other.skillDocName === docName) {
+          neighbors.add(candidate);
+        }
+      }
+    } else {
+      if (state.forward.has(parsed.skillDocName)) neighbors.add(parsed.skillDocName);
+    }
+    return neighbors;
+  }
+
   getActiveBranch(): string {
     return this.activeBranch;
   }
@@ -751,13 +806,42 @@ export class BacklinkIndex {
     return resolve(getLocalDir(this.projectDir), 'cache', branch, 'backlinks.json');
   }
 
+  private registerNodeOnly(docName: string, branch = this.activeBranch): void {
+    const state = this.getState(branch);
+    const priorTargets = state.forward.get(docName) ?? new Set<string>();
+    const priorExternalTargets = state.externalForward.get(docName) ?? new Map();
+    for (const target of priorTargets) {
+      const sources = state.backward.get(target);
+      if (!sources) continue;
+      sources.delete(docName);
+      if (sources.size === 0) state.backward.delete(target);
+    }
+    for (const url of priorExternalTargets.keys()) {
+      const sources = state.externalBackward.get(url);
+      if (!sources) continue;
+      sources.delete(docName);
+      if (sources.size === 0) state.externalBackward.delete(url);
+    }
+    state.forward.set(docName, new Set());
+    state.externalForward.set(docName, new Map());
+  }
+
+  registerGlobalSkillBundleNode(docName: string, branch = this.activeBranch): void {
+    if (!parseGlobalSkillBundleDoc(docName)) return;
+    this.registerNodeOnly(docName, branch);
+  }
+
   updateDocument(
     docName: string,
     links: ExtractedWikiLink[],
     externalLinks: ExtractedExternalLink[] = [],
     branch = this.activeBranch,
   ): void {
-    if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+    if (isLinkIndexExcludedDoc(docName)) return;
+    if (parseGlobalSkillBundleDoc(docName)) {
+      this.registerNodeOnly(docName, branch);
+      return;
+    }
     const state = this.getState(branch);
     const priorTargets = state.forward.get(docName) ?? new Set<string>();
     const priorExternalTargets = state.externalForward.get(docName) ?? new Map();
@@ -783,11 +867,12 @@ export class BacklinkIndex {
 
     for (const link of links) {
       if (!link.target) continue;
-      nextTargets.add(link.target);
-      let sources = state.backward.get(link.target);
+      const target = managedArtifactDocNameFromContentTarget(link.target) ?? link.target;
+      nextTargets.add(target);
+      let sources = state.backward.get(target);
       if (!sources) {
         sources = new Map();
-        state.backward.set(link.target, sources);
+        state.backward.set(target, sources);
       }
       sources.set(
         docName,
@@ -818,7 +903,7 @@ export class BacklinkIndex {
   updateDocumentFromMarkdown(docName: string, markdown: string, branch = this.activeBranch): void {
     try {
       const { body } = stripFrontmatter(markdown);
-      const wikiLinks = extractWikiLinksFromMarkdown(body);
+      const wikiLinks = extractWikiLinksFromMarkdown(body, docName);
       const mdLinks = extractMarkdownLinksFromMarkdown(body, docName);
       const wikiExternalLinks = extractExternalWikiLinksFromMarkdown(body);
       const mdExternalLinks = extractExternalMarkdownLinksFromMarkdown(body, docName);
@@ -837,7 +922,7 @@ export class BacklinkIndex {
   }
 
   deleteDocument(docName: string, branch = this.activeBranch): void {
-    if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+    if (isLinkIndexExcludedDoc(docName)) return;
     const state = this.getState(branch);
     const targets = state.forward.get(docName) ?? new Set<string>();
     const externalTargets = state.externalForward.get(docName) ?? new Map();
@@ -870,20 +955,34 @@ export class BacklinkIndex {
   getBacklinks(target: string, branch = this.activeBranch): BacklinkEntry[] {
     const state = this.getState(branch);
     const sources = state.backward.get(target);
-    if (!sources) return [];
-    return [...sources.entries()]
-      .map(([source, meta]) => ({ source, anchor: meta.anchor, snippet: meta.snippet }))
-      .sort((a, b) => a.source.localeCompare(b.source));
+    const entries = new Map<string, BacklinkEntry>();
+    if (sources) {
+      for (const [source, meta] of sources) {
+        entries.set(source, { source, anchor: meta.anchor, snippet: meta.snippet });
+      }
+    }
+    for (const partner of this.structuralBundleNeighbors(target, branch)) {
+      if (!entries.has(partner))
+        entries.set(partner, { source: partner, anchor: null, snippet: null });
+    }
+    return [...entries.values()].sort((a, b) => a.source.localeCompare(b.source));
   }
 
   getBacklinkCount(target: string, branch = this.activeBranch): number {
     const state = this.getState(branch);
-    return state.backward.get(target)?.size ?? 0;
+    const authored = state.backward.get(target);
+    const structural = this.structuralBundleNeighbors(target, branch);
+    if (structural.size === 0) return authored?.size ?? 0;
+    const union = new Set(authored?.keys() ?? []);
+    for (const partner of structural) union.add(partner);
+    return union.size;
   }
 
   getForwardLinks(source: string, branch = this.activeBranch): string[] {
     const state = this.getState(branch);
-    return [...(state.forward.get(source) ?? new Set<string>())].sort((a, b) => a.localeCompare(b));
+    const targets = new Set(state.forward.get(source) ?? new Set<string>());
+    for (const partner of this.structuralBundleNeighbors(source, branch)) targets.add(partner);
+    return [...targets].sort((a, b) => a.localeCompare(b));
   }
 
   getForwardLinkEntries(source: string, branch = this.activeBranch): ForwardLinkEntry[] {
@@ -911,10 +1010,23 @@ export class BacklinkIndex {
 
   getOrphans(allDocs: string[], mode: OrphanMode = 'both', branch = this.activeBranch): string[] {
     const state = this.getState(branch);
+    const skillDocsWithReference = new Set<string>();
+    for (const candidate of state.forward.keys()) {
+      const parsed = parseSkillBundleDocAnyScope(candidate);
+      if (parsed?.kind === 'reference') skillDocsWithReference.add(parsed.skillDocName);
+    }
+    const hasStructuralEdge = (docName: string): boolean => {
+      const parsed = parseSkillBundleDocAnyScope(docName);
+      if (!parsed || !state.forward.has(docName)) return false;
+      return parsed.kind === 'skill'
+        ? skillDocsWithReference.has(docName)
+        : state.forward.has(parsed.skillDocName);
+    };
     return [...allDocs]
       .filter((docName) => {
-        const hasInboundEdges = (state.backward.get(docName)?.size ?? 0) > 0;
-        const hasOutboundEdges = (state.forward.get(docName)?.size ?? 0) > 0;
+        const structural = hasStructuralEdge(docName);
+        const hasInboundEdges = structural || (state.backward.get(docName)?.size ?? 0) > 0;
+        const hasOutboundEdges = structural || (state.forward.get(docName)?.size ?? 0) > 0;
 
         if (mode === 'incoming') return !hasInboundEdges;
         if (mode === 'outgoing') return !hasOutboundEdges;
@@ -1006,6 +1118,29 @@ export class BacklinkIndex {
       }
     }
 
+    for (const source of state.forward.keys()) {
+      const parsed = parseSkillBundleDocAnyScope(source);
+      if (parsed?.kind !== 'skill') continue;
+      for (const target of this.structuralBundleNeighbors(source, branch)) {
+        if (state.forward.get(source)?.has(target) || state.forward.get(target)?.has(source)) {
+          continue;
+        }
+        nodes.set(source, {
+          kind: 'doc',
+          id: source,
+          docName: source,
+          anchor: getRepresentativeAnchor(state.backward.get(source)),
+        });
+        nodes.set(target, {
+          kind: 'doc',
+          id: target,
+          docName: target,
+          anchor: getRepresentativeAnchor(state.backward.get(target)),
+        });
+        links.push({ source, target });
+      }
+    }
+
     return {
       nodes: [...nodes.values()].sort((a, b) => a.id.localeCompare(b.id)),
       links,
@@ -1054,6 +1189,9 @@ export class BacklinkIndex {
         for (const source of state.backward.get(current.nodeId)?.keys() ?? []) {
           neighbors.add(source);
         }
+        for (const partner of this.structuralBundleNeighbors(current.nodeId, branch)) {
+          neighbors.add(partner);
+        }
       }
 
       for (const neighbor of neighbors) {
@@ -1078,6 +1216,18 @@ export class BacklinkIndex {
         const id = externalNodeId(url);
         if (!visited.has(id)) continue;
         links.push({ source, target: id });
+      }
+    }
+
+    for (const source of visited) {
+      const parsed = parseSkillBundleDocAnyScope(source);
+      if (parsed?.kind !== 'skill') continue;
+      for (const target of this.structuralBundleNeighbors(source, branch)) {
+        if (!visited.has(target)) continue;
+        if (state.forward.get(source)?.has(target) || state.forward.get(target)?.has(source)) {
+          continue;
+        }
+        links.push({ source, target });
       }
     }
 
@@ -1172,7 +1322,7 @@ export class BacklinkIndex {
         const { docName, mtimeMs, markdown } = result.value;
         mtimes.set(docName, mtimeMs);
         const { body } = stripFrontmatter(markdown);
-        const wikiLinks = extractWikiLinksFromMarkdown(body);
+        const wikiLinks = extractWikiLinksFromMarkdown(body, docName);
         const mdLinks = extractMarkdownLinksFromMarkdown(body, docName);
         const wikiExternalLinks = extractExternalWikiLinksFromMarkdown(body);
         const mdExternalLinks = extractExternalMarkdownLinksFromMarkdown(body, docName);
@@ -1189,11 +1339,12 @@ export class BacklinkIndex {
         state.externalForward.set(docName, externalTargets);
         for (const link of links) {
           if (!link.target) continue;
-          targets.add(link.target);
-          let sources = state.backward.get(link.target);
+          const target = managedArtifactDocNameFromContentTarget(link.target) ?? link.target;
+          targets.add(target);
+          let sources = state.backward.get(target);
           if (!sources) {
             sources = new Map();
-            state.backward.set(link.target, sources);
+            state.backward.set(target, sources);
           }
           sources.set(
             docName,
@@ -1312,6 +1463,7 @@ export class BacklinkIndex {
     let deleted = 0;
     const allKnownDocs = new Set([...storedMtimes.keys(), ...this.getState(branch).forward.keys()]);
     for (const docName of allKnownDocs) {
+      if (parseGlobalSkillBundleDoc(docName)) continue;
       if (!currentDocSet.has(docName)) {
         this.deleteDocument(docName, branch);
         deleted++;
@@ -1320,5 +1472,73 @@ export class BacklinkIndex {
 
     this.mtimesByBranch.set(branch, newMtimes);
     return { added, updated, deleted };
+  }
+
+  async ingestGlobalSkillBundles(
+    roots: ReadonlyArray<string>,
+    branch = this.activeBranch,
+  ): Promise<void> {
+    const live = new Set<string>();
+    for (const root of roots) {
+      if (!existsSync(root)) continue;
+      let skillDirs: Dirent[];
+      try {
+        skillDirs = await readdir(root, { withFileTypes: true });
+      } catch (err) {
+        console.warn(`[backlinks] Failed to read global skills root ${root}:`, err);
+        continue;
+      }
+      for (const skillDir of skillDirs) {
+        if (!skillDir.isDirectory()) continue;
+        const name = skillDir.name;
+        const dir = join(root, name);
+        const skillDocName = skillLiveDocName('global', name);
+        if (existsSync(join(dir, 'SKILL.md'))) {
+          if (parseGlobalSkillBundleDoc(skillDocName)) {
+            this.registerNodeOnly(skillDocName, branch);
+            live.add(skillDocName);
+          }
+        }
+        const refs: Array<{ docName: string }> = [];
+        await this.walkGlobalSkillReferences(join(dir, 'references'), name, '', refs);
+        for (const { docName } of refs) {
+          this.registerNodeOnly(docName, branch);
+          live.add(docName);
+        }
+      }
+    }
+    const stale: string[] = [];
+    for (const docName of this.getState(branch).forward.keys()) {
+      if (parseGlobalSkillBundleDoc(docName) && !live.has(docName)) stale.push(docName);
+    }
+    for (const docName of stale) this.deleteDocument(docName, branch);
+  }
+
+  private async walkGlobalSkillReferences(
+    dir: string,
+    skillName: string,
+    prefix: string,
+    results: Array<{ docName: string }>,
+  ): Promise<void> {
+    let entries: Dirent[];
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.warn(`[backlinks] Failed to read skill references dir ${dir}:`, err);
+      }
+      return;
+    }
+    for (const entry of entries) {
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        await this.walkGlobalSkillReferences(join(dir, entry.name), skillName, rel, results);
+      } else if (entry.isFile() && isSupportedDocFile(entry.name)) {
+        const extLess = stripDocExtension(rel);
+        results.push({
+          docName: `${MANAGED_ARTIFACT_PREFIX_SKILL}global/${skillName}/references/${extLess}`,
+        });
+      }
+    }
   }
 }

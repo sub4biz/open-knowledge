@@ -25,6 +25,7 @@ Object.assign(globalThis, {
   Node: win.Node,
   NodeList: win.NodeList,
   NodeFilter: win.NodeFilter,
+
   DocumentFragment: win.DocumentFragment,
   DOMRect: win.DOMRect,
   Event: win.Event,

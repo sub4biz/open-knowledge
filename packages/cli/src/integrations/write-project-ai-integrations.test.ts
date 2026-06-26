@@ -49,7 +49,7 @@ describe('writeProjectAiIntegrations — installs MCP config AND the project ski
     expect(existsSync(join(projectDir, '.cursor', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
       true,
     );
-    expect(existsSync(join(projectDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
+    expect(existsSync(join(projectDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
       true,
     );
   });

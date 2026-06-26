@@ -1,6 +1,6 @@
 import type { Document, Extension } from '@hocuspocus/server';
 import type { BacklinkIndex } from './backlink-index.ts';
-import { isConfigDoc, isSystemDoc } from './cc1-broadcast.ts';
+import { isLinkIndexExcludedDoc } from './cc1-broadcast.ts';
 import type { TagIndex } from './tag-index.ts';
 
 export const LIVE_DERIVED_INDEX_DEBOUNCE_MS = 100;
@@ -69,7 +69,7 @@ export function createLiveDerivedIndexExtension(options: LiveDerivedIndexOptions
 
   return {
     async onChange({ documentName, document, transactionOrigin }) {
-      if (isSystemDoc(documentName) || isConfigDoc(documentName)) return;
+      if (isLinkIndexExcludedDoc(documentName)) return;
 
       if (
         isLocalOriginLike(transactionOrigin) &&

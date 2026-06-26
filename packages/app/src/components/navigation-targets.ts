@@ -2,6 +2,12 @@ import {
   DOCUMENT_OPEN_BYTE_LIMIT,
   type InlineAssetMediaKind,
   isDocumentOverOpenByteLimit,
+  isManagedArtifactDocName,
+  managedArtifactDocNameFromContentTarget,
+  parseGlobalSkillBundleDoc,
+  parseManagedArtifactName,
+  projectSkillContentDocName,
+  type SkillScope,
   toWikiLinkSlug,
 } from '@inkeep/open-knowledge-core';
 import { normalizeDocNameInput } from '@/lib/doc-paths';
@@ -30,6 +36,13 @@ export type ResolvedNavigationTarget =
       target: string;
       assetPath: string;
       mediaKind: InlineAssetMediaKind | null;
+    }
+  | {
+      kind: 'skill-file';
+      target: string;
+      scope: SkillScope;
+      name: string;
+      path: string;
     }
   | {
       kind: 'large-file';
@@ -95,6 +108,29 @@ export function resolveNavigationTarget(
     pagesByBasename?: ReadonlyMap<string, string>;
   },
 ): ResolvedNavigationTarget {
+  if (isManagedArtifactDocName(target)) {
+    const globalBundle = parseGlobalSkillBundleDoc(target);
+    if (globalBundle?.kind === 'reference') {
+      const path = `references/${globalBundle.rel}.md`;
+      return {
+        kind: 'skill-file',
+        target: `global/${globalBundle.name}/${path}`,
+        scope: 'global',
+        name: globalBundle.name,
+        path,
+      };
+    }
+    const parsed = parseManagedArtifactName(target);
+    if (parsed?.kind === 'skill' && parsed.scope === 'project') {
+      const docName = projectSkillContentDocName(parsed.name);
+      return { kind: 'doc', target: docName, docName };
+    }
+    return { kind: 'doc', target, docName: target };
+  }
+  const artifactDocName = managedArtifactDocNameFromContentTarget(target);
+  if (artifactDocName) {
+    return { kind: 'doc', target: artifactDocName, docName: artifactDocName };
+  }
   const { normalizedTarget, expectsFolder } = normalizeTargetPath(target);
   if (!normalizedTarget) {
     return { kind: 'missing', target: normalizedTarget };
@@ -214,6 +250,7 @@ export function docNameForNavigationTarget(target: ResolvedNavigationTarget): st
     case 'missing':
       return target.target;
     case 'asset':
+    case 'skill-file':
     case 'folder':
       return null;
   }

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { OK_PROJECT_MARKER } from '@inkeep/open-knowledge-core';
 import { isProjectRoot } from '../fs/find-project-root.ts';
+import { resolvePackSkillSource } from './install-pack-skill.ts';
 import { assertEntryPathInProject } from './path-safety.ts';
 import { DEFAULT_PACK_ID, resolvePack, STARTER_FOLDER_FRONTMATTER_FILENAME } from './starter.ts';
 import type { FileEntry, ScaffoldPlan, SeedOptions, SkipEntry } from './types.ts';
@@ -135,5 +136,13 @@ export async function planSeed(opts: SeedOptions = {}): Promise<ScaffoldPlan> {
     }
   }
 
-  return { created, skipped, warnings };
+  const packSkillSource = resolvePackSkillSource(pack.id);
+  const packSkill = packSkillSource
+    ? {
+        name: packSkillSource.name,
+        pending: !existsSync(join(projectDir, '.ok', 'skills', packSkillSource.name, 'SKILL.md')),
+      }
+    : undefined;
+
+  return { created, skipped, warnings, ...(packSkill ? { packSkill } : {}) };
 }

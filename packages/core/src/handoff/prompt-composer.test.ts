@@ -11,6 +11,7 @@ import {
   composeFilePrompt,
   composeFolderPrompt,
   composeSelectionPrompt,
+  composeSkillPrompt,
   composeTerminalBareLaunchPrompt,
   OK_PROJECT_SKILL_POINTER,
   OK_TERMINAL_SURFACE_PREAMBLE,
@@ -37,6 +38,18 @@ test('composeFilePrompt interpolates a deep relative path inside the backtick fe
 test('composeFilePrompt interpolates a deep relative path with autoOpen=false', () => {
   expect(composeFilePrompt('specs/2026-04-21-open-in-agent-desktop/SPEC.md', false)).toBe(
     "Let's work on `specs/2026-04-21-open-in-agent-desktop/SPEC.md` using OpenKnowledge.",
+  );
+});
+
+test('composeSkillPrompt names the write-skill skill + scope, with the autoOpen trailer', () => {
+  expect(composeSkillPrompt('commit-helper', 'project', true)).toBe(
+    'Use your open-knowledge-write-skill skill to author the project Open Knowledge skill `commit-helper`. Edit it with the Open Knowledge tools. Open the OK editor in web view.',
+  );
+});
+
+test('composeSkillPrompt carries the global scope + drops the trailer when autoOpen=false', () => {
+  expect(composeSkillPrompt('my-notes', 'global', false)).toBe(
+    'Use your open-knowledge-write-skill skill to author the global Open Knowledge skill `my-notes`. Edit it with the Open Knowledge tools.',
   );
 });
 

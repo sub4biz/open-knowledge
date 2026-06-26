@@ -8,7 +8,11 @@ import {
   writeFileSync as fsWriteFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { assertProjectPathSafe, EDITOR_TARGETS, type EditorId } from '@inkeep/open-knowledge';
+import {
+  assertProjectPathSafe,
+  EDITOR_TARGETS,
+  HOSTS_WITH_USER_SKILL_DIR,
+} from '@inkeep/open-knowledge';
 
 interface SkillReclaimLogger {
   event(payload: { event: string; [key: string]: unknown }): void;
@@ -20,22 +24,10 @@ const DEFAULT_LOGGER: SkillReclaimLogger = {
   warn: (message, ctx) => console.warn('[skill-reclaim]', message, ctx ?? ''),
 };
 
-const HOSTS_WITH_USER_SKILL_DIR: ReadonlyArray<{
-  readonly hostDir: string;
-  readonly editorId: EditorId;
-}> = [
-  { hostDir: '.claude', editorId: 'claude' },
-  { hostDir: '.cursor', editorId: 'cursor' },
-  { hostDir: '.agents', editorId: 'codex' },
-  { hostDir: '.agents', editorId: 'opencode' },
-];
-
 const OK_MCP_MARKER = '# ok-mcp-v1';
 
-const USER_SKILL_DIR_NAME = 'open-knowledge-discovery';
 const PROJECT_SKILL_DIR_NAME = 'open-knowledge';
 const LEGACY_SKILL_DIR_NAME = 'open-knowledge';
-const CENTRAL_USER_SKILL_REL = ['.agents', 'skills', USER_SKILL_DIR_NAME] as const;
 
 interface SkillFsOps {
   existsSync(path: string): boolean;
@@ -89,8 +81,9 @@ function copyDirContents(sourceDir: string, destDir: string, fs: SkillFsOps): vo
 }
 
 function removeLegacyUserSkillDirs(home: string, fs: SkillFsOps, logger: SkillReclaimLogger): void {
-  for (const host of HOSTS_WITH_USER_SKILL_DIR) {
-    const legacyDir = join(home, host.hostDir, 'skills', LEGACY_SKILL_DIR_NAME);
+  const legacyHostDirs = [...HOSTS_WITH_USER_SKILL_DIR.map((h) => h.hostDir), '.agents'];
+  for (const hostDir of legacyHostDirs) {
+    const legacyDir = join(home, hostDir, 'skills', LEGACY_SKILL_DIR_NAME);
     if (!fs.existsSync(legacyDir)) continue;
     try {
       fs.rmSync(legacyDir, { recursive: true, force: true });
@@ -128,7 +121,11 @@ interface ReclaimUserSkillsOpts {
   forceEnv?: string | null | undefined;
   reclaimDisableEnv?: string | null | undefined;
   deps: {
-    resolveBundledSkillDir(): string;
+    /** The user-global built-in bundles to install (id + install dir name).
+     *  Wired from core's `USER_GLOBAL_BUNDLE_IDS` by the caller — this module
+     *  stays free of server/core imports. */
+    userGlobalBundles: ReadonlyArray<{ id: string; name: string }>;
+    resolveBundledSkillDir(bundle: string): string;
     readServerPackageVersion(): Promise<string>;
     writeTargetVersion(
       home: string,
@@ -140,7 +137,7 @@ interface ReclaimUserSkillsOpts {
       ts: string;
       surface: 'desktop-direct';
       target: 'cli-hosts';
-      bundle?: 'discovery';
+      bundle?: string;
       outcome: 'installed' | 'failed';
       version?: string;
       reason?: string;
@@ -151,73 +148,16 @@ interface ReclaimUserSkillsOpts {
   logger?: SkillReclaimLogger;
 }
 
-export async function reclaimUserSkillsOnLaunch(
-  opts: ReclaimUserSkillsOpts,
-): Promise<UserSkillReclaimResult> {
-  const {
-    home,
-    isPackaged,
-    platform,
-    executablePath,
-    forceEnv,
-    reclaimDisableEnv,
-    deps,
-    fs = defaultFsOps,
-    now,
-    logger = DEFAULT_LOGGER,
-  } = opts;
-  const nowDate = (): Date => (now ? now() : new Date());
-
-  if (reclaimDisableEnv === '1') return { status: 'skipped', reason: 'reclaim-disabled' };
-  if (platform !== 'darwin') return { status: 'skipped', reason: 'platform' };
-  if (!isPackaged && forceEnv !== '1') return { status: 'skipped', reason: 'dev-mode' };
-  if (!/\.app\/Contents\/MacOS\/[^/]+$/.test(executablePath)) {
-    return { status: 'skipped', reason: 'bad-executable-path' };
-  }
-
-  let sourceDir: string;
-  try {
-    sourceDir = deps.resolveBundledSkillDir();
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    logger.event({ event: 'user-skill-reclaim-bundle-missing', error });
-    await deps
-      .recordSkillInstallEvent({
-        ts: nowDate().toISOString(),
-        surface: 'desktop-direct',
-        target: 'cli-hosts',
-        bundle: 'discovery',
-        outcome: 'failed',
-        reason: `bundle-missing:${error}`,
-      })
-      .catch(() => {});
-    return { status: 'skipped', reason: 'bundle-missing' };
-  }
-
-  let version: string;
-  try {
-    version = await deps.readServerPackageVersion();
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    logger.event({ event: 'user-skill-reclaim-version-read-failed', error });
-    await deps
-      .recordSkillInstallEvent({
-        ts: nowDate().toISOString(),
-        surface: 'desktop-direct',
-        target: 'cli-hosts',
-        bundle: 'discovery',
-        outcome: 'failed',
-        reason: `version-read-failed:${error}`,
-      })
-      .catch(() => {});
-    return { status: 'skipped', reason: 'version-read-failed' };
-  }
-
-  removeLegacyUserSkillDirs(home, fs, logger);
-
+function installUserBundleToHostDirs(
+  home: string,
+  bundleDirName: string,
+  sourceDir: string,
+  fs: SkillFsOps,
+  logger: SkillReclaimLogger,
+  version: string,
+): UserSkillReclaimEntry[] {
   const entries: UserSkillReclaimEntry[] = [];
-
-  const centralDest = join(home, ...CENTRAL_USER_SKILL_REL);
+  const centralDest = join(home, '.agents', 'skills', bundleDirName);
   const centralExistedBefore = fs.existsSync(centralDest);
   try {
     replaceDir(sourceDir, centralDest, fs);
@@ -240,7 +180,7 @@ export async function reclaimUserSkillsOnLaunch(
 
   for (const host of HOSTS_WITH_USER_SKILL_DIR) {
     const hostRoot = join(home, host.hostDir);
-    const hostDest = join(hostRoot, 'skills', USER_SKILL_DIR_NAME);
+    const hostDest = join(hostRoot, 'skills', bundleDirName);
     if (hostDest === centralDest) {
       continue;
     }
@@ -289,6 +229,86 @@ export async function reclaimUserSkillsOnLaunch(
       });
     }
   }
+  return entries;
+}
+
+export async function reclaimUserSkillsOnLaunch(
+  opts: ReclaimUserSkillsOpts,
+): Promise<UserSkillReclaimResult> {
+  const {
+    home,
+    isPackaged,
+    platform,
+    executablePath,
+    forceEnv,
+    reclaimDisableEnv,
+    deps,
+    fs = defaultFsOps,
+    now,
+    logger = DEFAULT_LOGGER,
+  } = opts;
+  const nowDate = (): Date => (now ? now() : new Date());
+
+  if (reclaimDisableEnv === '1') return { status: 'skipped', reason: 'reclaim-disabled' };
+  if (platform !== 'darwin') return { status: 'skipped', reason: 'platform' };
+  if (!isPackaged && forceEnv !== '1') return { status: 'skipped', reason: 'dev-mode' };
+  if (!/\.app\/Contents\/MacOS\/[^/]+$/.test(executablePath)) {
+    return { status: 'skipped', reason: 'bad-executable-path' };
+  }
+
+  const resolvedBundles: Array<{ id: string; name: string; sourceDir: string }> = [];
+  let lastResolveError: string | null = null;
+  for (const bundle of deps.userGlobalBundles) {
+    try {
+      resolvedBundles.push({ ...bundle, sourceDir: deps.resolveBundledSkillDir(bundle.id) });
+    } catch (err) {
+      lastResolveError = err instanceof Error ? err.message : String(err);
+    }
+  }
+  if (resolvedBundles.length === 0) {
+    logger.event({
+      event: 'user-skill-reclaim-bundle-missing',
+      error: lastResolveError ?? 'no user-global bundles',
+    });
+    await deps
+      .recordSkillInstallEvent({
+        ts: nowDate().toISOString(),
+        surface: 'desktop-direct',
+        target: 'cli-hosts',
+        outcome: 'failed',
+        reason: `bundle-missing:${lastResolveError}`,
+      })
+      .catch(() => {});
+    return { status: 'skipped', reason: 'bundle-missing' };
+  }
+
+  let version: string;
+  try {
+    version = await deps.readServerPackageVersion();
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    logger.event({ event: 'user-skill-reclaim-version-read-failed', error });
+    await deps
+      .recordSkillInstallEvent({
+        ts: nowDate().toISOString(),
+        surface: 'desktop-direct',
+        target: 'cli-hosts',
+        bundle: 'discovery',
+        outcome: 'failed',
+        reason: `version-read-failed:${error}`,
+      })
+      .catch(() => {});
+    return { status: 'skipped', reason: 'version-read-failed' };
+  }
+
+  removeLegacyUserSkillDirs(home, fs, logger);
+
+  const entries: UserSkillReclaimEntry[] = [];
+  for (const bundle of resolvedBundles) {
+    entries.push(
+      ...installUserBundleToHostDirs(home, bundle.name, bundle.sourceDir, fs, logger, version),
+    );
+  }
 
   const anyWriteSucceeded = entries.some(
     (e) => e.status === 'written' || e.status === 'overwritten',
@@ -301,24 +321,25 @@ export async function reclaimUserSkillsOnLaunch(
       stateWriteError = err instanceof Error ? err.message : String(err);
       logger.warn('writeTargetVersion failed', { error: stateWriteError });
     }
-    await deps
-      .recordSkillInstallEvent({
-        ts: nowDate().toISOString(),
-        surface: 'desktop-direct',
-        target: 'cli-hosts',
-        bundle: 'discovery',
-        outcome: stateWriteError === null ? 'installed' : 'failed',
-        version,
-        ...(stateWriteError === null ? {} : { reason: `state-write-failed:${stateWriteError}` }),
-      })
-      .catch(() => {});
+    for (const bundle of resolvedBundles) {
+      await deps
+        .recordSkillInstallEvent({
+          ts: nowDate().toISOString(),
+          surface: 'desktop-direct',
+          target: 'cli-hosts',
+          bundle: bundle.id,
+          outcome: stateWriteError === null ? 'installed' : 'failed',
+          version,
+          ...(stateWriteError === null ? {} : { reason: `state-write-failed:${stateWriteError}` }),
+        })
+        .catch(() => {});
+    }
   } else {
     await deps
       .recordSkillInstallEvent({
         ts: nowDate().toISOString(),
         surface: 'desktop-direct',
         target: 'cli-hosts',
-        bundle: 'discovery',
         outcome: 'failed',
         version,
         reason: 'all-targets-failed',

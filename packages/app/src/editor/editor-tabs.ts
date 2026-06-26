@@ -1,4 +1,15 @@
-import type { RenamedAssetMapping } from '@inkeep/open-knowledge-core';
+import {
+  isManagedArtifactDocName,
+  MANAGED_ARTIFACT_SCOPES,
+  type RenamedAssetMapping,
+  type SkillScope,
+} from '@inkeep/open-knowledge-core';
+import { parseProjectSkillContentDocName } from '@/lib/managed-artifact-doc-name';
+import { skillDisplayName } from '@/lib/skill-scope';
+
+function isSkillScope(value: string): value is SkillScope {
+  return (MANAGED_ARTIFACT_SCOPES as readonly string[]).includes(value);
+}
 
 interface EditorTabSessionState {
   openTabs: string[];
@@ -24,6 +35,7 @@ interface KnownTabTargets {
 const LOCAL_TAB_SESSION_PREFIX = 'ok-editor-tabs-v1:';
 const FOLDER_TAB_PREFIX = '\u0000folder:';
 const ASSET_TAB_PREFIX = '\u0000asset:';
+const SKILL_FILE_TAB_PREFIX = '\u0000skill-file:';
 const TAB_INSTANCE_SEPARATOR = '\u0000doc-tab:';
 const MARKDOWN_TAB_EXTENSION_PATTERN = /\.(md|mdx)$/i;
 
@@ -58,7 +70,29 @@ function isValidTabId(value: unknown): value is string {
   const base = baseTabId(value);
   if (base.startsWith(FOLDER_TAB_PREFIX)) return base.length > FOLDER_TAB_PREFIX.length;
   if (base.startsWith(ASSET_TAB_PREFIX)) return base.length > ASSET_TAB_PREFIX.length;
+  if (base.startsWith(SKILL_FILE_TAB_PREFIX)) return parseSkillFileTabBody(base) !== null;
   return true;
+}
+
+export interface SkillFileTabTarget {
+  scope: SkillScope;
+  name: string;
+  path: string;
+}
+
+export function skillFileTabId(target: SkillFileTabTarget): string {
+  return `${SKILL_FILE_TAB_PREFIX}${target.scope}/${target.name}/${target.path}`;
+}
+
+function parseSkillFileTabBody(base: string): SkillFileTabTarget | null {
+  if (!base.startsWith(SKILL_FILE_TAB_PREFIX)) return null;
+  const body = base.slice(SKILL_FILE_TAB_PREFIX.length);
+  const segments = body.split('/');
+  if (segments.length < 3) return null;
+  const [scope, name, ...rest] = segments;
+  const path = rest.join('/');
+  if (!scope || !name || !path || !isSkillScope(scope)) return null;
+  return { scope, name, path };
 }
 
 export function docTabId(docName: string): string {
@@ -99,6 +133,11 @@ export function tabParts(
   docName: string,
   docExt: string,
 ): { baseName: string; extension: string; label: string; prefix: string } {
+  const projectSkill = parseProjectSkillContentDocName(docName);
+  if (projectSkill) {
+    const display = skillDisplayName(projectSkill);
+    return { baseName: display, extension: '', label: display, prefix: '' };
+  }
   const slash = docName.lastIndexOf('/');
   const baseName = slash < 0 ? docName : docName.slice(slash + 1);
   const label = `${baseName}${docExt}`;
@@ -117,6 +156,7 @@ export function tabIdForNavigationTarget(
     | { kind: 'folder-index'; docName: string }
     | { kind: 'folder'; folderPath: string }
     | { kind: 'asset'; assetPath: string }
+    | { kind: 'skill-file'; scope: SkillScope; name: string; path: string }
     | { kind: 'large-file'; docName: string }
     | { kind: 'missing'; target: string },
 ): string | null {
@@ -131,6 +171,8 @@ export function tabIdForNavigationTarget(
       return docTabId(target.target);
     case 'asset':
       return assetTabId(target.assetPath);
+    case 'skill-file':
+      return skillFileTabId(target);
   }
 }
 
@@ -139,13 +181,18 @@ export function parseEditorTabId(
 ):
   | { kind: 'doc'; docName: string }
   | { kind: 'folder'; folderPath: string }
-  | { kind: 'asset'; assetPath: string } {
+  | { kind: 'asset'; assetPath: string }
+  | { kind: 'skill-file'; scope: SkillScope; name: string; path: string } {
   const base = baseTabId(tabId);
   if (base.startsWith(FOLDER_TAB_PREFIX)) {
     return { kind: 'folder', folderPath: base.slice(FOLDER_TAB_PREFIX.length) };
   }
   if (base.startsWith(ASSET_TAB_PREFIX)) {
     return { kind: 'asset', assetPath: base.slice(ASSET_TAB_PREFIX.length) };
+  }
+  const skillFile = parseSkillFileTabBody(base);
+  if (skillFile) {
+    return { kind: 'skill-file', ...skillFile };
   }
   return { kind: 'doc', docName: base };
 }
@@ -360,8 +407,10 @@ export function filterOpenTabsForKnownTargets(
     const tab = parseEditorTabId(tabId);
     if (tab.kind === 'folder') return folderPaths.has(tab.folderPath);
     if (tab.kind === 'asset') return assetPaths.has(tab.assetPath);
+    if (tab.kind === 'skill-file') return true;
     return (
       pages.has(tab.docName) ||
+      isManagedArtifactDocName(tab.docName) ||
       tab.docName === keepMissingDocName ||
       tab.docName === keepHashDocName
     );
@@ -414,7 +463,9 @@ export function remapOpenTabs(
         ? remapDocTabBase(parsed.docName, baseTabId(tab))
         : parsed.kind === 'folder'
           ? folderTabId(remapPathForFolderRenames(parsed.folderPath, folderMappings))
-          : remapAssetTabBase(parsed.assetPath);
+          : parsed.kind === 'asset'
+            ? remapAssetTabBase(parsed.assetPath)
+            : baseTabId(tab);
     const mapped = `${mappedBase}${instanceSuffix}`;
     if (seen.has(mapped)) continue;
     seen.add(mapped);
@@ -428,7 +479,9 @@ export function remapOpenTabs(
       ? remapDocTabBase(parsed.docName, tabId)
       : parsed.kind === 'folder'
         ? folderTabId(remapPathForFolderRenames(parsed.folderPath, folderMappings))
-        : remapAssetTabBase(parsed.assetPath);
+        : parsed.kind === 'asset'
+          ? remapAssetTabBase(parsed.assetPath)
+          : baseTabId(tabId);
   });
   return capOpenTabsPreservingPinned(next, limit, remappedPinnedTabIds);
 }

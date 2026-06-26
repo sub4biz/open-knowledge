@@ -14,7 +14,7 @@ import {
 } from '@inkeep/open-knowledge-core';
 import { atomicWriteFile } from '@inkeep/open-knowledge-core/server';
 import { type ParsedNode, parseDocument } from 'yaml';
-import { tracedMkdir, tracedRename, tracedWriteFile } from './fs-traced.ts';
+import { tracedAtomicFs, tracedMkdir } from './fs-traced.ts';
 
 const readFileAsync = promisify(readFile);
 
@@ -35,12 +35,6 @@ export interface SkillStateLogger {
 
 const DEFAULT_LOGGER: SkillStateLogger = {
   warn: (data, message) => console.warn(message, data),
-};
-
-const TRACED_FS_ADAPTER = {
-  writeFile: (path: string, content: string, opts: { encoding: 'utf-8'; mode?: number }) =>
-    tracedWriteFile(path, content, opts),
-  rename: (from: string, to: string) => tracedRename(from, to),
 };
 
 export async function readSkillStateFile(
@@ -116,7 +110,7 @@ async function writeSkillStateFile(home: string, state: SkillState): Promise<voi
   doc.contents = doc.createNode(parsed.data) as ParsedNode;
   const serialized = doc.toString();
 
-  await atomicWriteFile(path, serialized, { fs: TRACED_FS_ADAPTER });
+  await atomicWriteFile(path, serialized, { fs: tracedAtomicFs });
 }
 
 export async function readTargetVersion(

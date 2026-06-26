@@ -33,7 +33,7 @@
   "scripts": {
     "build:cli": "tsdown",
     "build:app": "cp -r ../app/dist dist/public",
-    "build:skill-asset": "bun ../server/scripts/build-skill-bundles.ts && mkdir -p dist/assets/skills && cp -R ../server/dist/assets/skills/discovery ../server/dist/assets/skills/project dist/assets/skills/ && if [ -d ../server/dist/assets/skills/packs ]; then cp -R ../server/dist/assets/skills/packs dist/assets/skills/; fi",
+    "build:skill-asset": "bun ../server/scripts/build-skill-bundles.ts && mkdir -p dist/assets/skills && cp -R ../server/dist/assets/skills/. dist/assets/skills/",
     "build:notices": "mkdir -p dist && cp ../../THIRD_PARTY_NOTICES.md dist/THIRD_PARTY_NOTICES.md",
     "build:license": "mkdir -p dist && cp ../../LICENSE dist/LICENSE",
     "build:schema": "bun --conditions=development scripts/build-config-schema.mjs",

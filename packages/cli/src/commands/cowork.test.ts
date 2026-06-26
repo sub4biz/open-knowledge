@@ -3,7 +3,7 @@ import type { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runInstallSkill } from './install-skill.ts';
+import { runCoworkSkill } from './cowork.ts';
 
 function makeFakeSpawn(capture: {
   command?: string;
@@ -23,11 +23,11 @@ function stripAnsi(s: string): string {
   return s.replace(/\[[0-9;]*m/g, '');
 }
 
-describe('runInstallSkill', () => {
+describe('runCoworkSkill', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'install-skill-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'cowork-skill-test-'));
   });
 
   afterEach(() => {
@@ -36,7 +36,7 @@ describe('runInstallSkill', () => {
 
   it('builds to the provided --out path and exits without opening (--no-open)', async () => {
     const outPath = join(testDir, 'my-custom.skill');
-    const result = await runInstallSkill({ out: outPath, home: testDir, noOpen: true });
+    const result = await runCoworkSkill({ out: outPath, home: testDir, noOpen: true });
 
     expect(result.status).toBe('built');
     expect(result.exitCode).toBe(0);
@@ -52,7 +52,7 @@ describe('runInstallSkill', () => {
   it('spawns `open` on darwin when opening is allowed', async () => {
     const outPath = join(testDir, 'darwin.skill');
     const capture: { command?: string; args?: readonly string[] } = {};
-    const result = await runInstallSkill({
+    const result = await runCoworkSkill({
       out: outPath,
       home: testDir,
       platformName: 'darwin',
@@ -71,7 +71,7 @@ describe('runInstallSkill', () => {
   it('spawns `cmd /c start` on win32', async () => {
     const outPath = join(testDir, 'win32.skill');
     const capture: { command?: string; args?: readonly string[] } = {};
-    const result = await runInstallSkill({
+    const result = await runCoworkSkill({
       out: outPath,
       home: testDir,
       platformName: 'win32',
@@ -88,7 +88,7 @@ describe('runInstallSkill', () => {
   it('spawns `xdg-open` on linux', async () => {
     const outPath = join(testDir, 'linux.skill');
     const capture: { command?: string; args?: readonly string[] } = {};
-    const result = await runInstallSkill({
+    const result = await runCoworkSkill({
       out: outPath,
       home: testDir,
       platformName: 'linux',
@@ -101,7 +101,7 @@ describe('runInstallSkill', () => {
 
   it('falls back to `built` with a helpful message on unsupported platforms', async () => {
     const outPath = join(testDir, 'aix.skill');
-    const result = await runInstallSkill({
+    const result = await runCoworkSkill({
       out: outPath,
       home: testDir,
       platformName: 'aix' as NodeJS.Platform,
@@ -118,7 +118,7 @@ describe('runInstallSkill', () => {
 
   it('surfaces spawn errors as `built` (non-fatal)', async () => {
     const outPath = join(testDir, 'spawn-error.skill');
-    const result = await runInstallSkill({
+    const result = await runCoworkSkill({
       out: outPath,
       home: testDir,
       platformName: 'darwin',

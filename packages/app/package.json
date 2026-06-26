@@ -18,6 +18,8 @@
     "test:dom": "bash scripts/run-test-dom.sh",
     "check": "tsc --noEmit && biome check . && bun run test && bun run test:dom && bun run test:integration && bun run test:conversion",
     "test:integration": "bun test --timeout 30000 tests/integration/ tests/meta/ tests/lint-plugins/ --path-ignore-patterns=per-session-um-perf",
+    "test:integration:shard1": "bun test --timeout 30000 tests/integration/ tests/meta/ tests/lint-plugins/ --path-ignore-patterns=per-session-um-perf --shard=1/2",
+    "test:integration:shard2": "bun test --timeout 30000 tests/integration/ tests/meta/ tests/lint-plugins/ --path-ignore-patterns=per-session-um-perf --shard=2/2",
     "test:perf:sessions": "bun test tests/integration/per-session-um-perf.test.ts --timeout 60000",
     "test:conversion": "bun test tests/conversion/",
     "test:stress:api": "bun run tests/stress/stress-api.ts",
@@ -42,7 +44,7 @@
     {
       "name": "main app bundle (gzipped)",
       "path": "dist/assets/index-*.js",
-      "limit": "430 kB",
+      "limit": "450 kB",
       "gzip": true,
       "running": false
     },
@@ -56,7 +58,7 @@
     {
       "name": "main CSS (gzipped)",
       "path": "dist/assets/index-*.css",
-      "limit": "51 kB",
+      "limit": "52 kB",
       "gzip": true,
       "running": false
     }

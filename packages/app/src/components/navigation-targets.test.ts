@@ -18,6 +18,67 @@ describe('deriveKnownFolderPaths', () => {
 });
 
 describe('resolveNavigationTarget', () => {
+  test('resolves managed-artifact docs as real doc targets (never missing)', () => {
+    for (const docName of ['__skill__/global/foo', '__template__/notes/daily']) {
+      expect(resolveNavigationTarget(docName, { pages: new Set() })).toEqual({
+        kind: 'doc',
+        target: docName,
+        docName,
+      });
+    }
+  });
+
+  test('resolves a GLOBAL skill bundle reference node to a read-only skill-file target', () => {
+    expect(
+      resolveNavigationTarget('__skill__/global/demo/references/notes', { pages: new Set() }),
+    ).toEqual({
+      kind: 'skill-file',
+      target: 'global/demo/references/notes.md',
+      scope: 'global',
+      name: 'demo',
+      path: 'references/notes.md',
+    });
+    expect(
+      resolveNavigationTarget('__skill__/global/demo/references/sub/deep', { pages: new Set() }),
+    ).toEqual({
+      kind: 'skill-file',
+      target: 'global/demo/references/sub/deep.md',
+      scope: 'global',
+      name: 'demo',
+      path: 'references/sub/deep.md',
+    });
+  });
+
+  test('the GLOBAL SKILL doc itself stays a normal editor doc target (not skill-file)', () => {
+    expect(resolveNavigationTarget('__skill__/global/demo', { pages: new Set() })).toEqual({
+      kind: 'doc',
+      target: '__skill__/global/demo',
+      docName: '__skill__/global/demo',
+    });
+  });
+
+  test('redirects a stale `__skill__/project/<name>` deep-link to the content doc', () => {
+    expect(resolveNavigationTarget('__skill__/project/foo', { pages: new Set() })).toEqual({
+      kind: 'doc',
+      target: '.ok/skills/foo/SKILL',
+      docName: '.ok/skills/foo/SKILL',
+    });
+  });
+
+  test('resolves a skill file-path link as content and a template link to its artifact', () => {
+    const skillDoc = '.ok/skills/open-knowledge-pack-knowledge-base/SKILL';
+    expect(resolveNavigationTarget(skillDoc, { pages: new Set([skillDoc]) })).toEqual({
+      kind: 'doc',
+      target: skillDoc,
+      docName: skillDoc,
+    });
+    expect(resolveNavigationTarget('notes/.ok/templates/daily', { pages: new Set() })).toEqual({
+      kind: 'doc',
+      target: '__template__/notes/daily',
+      docName: '__template__/notes/daily',
+    });
+  });
+
   test('prefers an exact document over folder landing notes', () => {
     const resolved = resolveNavigationTarget('reports', {
       pages: new Set(['reports', 'reports/index', 'reports/reports']),

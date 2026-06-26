@@ -1,3 +1,4 @@
+import { hashFromSkillFile } from '@/lib/doc-hash';
 import { type ResolvedNavigationTarget, resolveNavigationTarget } from './navigation-targets';
 
 type TargetDisplayState = 'doc' | 'folder' | 'missing';
@@ -5,6 +6,7 @@ type TargetDisplayState = 'doc' | 'folder' | 'missing';
 interface TargetNavigationIntent {
   resolvedTarget: ResolvedNavigationTarget;
   hashDocName: string;
+  hash: string | null;
   displayState: TargetDisplayState;
 }
 
@@ -12,6 +14,8 @@ function getTargetDisplayState(resolvedTarget: ResolvedNavigationTarget): Target
   switch (resolvedTarget.kind) {
     case 'doc':
     case 'large-file':
+      return 'doc';
+    case 'skill-file':
       return 'doc';
     case 'folder':
     case 'folder-index':
@@ -36,6 +40,14 @@ export function resolveTargetNavigationIntent(
   return {
     resolvedTarget,
     hashDocName: resolvedTarget.target,
+    hash:
+      resolvedTarget.kind === 'skill-file'
+        ? hashFromSkillFile({
+            scope: resolvedTarget.scope,
+            name: resolvedTarget.name,
+            path: resolvedTarget.path,
+          })
+        : null,
     displayState: getTargetDisplayState(resolvedTarget),
   };
 }

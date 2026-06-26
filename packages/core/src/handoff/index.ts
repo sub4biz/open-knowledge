@@ -13,6 +13,7 @@ export {
   composeFilePrompt,
   composeFolderPrompt,
   composeSelectionPrompt,
+  composeSkillPrompt,
   composeTerminalBareLaunchPrompt,
   OK_PROJECT_SKILL_POINTER,
   OK_TERMINAL_SURFACE_PREAMBLE,

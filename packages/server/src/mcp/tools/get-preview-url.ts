@@ -1,3 +1,4 @@
+import { MANAGED_ARTIFACT_SCOPES, SKILL_NAME_REGEX } from '@inkeep/open-knowledge-core';
 import { z } from 'zod';
 import { AutoStartDisabledError } from '../../autostart.ts';
 import { resolveLockDir } from '../../config/paths.ts';
@@ -8,6 +9,7 @@ import {
   awaitUiBaseUrl,
   encodeDocName,
   encodeFolderRoute,
+  encodeSkillRoute,
   type PreviewUrlContext,
   resolveUiInfo,
 } from './preview-url.ts';
@@ -32,7 +34,8 @@ const DESCRIPTION = [
   '**Parameters:**',
   '- `document` (optional) — Extension-less doc path (e.g. `specs/foo/SPEC`). Omit for the UI root URL.',
   '- `folder` (optional) — Folder path (e.g. `specs/foo`); returns the `…/#/<folder>/` route. Mutually exclusive with `document`.',
-  '- `armPaneTarget` (optional) — When true with a `document`/`folder`, writes a small TTL-bounded (~30s) state file under `.ok/local/` so a later Claude-pane base-open lands on that target. Independent of server state; omit it and the call writes nothing.',
+  '- `skill` (optional) — A skill to open in the editor: `{ name, scope? }` (scope `project` default). Returns the `…/#/__skill__/<scope>/<name>` route. Mutually exclusive with `document`/`folder`.',
+  '- `armPaneTarget` (optional) — When true with a `document`/`folder`/`skill`, writes a small TTL-bounded (~30s) state file under `.ok/local/` so a later Claude-pane base-open lands on that target. Independent of server state; omit it and the call writes nothing.',
   '- `cwd` (optional) — Project root (see `cwd` description below).',
 ].join('\n');
 
@@ -59,6 +62,22 @@ const InputSchema = {
     .optional()
     .describe(
       'Folder path to resolve a folder-route preview URL for (e.g. "specs/foo"); returns the `…/#/<folder>/` route. Mutually exclusive with `document`.',
+    ),
+  skill: z
+    .object({
+      name: z
+        .string()
+        .min(1)
+        .regex(SKILL_NAME_REGEX, 'Skill name must be lowercase letters, digits, and hyphens only.')
+        .describe('Skill name (the `.ok/skills/<name>` identity).'),
+      scope: z
+        .enum(MANAGED_ARTIFACT_SCOPES)
+        .optional()
+        .describe('Skill scope; defaults to `project`.'),
+    })
+    .optional()
+    .describe(
+      'Skill to resolve an editor preview URL for; returns the `…/#/__skill__/<scope>/<name>` route. Mutually exclusive with `document`/`folder`.',
     ),
   armPaneTarget: z
     .boolean()
@@ -120,14 +139,20 @@ export function register(server: ServerInstance, deps: GetPreviewUrlDeps): void 
         idempotentHint: true,
       },
     },
-    async (args: { document?: string; folder?: string; armPaneTarget?: boolean; cwd?: string }) => {
-      if (args.document && args.folder) {
+    async (args: {
+      document?: string;
+      folder?: string;
+      skill?: { name: string; scope?: 'project' | 'global' };
+      armPaneTarget?: boolean;
+      cwd?: string;
+    }) => {
+      if ([args.document, args.folder, args.skill].filter((t) => t != null).length > 1) {
         return {
           isError: true,
           content: [
             {
               type: 'text' as const,
-              text: 'Error: document and folder are mutually exclusive — pass exactly one.',
+              text: 'Error: document, folder, and skill are mutually exclusive — pass at most one.',
             },
           ],
         };
@@ -147,7 +172,9 @@ export function register(server: ServerInstance, deps: GetPreviewUrlDeps): void 
         ? `#/${encodeDocName(args.document)}`
         : args.folder
           ? `#/${encodeFolderRoute(args.folder)}`
-          : null;
+          : args.skill
+            ? `#/${encodeSkillRoute(args.skill.scope ?? 'project', args.skill.name)}`
+            : null;
 
       if (args.armPaneTarget && routeFragment) {
         try {
@@ -157,7 +184,7 @@ export function register(server: ServerInstance, deps: GetPreviewUrlDeps): void 
 
       const armNote =
         args.armPaneTarget && !routeFragment
-          ? ' (note: armPaneTarget was set but no document/folder was given, so nothing was armed)'
+          ? ' (note: armPaneTarget was set but no document/folder/skill was given, so nothing was armed)'
           : '';
 
       const serverWasLive = isServerLive(lockDir);

@@ -1,3 +1,4 @@
+import { parseManagedArtifactName } from '@inkeep/open-knowledge-core';
 import { MoreHorizontalIcon } from 'lucide-react';
 import { Fragment } from 'react';
 import {
@@ -25,9 +26,12 @@ type BreadcrumbNode =
 
 export function EditorBreadcrumb({ docName, className }: EditorBreadcrumbProps) {
   if (!docName) return null;
-  const { prefix } = tabParts(docName, '');
-  if (!prefix) return null;
-  const segments = prefix.replace(/\/$/, '').split('/').filter(Boolean);
+  const managed = parseManagedArtifactName(docName);
+  const segments = managed
+    ? managed.kind === 'template'
+      ? managed.folder.split('/').filter(Boolean)
+      : []
+    : tabParts(docName, '').prefix.replace(/\/$/, '').split('/').filter(Boolean);
   if (segments.length === 0) return null;
 
   const segmentNode = (value: string, absoluteIndex: number): BreadcrumbNode => ({

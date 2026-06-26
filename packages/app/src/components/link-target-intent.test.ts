@@ -12,6 +12,7 @@ describe('resolveLinkTargetIntent', () => {
         docName: 'reports',
       },
       hashDocName: 'reports',
+      hash: null,
     });
   });
 
@@ -27,6 +28,7 @@ describe('resolveLinkTargetIntent', () => {
         noteKind: 'canonical-index',
       },
       hashDocName: 'reports',
+      hash: null,
     });
   });
 
@@ -42,6 +44,7 @@ describe('resolveLinkTargetIntent', () => {
         noteKind: 'legacy-folder-note',
       },
       hashDocName: 'reports',
+      hash: null,
     });
   });
 
@@ -60,6 +63,7 @@ describe('resolveLinkTargetIntent', () => {
         folderPath: 'reports',
       },
       hashDocName: 'reports',
+      hash: null,
     });
   });
 
@@ -95,6 +99,27 @@ describe('resolveLinkTargetIntent', () => {
         docName: 'my-notes',
       },
       hashDocName: 'my-notes',
+      hash: null,
+    });
+  });
+
+  test('navigates a skill-bundle reference to the read-only viewer instead of create-page', () => {
+    expect(
+      resolveLinkTargetIntent('__skill__/global/test/references/notes', {
+        pages: new Set<string>(),
+      }),
+    ).toEqual({
+      kind: 'navigate',
+      displayState: 'resolved',
+      resolvedTarget: {
+        kind: 'skill-file',
+        target: 'global/test/references/notes.md',
+        scope: 'global',
+        name: 'test',
+        path: 'references/notes.md',
+      },
+      hashDocName: 'global/test/references/notes.md',
+      hash: '#/__skill-file__/global/test/references/notes.md',
     });
   });
 });

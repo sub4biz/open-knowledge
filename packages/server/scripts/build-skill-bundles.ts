@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BundleId } from '../src/build-skill-zip.ts';
+import { BUNDLE_IDS, type BundleId } from '../src/skill-bundles.ts';
 
-export const BUNDLE_IDS = ['discovery', 'project'] as const satisfies readonly BundleId[];
+export { BUNDLE_IDS };
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(SCRIPT_DIR, '..');
@@ -60,12 +60,13 @@ export function buildSkillBundles(paths: SkillBundlePaths = defaultPaths()): Com
   const resolve = sharedResolver(paths.skillsDir);
   const results: ComposedBundle[] = [];
   for (const bundle of BUNDLE_IDS) {
-    const sourcePath = join(paths.skillsDir, bundle, 'SKILL.md');
-    const source = readFileSync(sourcePath, 'utf-8');
+    const sourceDir = join(paths.skillsDir, bundle);
+    const source = readFileSync(join(sourceDir, 'SKILL.md'), 'utf-8');
     const { composed, placeholders } = composeSkill(source, resolve);
-    const outputPath = join(paths.distDir, bundle, 'SKILL.md');
-    rmSync(join(paths.distDir, bundle), { recursive: true, force: true });
-    mkdirSync(dirname(outputPath), { recursive: true });
+    const outDir = join(paths.distDir, bundle);
+    const outputPath = join(outDir, 'SKILL.md');
+    rmSync(outDir, { recursive: true, force: true });
+    cpSync(sourceDir, outDir, { recursive: true });
     writeFileSync(outputPath, composed, 'utf-8');
     results.push({ bundle, composed, placeholders, outputPath });
   }
@@ -79,12 +80,14 @@ export function buildPackSkills(paths: SkillBundlePaths = defaultPaths()): strin
   const built: string[] = [];
   for (const entry of readdirSync(packsSrc, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const sourcePath = join(packsSrc, entry.name, 'SKILL.md');
+    const sourceDir = join(packsSrc, entry.name);
+    const sourcePath = join(sourceDir, 'SKILL.md');
     if (!existsSync(sourcePath)) continue;
     const { composed } = composeSkill(readFileSync(sourcePath, 'utf-8'), resolve);
-    const outputPath = join(paths.distDir, 'packs', entry.name, 'SKILL.md');
-    rmSync(join(paths.distDir, 'packs', entry.name), { recursive: true, force: true });
-    mkdirSync(dirname(outputPath), { recursive: true });
+    const outDir = join(paths.distDir, 'packs', entry.name);
+    const outputPath = join(outDir, 'SKILL.md');
+    rmSync(outDir, { recursive: true, force: true });
+    cpSync(sourceDir, outDir, { recursive: true });
     writeFileSync(outputPath, composed, 'utf-8');
     built.push(entry.name);
   }

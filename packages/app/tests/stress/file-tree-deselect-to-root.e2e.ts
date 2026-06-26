@@ -17,11 +17,11 @@ import { expect, resetContentToFixtureBaseline, test } from './_helpers';
 const SIDEBAR = '[data-slot="sidebar-container"]';
 
 async function clickEmptyTreeArea(page: Page): Promise<void> {
-  const scroll = page.locator('[data-file-tree-virtualized-scroll]');
-  await expect(scroll).toBeVisible();
-  const box = await scroll.boundingBox();
-  if (!box) throw new Error('tree scroll container has no bounding box');
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+  const filler = page.locator('[data-sidebar-empty-deselect]');
+  await expect(filler).toBeVisible();
+  const box = await filler.boundingBox();
+  if (!box) throw new Error('sidebar deselect filler has no bounding box');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
 
 async function createFileAndGetDocName(

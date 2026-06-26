@@ -9,6 +9,7 @@ import type {
   OkSeedPackInfo,
   OkSeedPlanResult,
 } from '@/lib/desktop-bridge-types';
+import { emitSkillsChanged } from '@/lib/documents-events';
 
 async function translateSeedError(res: Response): Promise<OkSeedError> {
   const body = (await res.json().catch(() => null)) as unknown;
@@ -47,9 +48,14 @@ interface SeedClientShape {
 export function seedClient(): SeedClientShape {
   const okDesktop = typeof window !== 'undefined' ? window.okDesktop : undefined;
   if (okDesktop?.seed) {
+    const desktopApply = okDesktop.seed.apply;
     return {
       plan: okDesktop.seed.plan,
-      apply: okDesktop.seed.apply,
+      apply: async (plan, options) => {
+        const result = await desktopApply(plan, options);
+        if (result.ok) emitSkillsChanged();
+        return result;
+      },
       listPacks: okDesktop.seed.listPacks,
     };
   }
@@ -87,6 +93,7 @@ export function seedClient(): SeedClientShape {
       if (!body?.result) {
         return { ok: false, error: { kind: 'internal', message: 'Malformed apply response' } };
       }
+      emitSkillsChanged();
       return { ok: true, result: body.result };
     },
     listPacks: async (): Promise<OkSeedListPacksResult> => {

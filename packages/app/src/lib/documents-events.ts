@@ -76,3 +76,15 @@ export function subscribeToTemplatesChanged(onChange: () => void): () => void {
   window.addEventListener(TEMPLATES_CHANGED_EVENT, listener);
   return () => window.removeEventListener(TEMPLATES_CHANGED_EVENT, listener);
 }
+
+const SKILLS_CHANGED_EVENT = 'open-knowledge:skills-changed';
+
+export function emitSkillsChanged(): void {
+  window.dispatchEvent(new CustomEvent(SKILLS_CHANGED_EVENT));
+}
+
+export function subscribeToSkillsChanged(onChange: () => void): () => void {
+  const listener = () => onChange();
+  window.addEventListener(SKILLS_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(SKILLS_CHANGED_EVENT, listener);
+}

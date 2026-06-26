@@ -15,6 +15,7 @@ import {
   humanFormat,
   type MarkdownManager,
   type Principal,
+  parseGlobalSkillBundleDoc,
 } from '@inkeep/open-knowledge-core';
 import {
   readConfigSafely,
@@ -32,7 +33,13 @@ import { seedBasenameIndex, seedSingleDirBasenameIndex } from './asset-walk.ts';
 import { HocuspocusAuthRejection, parseHocuspocusAuthToken } from './auth-token-schema.ts';
 import { BacklinkIndex } from './backlink-index.ts';
 import { shellEscape } from './bash/shell-escape.ts';
-import { CC1Broadcaster, isConfigDoc, isSystemDoc, SYSTEM_DOC_NAME } from './cc1-broadcast.ts';
+import {
+  CC1Broadcaster,
+  isConfigDoc,
+  isManagedArtifactDoc,
+  isReservedForUserTree,
+  SYSTEM_DOC_NAME,
+} from './cc1-broadcast.ts';
 import { getLocalDir } from './config/paths.ts';
 import {
   type ConfigFileWatcherUnsubscribe,
@@ -42,6 +49,7 @@ import {
 import { applyExternalConfigChange } from './config-persistence.ts';
 import { isDocInConflict } from './conflict-errors.ts';
 import { createConflictLifecycleSeedExtension } from './conflict-lifecycle-seed.ts';
+import { resolveProjectTemplates } from './content/templates-resolver.ts';
 import { type ContentFilter, createContentFilter } from './content-filter.ts';
 import { getDocExtension, stripDocExtension } from './doc-extensions.ts';
 import { runDocLineageGuard } from './doc-lineage-guard.ts';
@@ -84,6 +92,12 @@ import {
   createMaintenanceCoordinator,
   type MaintenanceCoordinator,
 } from './maintenance-coordinator.ts';
+import {
+  applyExternalManagedArtifactChange,
+  managedArtifactDocNameForPath,
+  managedArtifactSkillsRoots,
+} from './managed-artifact-persistence.ts';
+import { startManagedArtifactWatcher, TEMPLATE_WATCH_OPTIONS } from './managed-artifact-watcher.ts';
 import { recoverPendingManagedRename } from './managed-rename-journal.ts';
 import { mdManager, schema } from './md-manager.ts';
 import {
@@ -379,11 +393,11 @@ export function createServer(options: ServerOptions): ServerInstance {
     onSizeChange: (size) => setRecentlyRemovedDocsSize(size),
   });
   const onUpstreamRename = (oldDocName: string, newDocName: string): void => {
-    if (isSystemDoc(oldDocName) || isConfigDoc(oldDocName)) return;
+    if (isReservedForUserTree(oldDocName)) return;
     recentlyRemovedDocs.setRenamed(oldDocName, newDocName);
   };
   const onUpstreamDelete = (docName: string): void => {
-    if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+    if (isReservedForUserTree(docName)) return;
     if (recentlyRemovedDocs.peek(docName)?.kind === 'renamed') {
       console.info(
         JSON.stringify({
@@ -397,7 +411,7 @@ export function createServer(options: ServerOptions): ServerInstance {
     recentlyRemovedDocs.setDeleted(docName);
   };
   const onUpstreamAdd = (docName: string): void => {
-    if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+    if (isReservedForUserTree(docName)) return;
     recentlyRemovedDocs.delete(docName);
   };
 
@@ -498,7 +512,7 @@ export function createServer(options: ServerOptions): ServerInstance {
       onFlushCommit: () => maintenanceCoordinator?.noteFlushCommit(),
       onDiskFlush: (docName, sv, persistedMarkdown, previousMarkdown) => {
         cc1Broadcaster?.emitDiskAck(docName, sv);
-        if (isSystemDoc(docName) || isConfigDoc(docName)) return;
+        if (isReservedForUserTree(docName)) return;
         if (!assetReferencesChanged(previousMarkdown, persistedMarkdown)) return;
         invalidateReferencedAssetsCache?.();
         signalChannel('files');
@@ -526,7 +540,7 @@ export function createServer(options: ServerOptions): ServerInstance {
         return true;
       }
       const name = document.name;
-      if (isSystemDoc(name) || isConfigDoc(name)) return false;
+      if (isReservedForUserTree(name)) return false;
       if (getReconciledBase(name) !== undefined) return false;
       if (document.getXmlFragment('default').length !== 0) return false;
       if (document.getText('source').length !== 0) return false;
@@ -609,7 +623,9 @@ export function createServer(options: ServerOptions): ServerInstance {
     const configDocAdmissionGuard: Extension & { __kind: 'config-doc-admission-guard' } = {
       __kind: 'config-doc-admission-guard',
       async onAuthenticate(payload) {
-        if (!isConfigDoc(payload.documentName)) return;
+        if (!isConfigDoc(payload.documentName) && !isManagedArtifactDoc(payload.documentName)) {
+          return;
+        }
         const req = payload.request as unknown as {
           socket?: { remoteAddress?: string };
           headers?: { host?: string };
@@ -717,10 +733,14 @@ export function createServer(options: ServerOptions): ServerInstance {
       projectDir,
       resolveEmbed,
       getPrincipal: () => loadedPrincipal,
+      homeDirOverride: configHomedirOverride,
       forceUnloadDocument,
       ready,
       recentlyRemovedDocs,
       serializeDoc,
+      evictManagedArtifactLkg: (docName: string) => {
+        persistence.managedArtifactCtx.lkgCache.delete(docName);
+      },
       semanticSearch,
       getSemanticSimilarityFloor: () => readSemanticSearchConfig().similarityFloor,
       embeddingsSecretsFile: secretsFilePath(configHomedirOverride),
@@ -795,7 +815,7 @@ export function createServer(options: ServerOptions): ServerInstance {
     if (!assetBasename) return;
     const needle = `[[${assetBasename}]]`;
     for (const [docName] of hocuspocus.documents) {
-      if (isSystemDoc(docName) || isConfigDoc(docName)) continue;
+      if (isReservedForUserTree(docName)) continue;
       const document = hocuspocus.documents.get(docName);
       if (!document) continue;
       const source = document.getText('source').toString();
@@ -1225,7 +1245,7 @@ export function createServer(options: ServerOptions): ServerInstance {
         const rescueFailed: string[] = [];
         if (shadowRef.current) {
           for (const docName of stillLoaded) {
-            if (isSystemDoc(docName) || isConfigDoc(docName)) continue;
+            if (isReservedForUserTree(docName)) continue;
             try {
               const ours = serializeDoc(docName);
               if (ours === null) {
@@ -1767,6 +1787,75 @@ export function createServer(options: ServerOptions): ServerInstance {
       }
     }
 
+    if (!ephemeral) {
+      const reconcileManagedArtifactDisk = (absPath: string, content: string): void => {
+        const docName = managedArtifactDocNameForPath(absPath, persistence.managedArtifactCtx);
+        if (!docName) return;
+        const document = hocuspocus.documents.get(docName);
+        const outcome = applyExternalManagedArtifactChange(
+          document ?? null,
+          docName,
+          content,
+          persistence.managedArtifactCtx,
+        );
+        log.info({ docName, outcome }, '[managed-artifact-watcher] external change');
+        if (parseGlobalSkillBundleDoc(docName)) {
+          void backlinkIndex
+            .ingestGlobalSkillBundles(
+              managedArtifactSkillsRoots(persistence.managedArtifactCtx),
+              getActiveBranch(),
+            )
+            .then(() => {
+              signalChannel('backlinks');
+              signalChannel('graph');
+            })
+            .catch((err) => {
+              log.warn({ err, docName }, '[backlinks] global skill bundle re-ingest failed');
+            });
+        }
+      };
+
+      try {
+        const skillsRoots = managedArtifactSkillsRoots(persistence.managedArtifactCtx);
+        const skillsCleanup = await startManagedArtifactWatcher(
+          skillsRoots,
+          reconcileManagedArtifactDisk,
+        );
+        configFileWatcherCleanups.push({ docName: '__skill-files__', cleanup: skillsCleanup });
+        log.info({ roots: skillsRoots }, '[managed-artifact-watcher] skills started');
+      } catch (err) {
+        log.warn({ err }, '[managed-artifact-watcher] skills failed to start');
+        degraded.push('managed-artifact-watcher:skills');
+      }
+
+      try {
+        const templateFolders = new Set<string>(['']);
+        try {
+          for (const t of resolveProjectTemplates(projectDir).templates) {
+            templateFolders.add(t.source_folder);
+          }
+        } catch (err) {
+          log.warn({ err }, '[managed-artifact-watcher] template enumeration failed; root only');
+        }
+        const templateRoots = [...templateFolders].map((f) =>
+          f ? resolve(projectDir, f, '.ok', 'templates') : resolve(projectDir, '.ok', 'templates'),
+        );
+        const templateCleanup = await startManagedArtifactWatcher(
+          templateRoots,
+          reconcileManagedArtifactDisk,
+          TEMPLATE_WATCH_OPTIONS,
+        );
+        configFileWatcherCleanups.push({ docName: '__template-files__', cleanup: templateCleanup });
+        log.info(
+          { rootCount: templateRoots.length },
+          '[managed-artifact-watcher] templates started',
+        );
+      } catch (err) {
+        log.warn({ err }, '[managed-artifact-watcher] templates failed to start');
+        degraded.push('managed-artifact-watcher:templates');
+      }
+    }
+
     try {
       const okignorePath = resolve(contentDir, '.okignore');
       const gitignorePath = resolve(projectDir, '.gitignore');
@@ -1876,6 +1965,14 @@ export function createServer(options: ServerOptions): ServerInstance {
           } else {
             await backlinkIndex.rebuildFromDisk(branch);
           }
+          try {
+            await backlinkIndex.ingestGlobalSkillBundles(
+              managedArtifactSkillsRoots(persistence.managedArtifactCtx),
+              branch,
+            );
+          } catch (err) {
+            log.warn({ err, branch }, '[backlinks] global skill bundle ingest failed');
+          }
           void backlinkIndex.saveToDisk().catch((err) => {
             console.warn(`[backlinks] Failed to persist startup cache for ${branch}:`, err);
           });
@@ -1959,7 +2056,7 @@ export function createServer(options: ServerOptions): ServerInstance {
               : currentBranch;
             const docs: ParkableDoc[] = [];
             for (const [docName, document] of hocuspocus.documents) {
-              if (isSystemDoc(docName) || isConfigDoc(docName)) continue;
+              if (isReservedForUserTree(docName)) continue;
               let markdown: string | null = null;
               document.transact(() => {
                 markdown = serializeDoc(docName);
@@ -2057,7 +2154,7 @@ export function createServer(options: ServerOptions): ServerInstance {
             }
 
             for (const [docName, document] of hocuspocus.documents) {
-              if (isSystemDoc(docName) || isConfigDoc(docName)) continue;
+              if (isReservedForUserTree(docName)) continue;
               try {
                 const filePath = safeContentPath(docName, contentDir);
                 if (!existsSync(filePath)) {
@@ -2124,6 +2221,17 @@ export function createServer(options: ServerOptions): ServerInstance {
               } else {
                 await backlinkIndex.rebuildFromDisk(newBranch);
               }
+              try {
+                await backlinkIndex.ingestGlobalSkillBundles(
+                  managedArtifactSkillsRoots(persistence.managedArtifactCtx),
+                  newBranch,
+                );
+              } catch (err) {
+                log.warn(
+                  { err, branch: newBranch },
+                  '[backlinks] branch-switch global skill bundle ingest failed',
+                );
+              }
               void backlinkIndex.saveToDisk(newBranch).catch((err) => {
                 console.warn(`[backlinks] Failed to persist branch cache for ${newBranch}:`, err);
               });
@@ -2138,7 +2246,7 @@ export function createServer(options: ServerOptions): ServerInstance {
             if (shadowRef.current && info.batchKind === 'cross-branch') {
               let restoredCount = 0;
               for (const [docName] of hocuspocus.documents) {
-                if (isSystemDoc(docName) || isConfigDoc(docName)) continue;
+                if (isReservedForUserTree(docName)) continue;
                 try {
                   const parked = await readParkedState(
                     shadowRef.current,

@@ -107,8 +107,15 @@ mock.module('@/components/ui/sidebar', () => ({
   SidebarHeader: ElementPassThrough,
   SidebarMenu: ElementPassThrough,
   SidebarMenuItem: ElementPassThrough,
+  SidebarGroup: ElementPassThrough,
+  SidebarGroupContent: ElementPassThrough,
+  SidebarGroupLabel: ElementPassThrough,
   SidebarRail: () => null,
   useSidebar: () => ({ state: 'expanded', toggleSidebar: toggleSidebarMock }),
+}));
+
+mock.module('@/components/SkillsSidebarSection', () => ({
+  SkillsSidebarSection: () => null,
 }));
 
 mock.module('@/components/ui/context-menu', () => ({

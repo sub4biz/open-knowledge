@@ -111,7 +111,7 @@ interface UseTemplateFormArgs {
   scope?: 'local' | 'inherited';
   initial: TemplateFormInitial;
   existingNames?: ReadonlySet<string>;
-  onCommitted: () => void;
+  onCommitted: (committedName: string) => void;
 }
 
 export interface TemplateFormState {
@@ -238,7 +238,7 @@ export function useTemplateForm({
     } else {
       toast.success(t`Template saved`);
     }
-    onCommitted();
+    onCommitted(mode === 'create' || renaming ? trimmedSlug : initial.name);
   }
 
   return {

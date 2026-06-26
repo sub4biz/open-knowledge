@@ -189,24 +189,24 @@ describe('ContentFilter', () => {
 
     test('excludes paths matched by .git/info/exclude (per-clone, untracked)', () => {
       initGitRepo(projectDir);
-      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.claude/worktrees/\n');
+      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.scratch/worktrees/\n');
 
       const filter = createContentFilter({ projectDir, contentDir: projectDir });
 
-      expect(filter.isDirExcluded('.claude/worktrees')).toBe(true);
-      expect(filter.isExcluded('.claude/worktrees/feature-x/note.md')).toBe(true);
-      expect(filter.isExcluded('.claude/skills/foo.md')).toBe(false);
+      expect(filter.isDirExcluded('.scratch/worktrees')).toBe(true);
+      expect(filter.isExcluded('.scratch/worktrees/feature-x/note.md')).toBe(true);
+      expect(filter.isExcluded('.scratch/skills/foo.md')).toBe(false);
     });
 
     test('unions .git/info/exclude with project .gitignore', () => {
       initGitRepo(projectDir);
       writeFileSync(join(projectDir, '.gitignore'), 'drafts/\n');
-      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.claude/worktrees/\n');
+      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.scratch/worktrees/\n');
 
       const filter = createContentFilter({ projectDir, contentDir: projectDir });
 
       expect(filter.isExcluded('drafts/wip.md')).toBe(true);
-      expect(filter.isExcluded('.claude/worktrees/fx/n.md')).toBe(true);
+      expect(filter.isExcluded('.scratch/worktrees/fx/n.md')).toBe(true);
       expect(filter.isExcluded('docs/guide.md')).toBe(false);
     });
 
@@ -278,12 +278,12 @@ describe('ContentFilter', () => {
       writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '');
 
       const filter = createContentFilter({ projectDir, contentDir: projectDir });
-      expect(filter.isExcluded('.claude/worktrees/fx/n.md')).toBe(false);
+      expect(filter.isExcluded('.scratch/worktrees/fx/n.md')).toBe(false);
 
-      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.claude/worktrees/\n');
+      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.scratch/worktrees/\n');
       const result = await filter.rebuildIgnorePatterns();
       expect(result.ok).toBe(true);
-      expect(filter.isExcluded('.claude/worktrees/fx/n.md')).toBe(true);
+      expect(filter.isExcluded('.scratch/worktrees/fx/n.md')).toBe(true);
     });
   });
 
@@ -332,6 +332,22 @@ describe('ContentFilter', () => {
 
       expect(filter.getWatcherIgnoreGlobs()).toEqual([]);
     });
+
+    test('drops blanket .ok globs so the OS watcher can reach .ok/skills (skills-as-content)', () => {
+      mkdirSync(join(projectDir, '.git', 'info'), { recursive: true });
+      writeFileSync(join(projectDir, '.git', 'info', 'exclude'), '.ok/\n');
+      writeFileSync(join(projectDir, '.gitignore'), 'dist/\n.ok\nnode_modules/\n');
+
+      const globs = createContentFilter({
+        projectDir,
+        contentDir: projectDir,
+      }).getWatcherIgnoreGlobs();
+
+      expect(globs).not.toContain('.ok');
+      expect(globs).not.toContain('.ok/');
+      expect(globs).toContain('dist/');
+      expect(globs).toContain('node_modules/');
+    });
   });
 
   describe('dot-dir scope symmetry', () => {
@@ -357,13 +373,16 @@ describe('ContentFilter', () => {
 
       const filter = createContentFilter({ projectDir, contentDir: projectDir });
 
-      expect(filter.isExcluded('.cursor/skills/SKILL.md')).toBe(false);
-      expect(filter.isExcluded('.claude/skills/foo.md')).toBe(false);
-      expect(filter.isExcluded('.agents/skills/foo.md')).toBe(false);
-      expect(filter.isExcluded('.codex/skills/foo.md')).toBe(false);
+      expect(filter.isExcluded('.cursor/skills/SKILL.md')).toBe(true);
+      expect(filter.isExcluded('.claude/skills/foo.md')).toBe(true);
+      expect(filter.isExcluded('.agents/skills/foo.md')).toBe(true);
+      expect(filter.isExcluded('.codex/skills/foo.md')).toBe(true);
+      expect(filter.isExcluded('.opencode/skills/foo.md')).toBe(true);
+      expect(filter.isExcluded('packages/.cursor/skills/SKILL.md')).toBe(true);
+      expect(filter.isExcluded('.cursor/skills/open-knowledge/diagram.png')).toBe(true);
+
       expect(filter.isExcluded('.github/PULL_REQUEST_TEMPLATE.md')).toBe(false);
       expect(filter.isExcluded('.vscode/notes.md')).toBe(false);
-      expect(filter.isExcluded('packages/.cursor/skills/SKILL.md')).toBe(false);
 
       expect(filter.isExcluded('.git/config')).toBe(true);
       expect(filter.isExcluded('.ok/config.yml')).toBe(true);
@@ -376,11 +395,10 @@ describe('ContentFilter', () => {
       expect(filter.isExcluded('.cursor/rules/some-rule.mdc')).toBe(true);
       expect(filter.isExcluded('.claude/settings.local.json')).toBe(true);
 
-      expect(filter.isExcluded('.cursor/skills/open-knowledge/diagram.png')).toBe(false);
-
-      expect(filter.isDirExcluded('.cursor')).toBe(false);
+      expect(filter.isDirExcluded('.cursor')).toBe(true);
       expect(filter.isDirExcluded('.git')).toBe(true);
-      expect(filter.isDirExcluded('.ok')).toBe(true);
+      expect(filter.isDirExcluded('.ok')).toBe(false);
+      expect(filter.isDirExcluded('.ok/local')).toBe(true);
     });
   });
 
@@ -418,7 +436,7 @@ describe('ContentFilter', () => {
       expect(filter.isDirExcluded('.turbo')).toBe(true);
       expect(filter.isDirExcluded('coverage')).toBe(true);
       expect(filter.isDirExcluded('.git')).toBe(true);
-      expect(filter.isDirExcluded('.ok')).toBe(true);
+      expect(filter.isDirExcluded('.ok')).toBe(false);
       expect(filter.isDirExcluded('.ok/local')).toBe(true);
       expect(filter.isDirExcluded('.ok/local/cache')).toBe(true);
       expect(filter.isDirExcluded('docs')).toBe(false);
@@ -454,15 +472,17 @@ describe('ContentFilter', () => {
       expect(filter.isExcluded('node_modules/logo.png')).toBe(true);
     });
 
-    test('does not descend into .ok during populateDirCount (BUILTIN_SKIP_DIRS)', () => {
+    test('admits .ok only down the skills path; non-skill .ok files stay excluded', () => {
       mkdirSync(join(projectDir, '.ok'), { recursive: true });
       writeFileSync(join(projectDir, '.ok', 'AGENTS.md'), '# Agents\n');
       writeFileSync(join(projectDir, 'docs.md'), '# Docs\n');
 
       const filter = createContentFilter({ projectDir, contentDir: projectDir });
 
-      expect(filter.isDirExcluded('.ok')).toBe(true);
+      expect(filter.isDirExcluded('.ok')).toBe(false);
+      expect(filter.isDirExcluded('.ok/local')).toBe(true);
       expect(filter.isExcluded('.ok/logo.png')).toBe(true);
+      expect(filter.isExcluded('.ok/AGENTS.md')).toBe(true);
     });
 
     test('isExcluded rejects supported docs born inside BUILTIN_SKIP_DIRS', () => {
@@ -487,6 +507,7 @@ describe('ContentFilter', () => {
       expect(filter.isDirExcluded('node_modules', BYPASS)).toBe(true);
       expect(filter.isDirExcluded('node_modules/some-pkg', BYPASS)).toBe(true);
       expect(filter.isDirExcluded('.ok', BYPASS)).toBe(true);
+      expect(filter.isDirExcluded('.ok/local', BYPASS)).toBe(true);
       expect(filter.isDirExcluded('.open-knowledge', BYPASS)).toBe(true);
       expect(filter.isDirExcluded('.openknowledge', BYPASS)).toBe(true);
       expect(filter.isDirExcluded('packages/foo/node_modules', BYPASS)).toBe(true);
@@ -577,6 +598,16 @@ describe('ContentFilter', () => {
       expect(filter.isExcluded('.SSH/known_hosts', BYPASS)).toBe(true);
       expect(filter.isExcluded('docs/.Environment.md', BYPASS)).toBe(false);
       expect(filter.isExcluded('docs/KEYMAP.md', BYPASS)).toBe(false);
+
+      expect(filter.isExcluded('.ok/skills/foo/server.key')).toBe(true);
+      expect(filter.isExcluded('.ok/skills/foo/id_rsa')).toBe(true);
+      expect(filter.isExcluded('.ok/skills/foo/.env')).toBe(true);
+      expect(filter.isPathIgnored('.ok/skills/foo/server.key')).toBe(true);
+      expect(filter.isPathIgnored('.ok/skills/foo/id_rsa')).toBe(true);
+      expect(filter.isPathIgnored('.ok/skills/foo/.env')).toBe(true);
+      expect(filter.isDirExcluded('.ok/skills/foo/.ssh')).toBe(true);
+      expect(filter.isExcluded('.ok/skills/foo/SKILL.md')).toBe(false);
+      expect(filter.isExcluded('.ok/skills/foo/diagram.png')).toBe(false);
 
       expect(filter.isDirExcluded('dist', BYPASS)).toBe(false);
       expect(filter.isDirExcluded('build', BYPASS)).toBe(false);

@@ -6,7 +6,7 @@ import {
 import { Command } from 'commander';
 import { accent, dim, error as errorColor, info, success, warning } from '../ui/colors.ts';
 
-interface InstallSkillCommandOptions {
+interface BuildDesktopSkillOptions {
   out?: string;
   noOpen?: boolean;
   /** Bypass the install-state gate and rebuild unconditionally. When Claude
@@ -20,7 +20,7 @@ interface InstallSkillCommandOptions {
   home?: string;
 }
 
-interface InstallSkillCliResult extends BuildAndOpenSkillResult {
+interface BuildDesktopSkillCliResult extends BuildAndOpenSkillResult {
   message: string;
   exitCode: number;
 }
@@ -76,9 +76,9 @@ function formatFailedMessage(result: BuildAndOpenSkillResult): string {
   return `${errorColor('Error:')} ${result.buildError ?? 'unknown build failure'}`;
 }
 
-export async function runInstallSkill(
-  opts: InstallSkillCommandOptions = {},
-): Promise<InstallSkillCliResult> {
+export async function runCoworkSkill(
+  opts: BuildDesktopSkillOptions = {},
+): Promise<BuildDesktopSkillCliResult> {
   const result = await buildAndOpenSkill(opts);
 
   if (result.status === 'failed') {
@@ -93,16 +93,16 @@ export async function runInstallSkill(
   return { ...result, message: formatBuiltMessage(result), exitCode: 0 };
 }
 
-export function installSkillCommand(): Command {
-  return new Command('install-skill')
+export function coworkCommand(): Command {
+  return new Command('cowork')
     .description(
-      'Build openknowledge.skill and open the Claude Desktop App so you can upload it for Claude Chat & Cowork. Not needed for Claude — `ok init` covers that separately.',
+      'Build openknowledge.skill and open the Claude Desktop App so you can upload it for Claude Chat & Cowork. (Advanced/rarely needed — `ok init` already wires Claude.)',
     )
     .option('--out <path>', 'Custom output path (default: ~/Downloads/openknowledge.skill)')
     .option('--no-open', 'Build the file but skip the OS file-association handoff')
     .option('--force', 'Bypass the install-state gate and rebuild unconditionally')
     .action(async (cliOpts: { out?: string; open: boolean; force?: boolean }) => {
-      const result = await runInstallSkill({
+      const result = await runCoworkSkill({
         out: cliOpts.out,
         noOpen: !cliOpts.open,
         force: cliOpts.force ?? false,

@@ -333,15 +333,19 @@ export function GraphPanel({ activeDocName }: { activeDocName: string }) {
   const activeMode = isExpanded ? fullscreenMode : 'explore';
   const showUrlNodes = isExpanded ? showUrlNodesFull : showUrlNodesDocked;
   const setShowUrlNodes = isExpanded ? setShowUrlNodesFull : setShowUrlNodesDocked;
-  const selectedDocDisplayState =
+  const selectedNodeIntent =
     selectedNode?.kind === 'doc' && !pageListLoading
       ? resolveTargetNavigationIntent(selectedNode.docName, {
           pages,
           folderPaths,
           pagesBySlug,
           pagesByBasename,
-        }).displayState
-      : 'doc';
+        })
+      : null;
+  const selectedDocDisplayState = selectedNodeIntent?.displayState ?? 'doc';
+  const hashForSelectedNode = (
+    selection: Parameters<typeof getHashForGraphDocSelection>[0],
+  ): string => selectedNodeIntent?.hash ?? getHashForGraphDocSelection(selection);
   const selectedNodeState =
     selectedNode === null
       ? null
@@ -353,7 +357,7 @@ export function GraphPanel({ activeDocName }: { activeDocName: string }) {
             actionLabel: t`Create page`,
             secondaryLabel: selectedNode.docName,
             onAction: () => {
-              const hash = getHashForGraphDocSelection(selectedNode);
+              const hash = hashForSelectedNode(selectedNode);
               setIsExpanded(false);
               window.location.assign(hash);
             },
@@ -366,7 +370,7 @@ export function GraphPanel({ activeDocName }: { activeDocName: string }) {
               actionLabel: t`Open`,
               secondaryLabel: selectedNode.docName,
               onAction: () => {
-                const hash = getHashForGraphDocSelection(selectedNode);
+                const hash = hashForSelectedNode(selectedNode);
                 setIsExpanded(false);
                 window.location.assign(hash);
               },
@@ -379,7 +383,7 @@ export function GraphPanel({ activeDocName }: { activeDocName: string }) {
                 actionLabel: t`Open`,
                 secondaryLabel: selectedNode.docName,
                 onAction: () => {
-                  const hash = getHashForGraphDocSelection(selectedNode);
+                  const hash = hashForSelectedNode(selectedNode);
                   setIsExpanded(false);
                   window.location.assign(hash);
                 },

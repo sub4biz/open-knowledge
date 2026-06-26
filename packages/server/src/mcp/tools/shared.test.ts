@@ -7,6 +7,7 @@ import {
   httpGet,
   httpPost,
   normalizeDocName,
+  okReservedPathRedirect,
   outputSchemaWithText,
   parseRenameCollidingPairs,
   resolveProjectConfigContext,
@@ -614,5 +615,31 @@ describe('parseRenameCollidingPairs — defensive parsing at trust boundary', ()
 
   test('empty array → empty array', () => {
     expect(parseRenameCollidingPairs([])).toEqual([]);
+  });
+});
+
+describe('okReservedPathRedirect', () => {
+  test('.ok/skills/ path → skill-verb redirect naming write-skill', () => {
+    const msg = okReservedPathRedirect('.ok/skills/research/SKILL');
+    expect(msg).not.toBeNull();
+    expect(msg).toContain('`skill` target');
+    expect(msg).toContain('open-knowledge-write-skill');
+  });
+
+  test('leading slash is tolerated', () => {
+    expect(okReservedPathRedirect('/.ok/skills/x/SKILL')).toContain('`skill` target');
+  });
+
+  test('.ok/templates/ path → template-verb redirect', () => {
+    expect(okReservedPathRedirect('.ok/templates/note')).toContain('`template` target');
+  });
+
+  test('other .ok/ path → generic .ok redirect', () => {
+    expect(okReservedPathRedirect('.ok/config/whatever')).toContain('not addressable as documents');
+  });
+
+  test('non-.ok path → null (normal docName error stands)', () => {
+    expect(okReservedPathRedirect('meetings/standup')).toBeNull();
+    expect(okReservedPathRedirect('docs/.hidden/x')).toBeNull();
   });
 });

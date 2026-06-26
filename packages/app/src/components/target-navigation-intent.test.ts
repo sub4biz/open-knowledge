@@ -17,6 +17,7 @@ describe('resolveTargetNavigationIntent', () => {
         noteKind: 'canonical-index',
       },
       hashDocName: 'reports',
+      hash: null,
       displayState: 'folder',
     });
   });
@@ -34,6 +35,7 @@ describe('resolveTargetNavigationIntent', () => {
         docName: 'reports/index',
       },
       hashDocName: 'reports/index',
+      hash: null,
       displayState: 'doc',
     });
   });
@@ -52,6 +54,7 @@ describe('resolveTargetNavigationIntent', () => {
         noteKind: 'legacy-folder-note',
       },
       hashDocName: 'reports',
+      hash: null,
       displayState: 'folder',
     });
   });
@@ -69,6 +72,7 @@ describe('resolveTargetNavigationIntent', () => {
         folderPath: 'reports',
       },
       hashDocName: 'reports',
+      hash: null,
       displayState: 'folder',
     });
   });
@@ -84,6 +88,7 @@ describe('resolveTargetNavigationIntent', () => {
         target: 'reports',
       },
       hashDocName: 'reports',
+      hash: null,
       displayState: 'missing',
     });
   });
@@ -101,6 +106,26 @@ describe('resolveTargetNavigationIntent', () => {
         docName: 'andrew-data/project-x/analysis',
       },
       hashDocName: 'andrew-data/project-x/analysis',
+      hash: null,
+      displayState: 'doc',
+    });
+  });
+
+  test('a GLOBAL skill bundle reference node carries the skill-file viewer hash', () => {
+    expect(
+      resolveTargetNavigationIntent('__skill__/global/demo/references/notes', {
+        pages: new Set(),
+      }),
+    ).toEqual({
+      resolvedTarget: {
+        kind: 'skill-file',
+        target: 'global/demo/references/notes.md',
+        scope: 'global',
+        name: 'demo',
+        path: 'references/notes.md',
+      },
+      hashDocName: 'global/demo/references/notes.md',
+      hash: '#/__skill-file__/global/demo/references/notes.md',
       displayState: 'doc',
     });
   });

@@ -750,8 +750,9 @@ export function EditorTabs() {
                 );
               }
 
-              if (tab.kind === 'asset') {
-                const { baseName, label, prefix } = tabParts(tab.assetPath, '');
+              if (tab.kind === 'asset' || tab.kind === 'skill-file') {
+                const labelPath = tab.kind === 'asset' ? tab.assetPath : tab.path;
+                const { baseName, label, prefix } = tabParts(labelPath, '');
                 const accessibleLabel = `${prefix}${label}`;
                 return (
                   <EditorTabContextMenu

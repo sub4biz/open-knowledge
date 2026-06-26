@@ -1,47 +1,73 @@
-import { existsSync, realpathSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  EDITOR_PROJECT_SKILL_ROOT,
+  type EditorId,
+  PROJECT_SKILL_EDITOR_IDS,
+} from '@inkeep/open-knowledge-core';
 import { resolveBundledSkillDir } from '../build-skill-zip.ts';
 import { tracedCpSync, tracedMkdirSync, tracedRmSync } from '../fs-traced.ts';
+import { recordSkillInstall } from '../installed-skills-marker.ts';
+import { getLogger } from '../logger.ts';
+import { BUNDLE_SKILL_NAME } from '../skill-bundles.ts';
+import { projectSkill } from '../skill-projection.ts';
 
-const EDITOR_SKILL_DIRS: ReadonlyArray<{ label: string; rel: string }> = [
-  { label: 'Claude Code', rel: '.claude/skills' },
-  { label: 'Cursor', rel: '.cursor/skills' },
-  { label: 'Codex', rel: '.agents/skills' },
-];
+const PROJECT_SKILL_EDITOR_LABELS: Partial<Record<EditorId, string>> = {
+  claude: 'Claude Code',
+  cursor: 'Cursor',
+  codex: 'Codex',
+};
 
-const PLATFORM_SKILL_NAME = 'open-knowledge';
+const PLATFORM_SKILL_NAME = BUNDLE_SKILL_NAME.project;
 
-function isContained(parent: string, child: string): boolean {
-  try {
-    const rel = relative(realpathSync(parent), realpathSync(child));
-    return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/'));
-  } catch {
-    return false;
-  }
-}
-
-export function installPackSkill(projectDir: string, packId: string): string[] {
+export function resolvePackSkillSource(packId: string): { name: string; sourceDir: string } | null {
   let sourceDir: string;
   try {
     sourceDir = resolveBundledSkillDir(`packs/${packId}`, { checkDesktop: true });
   } catch {
-    return [];
+    return null;
+  }
+  return { name: `open-knowledge-pack-${packId}`, sourceDir };
+}
+
+export async function installPackSkill(projectDir: string, packId: string): Promise<string[]> {
+  const resolved = resolvePackSkillSource(packId);
+  if (!resolved) return [];
+  const { name, sourceDir } = resolved;
+
+  const okSkillDir = join(projectDir, '.ok', 'skills', name);
+  if (!existsSync(join(okSkillDir, 'SKILL.md'))) {
+    try {
+      tracedRmSync(okSkillDir, { recursive: true, force: true });
+      tracedMkdirSync(join(projectDir, '.ok', 'skills'), { recursive: true });
+      tracedCpSync(sourceDir, okSkillDir, { recursive: true });
+    } catch (err) {
+      getLogger('seed').warn(
+        { err, packId, okSkillDir },
+        'pack skill source authoring failed — skill not installed',
+      );
+      return [];
+    }
   }
 
-  const installed: string[] = [];
-  for (const { label, rel } of EDITOR_SKILL_DIRS) {
-    const skillsRoot = join(projectDir, rel);
-    const platformSkill = join(skillsRoot, PLATFORM_SKILL_NAME, 'SKILL.md');
-    if (!existsSync(platformSkill)) continue;
-    if (existsSync(skillsRoot) && !isContained(projectDir, skillsRoot)) continue;
+  const setUpHosts = PROJECT_SKILL_EDITOR_IDS.filter((id) => {
+    const rel = EDITOR_PROJECT_SKILL_ROOT[id];
+    if (rel === null) return false;
+    return existsSync(join(projectDir, rel, PLATFORM_SKILL_NAME, 'SKILL.md'));
+  });
+  const hosts = projectSkill(okSkillDir, name, projectDir, setUpHosts);
+  const installed = hosts.map((id) => PROJECT_SKILL_EDITOR_LABELS[id] ?? id);
 
-    const targetDir = join(skillsRoot, `open-knowledge-pack-${packId}`);
+  if (hosts.length > 0) {
     try {
-      tracedRmSync(targetDir, { recursive: true, force: true });
-      tracedMkdirSync(skillsRoot, { recursive: true });
-      tracedCpSync(sourceDir, targetDir, { recursive: true });
-      installed.push(label);
+      await recordSkillInstall(projectDir, name, {
+        hosts,
+        scope: 'project',
+        scripts: existsSync(join(okSkillDir, 'scripts')),
+        installedAt: new Date().toISOString(),
+      });
     } catch {}
   }
+
   return installed;
 }

@@ -137,7 +137,7 @@ export function SeedDialog({ open, onOpenChange, onSeedApplied, initialPackId }:
             setPhase({ kind: 'error', message: result.error.message });
             return;
           }
-          const hasWork = result.plan.created.length > 0;
+          const hasWork = result.plan.created.length > 0 || result.plan.packSkill?.pending === true;
           setPhase(
             hasWork
               ? { kind: 'plan', plan: result.plan }
@@ -172,10 +172,13 @@ export function SeedDialog({ open, onOpenChange, onSeedApplied, initialPackId }:
     if (result.ok) {
       const packName = selectedPack?.name ?? t`starter pack`;
       const projectEntries = result.result.applied;
+      const skillReinstalled = planAtClick.packSkill?.pending === true;
       const message =
-        projectEntries === 0
-          ? t`${packName} was already set up. Nothing to do.`
-          : t`${packName} initialized (${plural(projectEntries, { one: '# entry', other: '# entries' })})`;
+        projectEntries > 0
+          ? t`${packName} initialized (${plural(projectEntries, { one: '# entry', other: '# entries' })})`
+          : skillReinstalled
+            ? t`${packName} skill installed.`
+            : t`${packName} was already set up. Nothing to do.`;
       toast.success(message);
       onSeedApplied?.();
       onOpenChange(false);
@@ -372,7 +375,18 @@ function SeedDialogBody({
 
   return (
     <div className="space-y-6 py-1 text-sm">
-      <CreatedItemsList plan={phase.plan} selectedPack={selectedPack} />
+      {phase.plan.created.length > 0 ? (
+        <CreatedItemsList plan={phase.plan} selectedPack={selectedPack} />
+      ) : null}
+      {phase.plan.packSkill?.pending ? (
+        <p className="text-sm text-muted-foreground">
+          <Trans>
+            The pack skill{' '}
+            <code className="font-mono text-foreground/80">{phase.plan.packSkill.name}</code> will
+            be (re)installed.
+          </Trans>
+        </p>
+      ) : null}
       {phase.plan.warnings.length > 0 ? (
         <div className="rounded-md bg-warning/10 p-3 text-xs text-warning-foreground">
           {phase.plan.warnings.map((w) => (

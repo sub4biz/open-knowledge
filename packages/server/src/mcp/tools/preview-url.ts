@@ -28,6 +28,10 @@ export function encodeFolderRoute(folder: string): string {
   return normalized ? `${encodeDocName(normalized)}/` : '';
 }
 
+export function encodeSkillRoute(scope: string, name: string): string {
+  return `__skill__/${scope}/${encodeDocName(name)}`;
+}
+
 type PreviewAttachWarning =
   | {
       action: 'attach-preview-once';
@@ -133,15 +137,22 @@ export function resolvePreviewUrl(
   docName: string,
   ctx: PreviewUrlContext,
 ): PreviewUrlResult | null {
-  const hash = `/#/${encodeDocName(docName)}`;
+  return previewForRoute(`/#/${encodeDocName(docName)}`, ctx);
+}
 
+export function resolveSkillPreviewUrl(
+  scope: string,
+  name: string,
+  ctx: PreviewUrlContext,
+): PreviewUrlResult | null {
+  return previewForRoute(`/#/${encodeSkillRoute(scope, name)}`, ctx);
+}
+
+function previewForRoute(hash: string, ctx: PreviewUrlContext): PreviewUrlResult | null {
   try {
     const lock = readUiLock(ctx.lockDir);
     if (lock && lock.port > 0) {
-      return {
-        url: hash,
-        source: 'lock',
-      };
+      return { url: hash, source: 'lock' };
     }
   } catch (err) {
     process.stderr.write(

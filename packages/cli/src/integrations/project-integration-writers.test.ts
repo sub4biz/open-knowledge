@@ -125,11 +125,11 @@ describe('projectSkillWriter', () => {
     expect(existsSync(outcome.path ?? '')).toBe(true);
   });
 
-  test('writes for codex (.agents/skills/open-knowledge/SKILL.md)', () => {
+  test('writes for codex (.codex/skills/open-knowledge/SKILL.md)', () => {
     const outcome = projectSkillWriter.write(EDITOR_TARGETS.codex, projectDir, {});
 
     expect(outcome.action).toBe('written');
-    expect(outcome.path).toBe(join(projectDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'));
+    expect(outcome.path).toBe(join(projectDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md'));
     expect(existsSync(outcome.path ?? '')).toBe(true);
   });
 
@@ -229,7 +229,7 @@ describe('applyProjectIntegrations', () => {
       true,
     );
     expect(existsSync(join(projectDir, '.codex', 'config.toml'))).toBe(true);
-    expect(existsSync(join(projectDir, '.agents', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
+    expect(existsSync(join(projectDir, '.codex', 'skills', 'open-knowledge', 'SKILL.md'))).toBe(
       true,
     );
   });

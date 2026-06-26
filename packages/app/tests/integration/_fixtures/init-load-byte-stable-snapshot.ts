@@ -23,6 +23,7 @@ const SNAPSHOT_EXCLUDED_DIRS = new Set([
   '.claude',
   '.cursor',
   '.codex',
+  '.opencode',
   '.agents',
 ]);
 

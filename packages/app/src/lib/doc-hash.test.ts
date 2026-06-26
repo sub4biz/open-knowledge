@@ -7,8 +7,12 @@ import {
   hashFromAssetPath,
   hashFromDocName,
   hashFromFolderPath,
+  hashFromSkillFile,
   isContentRootHash,
+  type SkillFileHashTarget,
+  skillFileFromHash,
 } from './doc-hash';
+import { skillLiveDocName, templateDocName } from './managed-artifact-doc-name';
 
 describe('docNameFromHash', () => {
   test('returns null for empty hash', () => {
@@ -210,5 +214,69 @@ describe('asset hash helpers', () => {
 
   test('asset hashes do not parse as doc hashes', () => {
     expect(docNameFromHash(hashFromAssetPath('docs/photo.png'))).toBeNull();
+  });
+});
+
+describe('managed-artifact doc names round-trip as documents', () => {
+  test('skill doc name round-trips through the hash', () => {
+    const docName = skillLiveDocName('global', 'run-tests');
+    expect(docName).toBe('__skill__/global/run-tests');
+    expect(hashFromDocName(docName)).toBe('#/__skill__/global/run-tests');
+    expect(docNameFromHash(hashFromDocName(docName))).toBe(docName);
+  });
+
+  test('template doc name (nested folder) round-trips through the hash', () => {
+    const docName = templateDocName('a/b/c', 'deep');
+    expect(docName).toBe('__template__/a/b/c/deep');
+    expect(hashFromDocName(docName)).toBe('#/__template__/a/b/c/deep');
+    expect(docNameFromHash(hashFromDocName(docName))).toBe(docName);
+  });
+
+  test('template at the project root', () => {
+    expect(templateDocName('', 'daily')).toBe('__template__/daily');
+    expect(docNameFromHash('#/__template__/daily')).toBe('__template__/daily');
+  });
+
+  test('a percent-encoded URL hash decodes back to the raw doc name', () => {
+    expect(docNameFromHash('#/__template__/My%20Notes/plan')).toBe('__template__/My Notes/plan');
+  });
+});
+
+describe('skill-file hash', () => {
+  test('round-trips scope / name / nested path', () => {
+    const target = {
+      scope: 'global',
+      name: 'trip-log',
+      path: 'references/guide.md',
+    } satisfies SkillFileHashTarget;
+    const hash = hashFromSkillFile(target);
+    expect(hash).toBe('#/__skill-file__/global/trip-log/references/guide.md');
+    expect(skillFileFromHash(hash)).toEqual(target);
+  });
+
+  test('round-trips a script path', () => {
+    const target = {
+      scope: 'project',
+      name: 'my-skill',
+      path: 'scripts/run.sh',
+    } satisfies SkillFileHashTarget;
+    expect(skillFileFromHash(hashFromSkillFile(target))).toEqual(target);
+  });
+
+  test('a skill-file hash is not read as a docName or asset path', () => {
+    const hash = hashFromSkillFile({ scope: 'global', name: 'x', path: 'scripts/run.sh' });
+    expect(docNameFromHash(hash)).toBeNull();
+    expect(assetPathFromHash(hash)).toBeNull();
+  });
+
+  test('returns null for a non-skill-file hash', () => {
+    expect(skillFileFromHash('#/some/doc')).toBeNull();
+    expect(skillFileFromHash('#/__asset__/images/x.png')).toBeNull();
+    expect(skillFileFromHash('#/__skill-file__/global/trip-log')).toBeNull();
+  });
+
+  test('rejects an unknown scope segment (hash is untrusted/editable)', () => {
+    expect(skillFileFromHash('#/__skill-file__/bogus/trip-log/references/x.md')).toBeNull();
+    expect(skillFileFromHash('#/__skill-file__/personal/trip-log/references/x.md')).toBeNull();
   });
 });

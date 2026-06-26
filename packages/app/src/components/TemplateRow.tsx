@@ -70,7 +70,7 @@ export function TemplateRow({ template, onEdit, onDelete, onCreate, badge }: Tem
             <MoreVertical className="size-4" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="min-w-52">
           <DropdownMenuItem onSelect={onEdit}>
             <Pencil aria-hidden />
             <Trans>Edit</Trans>
