@@ -96,12 +96,31 @@ describe('filterVisibleEntries', () => {
     ).toEqual([{ kind: 'asset', path: 'images/logo.png' }]);
   });
 
+  test('hides the non-dotted opencode.json agent config at root and nested', () => {
+    expect(
+      filterVisibleEntries([
+        { kind: 'document' as const, docName: 'README' },
+        { kind: 'asset' as const, path: 'opencode.json' },
+        { kind: 'asset' as const, path: 'tools/opencode.json' },
+      ]),
+    ).toEqual([{ kind: 'document', docName: 'README' }]);
+  });
+
+  test('showHiddenFiles=true reveals opencode.json', () => {
+    const entries = [
+      { kind: 'document' as const, docName: 'README' },
+      { kind: 'asset' as const, path: 'opencode.json' },
+    ];
+    expect(filterVisibleEntries(entries, true)).toEqual(entries);
+  });
+
   test('returns empty array when every entry is hidden', () => {
     expect(
       filterVisibleEntries([
         { kind: 'folder' as const, path: '.claude' },
         { kind: 'document' as const, docName: '.claude/agents/foo' },
         { kind: 'folder' as const, path: '.codex' },
+        { kind: 'asset' as const, path: 'opencode.json' },
       ]),
     ).toEqual([]);
   });

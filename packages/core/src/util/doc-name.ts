@@ -39,6 +39,9 @@ export function isValidDocName(name: string): boolean {
   return validateDocName(name).ok;
 }
 
+export const HIDDEN_CONFIG_BASENAMES: ReadonlySet<string> = new Set(['opencode.json']);
+
 export function isHiddenDocName(name: string): boolean {
-  return name.split('/').some((segment) => segment.startsWith('.'));
+  if (name.split('/').some((segment) => segment.startsWith('.'))) return true;
+  return HIDDEN_CONFIG_BASENAMES.has(name.slice(name.lastIndexOf('/') + 1));
 }

@@ -185,6 +185,29 @@ describe('hidden / dot-path ranking — searchable but rank-deprioritized', () =
     expect(hiddenRank).toBeGreaterThanOrEqual(0);
     expect(visibleRank).toBeLessThan(hiddenRank);
   });
+
+  const visibleConfigTwin = createWorkspaceSearchDocument({
+    kind: 'page',
+    path: 'notes/opencode',
+    title: 'opencode',
+    modifiedTs: 50,
+  });
+  const hiddenConfig = createWorkspaceSearchDocument({
+    kind: 'page',
+    path: 'opencode.json',
+    title: 'opencode',
+    modifiedTs: 50,
+  });
+
+  test('a non-dotted HIDDEN_CONFIG_BASENAMES path carries half the lexical bracket of its visible twin', () => {
+    const results = searchWorkspaceDocuments([visibleConfigTwin, hiddenConfig], 'opencode', {
+      intent: 'omnibar',
+    });
+    const v = results.find((result) => result.document.path === 'notes/opencode');
+    const h = results.find((result) => result.document.path === 'opencode.json');
+    expect(v?.signals.lexical).toBeGreaterThan(0);
+    expect(h?.signals.lexical).toBe((v?.signals.lexical ?? 0) * 0.5);
+  });
 });
 
 describe('canonical-kind ranking — markdown outranks a same-stem file (D5)', () => {

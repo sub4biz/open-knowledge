@@ -948,7 +948,12 @@ export type {
   ShadowContributor,
   TimelineEntry,
 } from './types/timeline.ts';
-export { isHiddenDocName, isValidDocName, validateDocName } from './util/doc-name.ts';
+export {
+  HIDDEN_CONFIG_BASENAMES,
+  isHiddenDocName,
+  isValidDocName,
+  validateDocName,
+} from './util/doc-name.ts';
 export { applyByPrefixSuffix } from './utils/apply-by-prefix-suffix.ts';
 export { toDesktopAssetHref } from './utils/asset-href.ts';
 export { ChunkedInsertError, chunkedYTextInsert } from './utils/chunked-insert.ts';

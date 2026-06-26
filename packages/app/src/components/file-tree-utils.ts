@@ -1,4 +1,8 @@
-import type { DocumentListEntry, InlineAssetMediaKind } from '@inkeep/open-knowledge-core';
+import {
+  type DocumentListEntry,
+  type InlineAssetMediaKind,
+  isHiddenDocName,
+} from '@inkeep/open-knowledge-core';
 
 export interface DocumentEntry {
   kind: 'document';
@@ -161,6 +165,6 @@ export function filterVisibleEntries<T extends { kind?: unknown; docName?: strin
     const ref = entry.docName ?? entry.path ?? '';
     if (ref === '') return false;
     if (showHiddenFiles) return true;
-    return !ref.split('/').some((seg) => seg.startsWith('.'));
+    return !isHiddenDocName(ref);
   });
 }

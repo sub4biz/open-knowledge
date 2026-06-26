@@ -1,11 +1,35 @@
 import { describe, expect, test } from 'bun:test';
-import { isHiddenDocName, isValidDocName, validateDocName } from './doc-name.ts';
+import {
+  HIDDEN_CONFIG_BASENAMES,
+  isHiddenDocName,
+  isValidDocName,
+  validateDocName,
+} from './doc-name.ts';
 
 describe('isHiddenDocName', () => {
-  for (const name of ['.cursor/skills/x', '.claude/foo', 'a/.hidden/b', '.okignore', 'a/.b'])
+  for (const name of [
+    '.cursor/skills/x',
+    '.claude/foo',
+    'a/.hidden/b',
+    '.okignore',
+    'a/.b',
+    'opencode.json',
+    'config/opencode.json',
+  ])
     test(`hidden: ${JSON.stringify(name)}`, () => expect(isHiddenDocName(name)).toBe(true));
-  for (const name of ['Characters/Spike Spiegel', 'Music', 'a/b/c', 'note.with.dots'])
+  for (const name of [
+    'Characters/Spike Spiegel',
+    'Music',
+    'a/b/c',
+    'note.with.dots',
+    'opencode.jsonx',
+    'opencode.json/notes',
+  ])
     test(`visible: ${JSON.stringify(name)}`, () => expect(isHiddenDocName(name)).toBe(false));
+
+  test('HIDDEN_CONFIG_BASENAMES contains the seeded opencode.json agent config', () => {
+    expect(HIDDEN_CONFIG_BASENAMES.has('opencode.json')).toBe(true);
+  });
 });
 
 describe('validateDocName', () => {
