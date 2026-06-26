@@ -1,4 +1,9 @@
-import { type TargetData, TERMINAL_CLI_IDS, type TerminalCli } from '@inkeep/open-knowledge-core';
+import {
+  type TargetData,
+  TERMINAL_CLI_IDS,
+  TERMINAL_CLIS,
+  type TerminalCli,
+} from '@inkeep/open-knowledge-core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { ChevronDown, Loader2, TextQuote, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -283,27 +288,18 @@ export function BottomComposer({
   const installedAgents = VISIBLE_TARGETS.filter((target) => states[target.id]?.installed === true);
   const agentProbePending = VISIBLE_TARGETS.some((target) => states[target.id]?.installed == null);
 
-  const cliLabels: Record<TerminalCli, string> = {
-    claude: t`Claude (CLI)`,
-    codex: t`Codex (CLI)`,
-    cursor: t`Cursor (CLI)`,
-    opencode: t`OpenCode (CLI)`,
-  };
-  const cliAriaLabels: Record<TerminalCli, string> = {
-    claude: t`Claude CLI`,
-    codex: t`Codex CLI`,
-    cursor: t`Cursor CLI`,
-    opencode: t`OpenCode CLI`,
-  };
   const cliRows =
     terminalLaunch !== null
-      ? TERMINAL_CLI_IDS.map((cli) => ({
-          cli,
-          label: cliLabels[cli],
-          ariaLabel: cliAriaLabels[cli],
-          selected: selectedCli === cli,
-          onSelect: () => handleSelectCli(cli),
-        }))
+      ? TERMINAL_CLI_IDS.map((cli) => {
+          const { displayName } = TERMINAL_CLIS[cli];
+          return {
+            cli,
+            label: displayName,
+            ariaLabel: t`${displayName} CLI`,
+            selected: selectedCli === cli,
+            onSelect: () => handleSelectCli(cli),
+          };
+        })
       : undefined;
 
   const suggestions = [
@@ -553,7 +549,7 @@ export function BottomComposer({
               ) : null}
               <span>
                 {selectedCli !== null ? (
-                  <Trans>Ask {cliAriaLabels[selectedCli]}</Trans>
+                  <Trans>Ask {TERMINAL_CLIS[selectedCli].displayName} CLI</Trans>
                 ) : resolvedTarget ? (
                   <Trans>Ask {resolvedTarget.displayName}</Trans>
                 ) : (

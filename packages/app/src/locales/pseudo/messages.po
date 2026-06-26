@@ -232,6 +232,7 @@ msgstr ""
 msgid "{displayName} ({bin}) isn't installed or on your PATH."
 msgstr ""
 
+#: src/components/BottomComposer.tsx
 #: src/components/empty-state/CreatePromptComposer.tsx
 #: src/components/handoff/OpenInAgentContextSubmenu.tsx
 #: src/components/handoff/OpenInAgentEmptySpaceSubmenu.tsx
@@ -686,10 +687,14 @@ msgstr ""
 msgid "Ask"
 msgstr ""
 
-#. placeholder {0}: cliAriaLabels[selectedCli]
 #. placeholder {0}: resolvedTarget.displayName
 #: src/components/BottomComposer.tsx
 msgid "Ask {0}"
+msgstr ""
+
+#. placeholder {0}: TERMINAL_CLIS[selectedCli].displayName
+#: src/components/BottomComposer.tsx
+msgid "Ask {0} CLI"
 msgstr ""
 
 #: src/components/BottomComposer.tsx
@@ -994,11 +999,6 @@ msgstr ""
 msgid "Claude"
 msgstr ""
 
-#: src/components/BottomComposer.tsx
-msgid "Claude (CLI)"
-msgstr ""
-
-#: src/components/BottomComposer.tsx
 #: src/components/handoff/AgentSplitButton.tsx
 msgid "Claude CLI"
 msgstr ""
@@ -1160,14 +1160,6 @@ msgstr ""
 
 #: src/components/AuthModal.tsx
 msgid "Code expired — please try again"
-msgstr ""
-
-#: src/components/BottomComposer.tsx
-msgid "Codex (CLI)"
-msgstr ""
-
-#: src/components/BottomComposer.tsx
-msgid "Codex CLI"
 msgstr ""
 
 #: src/components/AutoSyncEnableWarning.tsx
@@ -1787,14 +1779,6 @@ msgstr ""
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "Creating..."
-msgstr ""
-
-#: src/components/BottomComposer.tsx
-msgid "Cursor (CLI)"
-msgstr ""
-
-#: src/components/BottomComposer.tsx
-msgid "Cursor CLI"
 msgstr ""
 
 #: src/editor/extensions/WikiLinkPropPanel.tsx
@@ -4180,14 +4164,6 @@ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Open, navigate, accept, or dismiss CodeMirror completion suggestions."
-msgstr ""
-
-#: src/components/BottomComposer.tsx
-msgid "OpenCode (CLI)"
-msgstr ""
-
-#: src/components/BottomComposer.tsx
-msgid "OpenCode CLI"
 msgstr ""
 
 #: src/components/ShareReceiveDialog.tsx

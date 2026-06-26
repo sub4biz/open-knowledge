@@ -232,6 +232,7 @@ msgstr "{diffMin}m ago"
 msgid "{displayName} ({bin}) isn't installed or on your PATH."
 msgstr "{displayName} ({bin}) isn't installed or on your PATH."
 
+#: src/components/BottomComposer.tsx
 #: src/components/empty-state/CreatePromptComposer.tsx
 #: src/components/handoff/OpenInAgentContextSubmenu.tsx
 #: src/components/handoff/OpenInAgentEmptySpaceSubmenu.tsx
@@ -691,11 +692,15 @@ msgstr "Are you sure you want to delete {targetCount} selected items? Folders an
 msgid "Ask"
 msgstr "Ask"
 
-#. placeholder {0}: cliAriaLabels[selectedCli]
 #. placeholder {0}: resolvedTarget.displayName
 #: src/components/BottomComposer.tsx
 msgid "Ask {0}"
 msgstr "Ask {0}"
+
+#. placeholder {0}: TERMINAL_CLIS[selectedCli].displayName
+#: src/components/BottomComposer.tsx
+msgid "Ask {0} CLI"
+msgstr "Ask {0} CLI"
 
 #: src/components/BottomComposer.tsx
 #: src/components/EditorFooter.tsx
@@ -999,11 +1004,6 @@ msgstr "Choose whether this project's OpenKnowledge setup, including its AI-tool
 msgid "Claude"
 msgstr "Claude"
 
-#: src/components/BottomComposer.tsx
-msgid "Claude (CLI)"
-msgstr "Claude (CLI)"
-
-#: src/components/BottomComposer.tsx
 #: src/components/handoff/AgentSplitButton.tsx
 msgid "Claude CLI"
 msgstr "Claude CLI"
@@ -1166,14 +1166,6 @@ msgstr "Code copied to clipboard"
 #: src/components/AuthModal.tsx
 msgid "Code expired — please try again"
 msgstr "Code expired — please try again"
-
-#: src/components/BottomComposer.tsx
-msgid "Codex (CLI)"
-msgstr "Codex (CLI)"
-
-#: src/components/BottomComposer.tsx
-msgid "Codex CLI"
-msgstr "Codex CLI"
 
 #: src/components/AutoSyncEnableWarning.tsx
 msgid "Collaborators see your in-progress edits as soon as they sync."
@@ -1793,14 +1785,6 @@ msgstr "Creating page: {linkTitle}."
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "Creating..."
 msgstr "Creating..."
-
-#: src/components/BottomComposer.tsx
-msgid "Cursor (CLI)"
-msgstr "Cursor (CLI)"
-
-#: src/components/BottomComposer.tsx
-msgid "Cursor CLI"
-msgstr "Cursor CLI"
 
 #: src/editor/extensions/WikiLinkPropPanel.tsx
 msgid "Custom display text"
@@ -4186,14 +4170,6 @@ msgstr "Open with AI {targetDisplayName}, {hint}"
 #: src/lib/keyboard-shortcuts.ts
 msgid "Open, navigate, accept, or dismiss CodeMirror completion suggestions."
 msgstr "Open, navigate, accept, or dismiss CodeMirror completion suggestions."
-
-#: src/components/BottomComposer.tsx
-msgid "OpenCode (CLI)"
-msgstr "OpenCode (CLI)"
-
-#: src/components/BottomComposer.tsx
-msgid "OpenCode CLI"
-msgstr "OpenCode CLI"
 
 #: src/components/ShareReceiveDialog.tsx
 msgid "Opening..."

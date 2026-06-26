@@ -41,7 +41,6 @@
     "0BB9ID": ["No headings yet."],
     "0E9DR6": ["Type to find a doc"],
     "0Gd0NU": ["Shared"],
-    "0HYJGg": ["Cursor (CLI)"],
     "0NA4b3": ["Keep my version"],
     "0YEbfk": ["Connect to AI tools"],
     "0_J12R": [
@@ -848,7 +847,6 @@
     "ONPvOb": ["Loading agent activity"],
     "ONgEZF": ["Loading headings for ", ["pageTarget"]],
     "OTF92M": ["Label <0>(optional display text)</0>"],
-    "OUcBW4": ["Codex CLI"],
     "OVjNeX": ["Terminal ", ["0"]],
     "OX2Neh": ["Inline code"],
     "OYnx7O": ["Path cannot start with \"/\""],
@@ -980,7 +978,6 @@
     "T_wG4n": ["We couldn't check your GitHub connection."],
     "Ta25TG": ["No history yet"],
     "TbjyhA": ["Docs"],
-    "Tgalot": ["OpenCode (CLI)"],
     "ThmUrC": ["Could not finalize project setup. Try again."],
     "Tjc1pH": ["Section <0>(optional heading anchor)</0>"],
     "TwYboS": ["Navigate CodeMirror source search results or dismiss the search panel."],
@@ -1137,7 +1134,6 @@
     "Yi0VMG": ["Upload ", ["keyName"]],
     "YjhKI5": ["Cloning..."],
     "YlDuro": ["Fit height"],
-    "YoLi1r": ["Claude (CLI)"],
     "YsEYYS": [
       ["behind", "plural", { "one": ["#", " commit behind"], "other": ["#", " commits behind"] }]
     ],
@@ -1280,7 +1276,6 @@
     "cZ_8zB": ["Stays on this computer."],
     "cdm00A": ["No Incoming"],
     "cdmk8A": ["Uncommitted changes"],
-    "cio8--": ["Codex (CLI)"],
     "cklVjM": ["Timeline"],
     "cn1sLi": ["Couldn't connect OpenKnowledge tools to Claude Code. Please try again."],
     "cnGeoo": ["Delete"],
@@ -1652,7 +1647,6 @@
       "You picked ~/Documents. OpenKnowledge will index every markdown file under it. If you only want to manage a sub-folder, choose a smaller scope."
     ],
     "ogAuyr": ["Back to document view"],
-    "oh55a-": ["Cursor CLI"],
     "omXJcU": ["Close others"],
     "optX0N": [["0"], "h ago"],
     "oqB2ez": ["Previous match"],
@@ -1716,7 +1710,6 @@
     "qiRoLb": ["Summarize everything I changed this week"],
     "qioCwA": ["Jump to page ", ["pageNumber"]],
     "qjHMHf": ["Failed to disable sync — ", ["detail"]],
-    "qk8ZmO": ["OpenCode CLI"],
     "qo4zCg": ["Path cannot contain backslashes"],
     "qpQwGC": ["Describe what you're working on and the agent sets it up for you."],
     "qvWGzP": ["Collapse all"],
@@ -1805,6 +1798,7 @@
     "tfDRzk": ["Save"],
     "tfi40B": ["Failed to create page"],
     "tgWuMB": ["Modified"],
+    "ti6aF_": ["Ask ", ["0"], " CLI"],
     "tiWX6q": ["Source editor"],
     "tjXez2": ["blog-post"],
     "tsiTqO": ["Paste your API key"],
