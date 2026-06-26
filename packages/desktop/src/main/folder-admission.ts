@@ -237,7 +237,8 @@ function computeGitState(projectDir: string): GitState {
 
 function isPickedPathLinkedWorktreeRoot(pickedPath: string): boolean {
   try {
-    return resolveGitDirDetailed(pickedPath).kind === 'linked';
+    const resolved = resolveGitDirDetailed(pickedPath);
+    return resolved.kind === 'linked' && resolved.projectSubPath === '';
   } catch {
     return false;
   }

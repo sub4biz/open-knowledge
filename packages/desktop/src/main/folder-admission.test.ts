@@ -378,6 +378,45 @@ describe('discoverProject — fresh kind, git-root promotion (FR-2a)', () => {
   });
 });
 
+describe('discoverProject — linked-worktree carveout scoping', () => {
+  test('subfolder of a linked worktree promotes to the git root, not in-place Setup', async () => {
+    const worktree = resolve(fakeHome, 'wt');
+    const sub = resolve(worktree, 'public/open-knowledge');
+    mkdirSync(sub, { recursive: true });
+    writeFileSync(resolve(worktree, '.git'), 'gitdir: /main/.git/worktrees/wt\n');
+
+    const result = await discoverProject(sub, {
+      homeDir: fakeHome,
+      gitTopLevel: stubGitTopLevel({ [sub]: worktree }),
+      dirSizeProbe: null,
+    });
+
+    expect(result.kind).toBe('fresh');
+    if (result.kind !== 'fresh') return;
+    expect(result.projectDir).toBe(worktree);
+    expect(result.gitRootPromoted).toBe(true);
+  });
+
+  test('the linked-worktree root itself still classifies standalone under an ancestor .ok/', async () => {
+    const parent = resolve(fakeHome, 'parent');
+    const worktree = resolve(parent, 'wt');
+    mkdirSync(worktree, { recursive: true });
+    writeOkConfig(parent);
+    writeFileSync(resolve(worktree, '.git'), 'gitdir: /main/.git/worktrees/wt\n');
+
+    const result = await discoverProject(worktree, {
+      homeDir: fakeHome,
+      gitTopLevel: stubGitTopLevel({ [worktree]: worktree }),
+      dirSizeProbe: null,
+    });
+
+    expect(result.kind).toBe('fresh');
+    if (result.kind !== 'fresh') return;
+    expect(result.projectDir).toBe(worktree);
+    expect(result.gitRootPromoted).toBe(false);
+  });
+});
+
 describe('discoverProject — gitState detection', () => {
   test('shell-only: .git directory present but HEAD missing (the J5 case)', async () => {
     const folder = resolve(fakeHome, 'shell-git');
