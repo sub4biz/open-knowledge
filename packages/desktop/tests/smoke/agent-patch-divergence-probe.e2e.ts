@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,23 +28,19 @@ interface ProbeOutcome {
   raceFired: boolean[]; // 200 OK + agent's CHERRY missing in post-settle Y.Doc
 }
 
+const HUMAN_SENTINEL = 'X';
+const AGENT_REPLACE = 'CHERRY';
+
 interface ApiPort {
   port: number;
 }
 
-async function detectApiPort(userDataDir: string): Promise<ApiPort> {
-  const userDataBasename = userDataDir.split('/').pop() ?? userDataDir;
-  const psOut = execSync('ps -axww -o command 2>/dev/null', { encoding: 'utf-8' });
-  const line = psOut
-    .split('\n')
-    .find((l) => l.includes(userDataBasename) && l.includes('ok-api-origin='));
-  const m = line?.match(/ok-api-origin=http:\/\/localhost:(\d+)/);
-  if (!m) {
-    throw new Error(
-      `Could not auto-detect API port via renderer argv (userDataBasename=${userDataBasename})`,
-    );
+async function detectApiPort(page: import('@playwright/test').Page): Promise<ApiPort> {
+  const apiOrigin = await page.evaluate(() => window.okDesktop?.config?.apiOrigin);
+  if (!apiOrigin) {
+    throw new Error(`window.okDesktop.config.apiOrigin was empty (got: ${apiOrigin})`);
   }
-  return { port: Number(m[1]) };
+  return { port: Number(new URL(apiOrigin).port) };
 }
 
 async function fetchYDocContent(port: number, docName: string): Promise<string> {
@@ -78,6 +73,8 @@ async function executeRace(opts: {
 
   const seedContent =
     '# Probe\n\nBANANA is here in the first paragraph.\n\nSecond paragraph for diff-para variant.\n';
+  expect(seedContent).not.toContain(HUMAN_SENTINEL);
+  expect(AGENT_REPLACE).not.toContain(HUMAN_SENTINEL);
   const seedRes = await fetch(`http://localhost:${port}/api/agent-write-md`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -98,8 +95,6 @@ async function executeRace(opts: {
   ).toContainText('BANANA is here', {
     timeout: 10_000,
   });
-  await wait(150);
-
   let targetPara: import('@playwright/test').Locator;
   if (variant === 'diff-para') {
     targetPara = page
@@ -122,7 +117,7 @@ async function executeRace(opts: {
     await wait(150);
   }
 
-  const humanText = 'XXXXXXXX';
+  const humanText = HUMAN_SENTINEL.repeat(8);
   const typingDelay = variant === 'burst' ? 0 : 5;
 
   const agentPatchPromise = (): Promise<Response> =>
@@ -132,7 +127,7 @@ async function executeRace(opts: {
       body: JSON.stringify({
         docName,
         find: 'BANANA',
-        replace: 'CHERRY',
+        replace: AGENT_REPLACE,
         agentId: trial < 5 ? `probe-${variant}-${trial}` : `probe-${variant}-pool-${trial % 5}`,
         agentName: 'probe',
       }),
@@ -163,9 +158,9 @@ async function executeRace(opts: {
   const deadline = Date.now() + YDOC_SETTLE_BUDGET_MS;
   while (Date.now() < deadline) {
     finalContent = await fetchYDocContent(port, docName);
-    cherryPresent = finalContent.includes('CHERRY');
+    cherryPresent = finalContent.includes(AGENT_REPLACE);
     bananaAbsent = !finalContent.includes('BANANA');
-    humanXCount = (finalContent.match(/X/g) ?? []).length;
+    humanXCount = finalContent.split(HUMAN_SENTINEL).length - 1;
     if (cherryPresent && bananaAbsent && humanXCount >= 4) break;
     await wait(YDOC_POLL_INTERVAL_MS);
   }
@@ -233,7 +228,7 @@ async function setupElectron(
     page.locator('.ProseMirror[contenteditable="true"]:not(.composer-prosemirror)'),
   ).toContainText('BANANA', { timeout: 30_000 });
 
-  const { port } = await detectApiPort(userDataDir);
+  const { port } = await detectApiPort(page);
 
   const beforeContent = await fetchYDocContent(port, docName);
   console.log(
