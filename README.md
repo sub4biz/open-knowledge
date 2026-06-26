@@ -10,7 +10,7 @@ OpenKnowledge is a beautiful, local-first WYSIWYG markdown editor with integrati
 />
 
 <div align="center">
-  <a href="https://github.com/inkeep/open-knowledge/releases/latest/download/OpenKnowledge-arm64.dmg"><b>macOS app</b></a>
+  <a href="https://github.com/inkeep/open-knowledge/releases/latest/download/OpenKnowledge-arm64.dmg">macOS app</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="https://openknowledge.ai/docs/get-started/quickstart#ok-install-web-app-linux-windows-intel-mac">Web App / CLI</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
@@ -25,7 +25,7 @@ Key highlights:
 - Full true **WYSIWYG** so that editing markdown files feels like editing a Google Doc or Notion page. 
 - Collaborative **AI-editing** with **Claude, Codex, and Cursor desktop apps**. Can be used with any harness/agent via MCP/CLI, like OpenCode.
 - Out-of-the-box **MCP**, **skills**, and **agentic search** for LLM Wikis, agent second brains, and knowledge graphs.
-- No-code **Team Sharing** and **Auto-sync** powered by git/GitHub under the hood.
+- No-code **Team sharing** and **Auto-sync** powered by git/GitHub under the hood.
 - **Embeddable HTML** and rich components for writing engineering specs and visualized reports.
 - A **built-in TUI** in the Desktop app and a Web UI for users who prefer terminals.
 
@@ -54,8 +54,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 OpenKnowledge is licensed under the [GNU General Public License v3.0 or later](./LICENSE) (`GPL-3.0-or-later`).
 
----
-
 <p align="center">
-  ⭐️ If you'd like to support this project, consider starring the repo :) ⭐️
+  ⭐️ If you'd like to support this project, consider starring the repo ⭐️
 </p>
