@@ -101,6 +101,10 @@ mock.module('@/lib/api-config', () => ({
   fetchApiConfig: (...args: Parameters<typeof fetchApiConfigMock>) => fetchApiConfigMock(...args),
 }));
 
+mock.module('@/lib/use-server-keepalive', () => ({
+  useServerKeepalive: () => {},
+}));
+
 mock.module('@/lib/single-file-mode', () => ({
   SingleFileModeProvider: ({ children }: { children: ReactNode }) => (
     <div data-testid="single-file-mode-provider">{children}</div>

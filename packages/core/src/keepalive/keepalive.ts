@@ -1,3 +1,4 @@
+
 export interface KeepaliveScheduler {
   setTimeout: (cb: () => void, ms: number) => ReturnType<typeof globalThis.setTimeout>;
   clearTimeout: (handle: ReturnType<typeof globalThis.setTimeout>) => void;
@@ -19,6 +20,7 @@ export interface KeepaliveLogger {
 export interface KeepaliveOptions {
   resolveWsUrl: () => Promise<string | undefined>;
   connectionId?: string;
+  pid?: number | string;
   displayName?: string;
   clientName?: string;
   colorSeed?: string;
@@ -68,7 +70,8 @@ export function startKeepalive(opts: KeepaliveOptions): KeepaliveHandle {
       } else {
         legacyLog?.(msg);
       }
-    } catch {}
+    } catch {
+    }
   }
 
   function scheduleReconnect(): void {
@@ -102,19 +105,25 @@ export function startKeepalive(opts: KeepaliveOptions): KeepaliveHandle {
       return;
     }
 
-    const cidParam = opts.connectionId
-      ? `&connectionId=${encodeURIComponent(opts.connectionId)}`
-      : '';
-    const identityParams =
+    const params: string[] = [];
+    if (opts.pid !== undefined) {
+      params.push(`pid=${encodeURIComponent(String(opts.pid))}`);
+    }
+    if (opts.connectionId) {
+      params.push(`connectionId=${encodeURIComponent(opts.connectionId)}`);
+    }
+    if (
       opts.connectionId &&
       opts.displayName !== undefined &&
       opts.clientName !== undefined &&
       opts.colorSeed !== undefined
-        ? `&displayName=${encodeURIComponent(opts.displayName)}` +
-          `&clientName=${encodeURIComponent(opts.clientName)}` +
-          `&colorSeed=${encodeURIComponent(opts.colorSeed)}`
-        : '';
-    const url = `${baseUrl}/collab/keepalive?pid=${process.pid}${cidParam}${identityParams}`;
+    ) {
+      params.push(`displayName=${encodeURIComponent(opts.displayName)}`);
+      params.push(`clientName=${encodeURIComponent(opts.clientName)}`);
+      params.push(`colorSeed=${encodeURIComponent(opts.colorSeed)}`);
+    }
+    const query = params.length > 0 ? `?${params.join('&')}` : '';
+    const url = `${baseUrl}/collab/keepalive${query}`;
     try {
       ws = createWebSocket(url);
     } catch (err) {
@@ -160,7 +169,8 @@ export function startKeepalive(opts: KeepaliveOptions): KeepaliveHandle {
       if (ws) {
         try {
           ws.close();
-        } catch {}
+        } catch {
+        }
         ws = null;
       }
     },

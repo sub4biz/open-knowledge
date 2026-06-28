@@ -40,6 +40,7 @@ import {
 } from '@/lib/doc-hash';
 import { mark, ProfilerBoundary } from '@/lib/perf';
 import { SingleFileModeProvider, useSingleFileMode } from '@/lib/single-file-mode';
+import { useServerKeepalive } from '@/lib/use-server-keepalive';
 import { isSettingsShortcut, SETTINGS_OPEN_HASH } from '@/lib/use-settings-route';
 
 const INSTALL_DIALOG_HASH = '#install-claude-desktop';
@@ -319,6 +320,7 @@ function NewItemShortcutHandler() {
 
 function ConfigProviderHost({ children }: { children: ReactNode }) {
   const { collabUrl } = useDocumentContext();
+  useServerKeepalive(collabUrl);
   return <ConfigProvider collabUrl={collabUrl}>{children}</ConfigProvider>;
 }
 

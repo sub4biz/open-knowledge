@@ -1,3 +1,4 @@
+
 import { randomUUID } from 'node:crypto';
 import {
   type KeepaliveHandle,
@@ -28,6 +29,7 @@ export function createDesktopKeepaliveFactory(
         return `ws://localhost:${lock.port}`;
       },
       connectionId,
+      pid: process.pid,
       ...(deps.logger ? { logger: deps.logger } : {}),
     });
   };
