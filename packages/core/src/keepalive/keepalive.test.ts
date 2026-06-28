@@ -3,6 +3,7 @@ import { setImmediate as runMicrotasks } from 'node:timers/promises';
 import type { KeepaliveScheduler, MinimalWebSocket } from './keepalive.ts';
 import { startKeepalive } from './keepalive.ts';
 
+
 interface ManualScheduler extends KeepaliveScheduler {
   advance: (ms: number) => void;
   pending: () => number;
@@ -40,6 +41,7 @@ function createScheduler(): ManualScheduler {
   };
 }
 
+
 class FakeWebSocket implements MinimalWebSocket {
   readyState = 0; // CONNECTING
   url: string;
@@ -74,6 +76,7 @@ describe('startKeepalive', () => {
     const handle = startKeepalive({
       resolveWsUrl: async () => 'ws://localhost:12345',
       scheduler,
+      pid: process.pid,
       createWebSocket: (url) => {
         const fake = new FakeWebSocket(url);
         opened.push(fake);
@@ -112,6 +115,38 @@ describe('startKeepalive', () => {
     await runMicrotasks();
     expect(calls).toBe(2); // retried
 
+    handle.close();
+  });
+
+  test('schedules a reconnect when resolveWsUrl rejects', async () => {
+    const scheduler = createScheduler();
+    const handle = startKeepalive({
+      resolveWsUrl: async () => {
+        throw new Error('lock file unreadable');
+      },
+      scheduler,
+      initialBackoffMs: 100,
+      createWebSocket: () => new FakeWebSocket('unused'),
+    });
+
+    await runMicrotasks();
+    expect(scheduler.pending()).toBe(1); // reconnect timer armed, not dead
+    handle.close();
+  });
+
+  test('schedules a reconnect when createWebSocket throws', async () => {
+    const scheduler = createScheduler();
+    const handle = startKeepalive({
+      resolveWsUrl: async () => 'ws://localhost:12345',
+      scheduler,
+      initialBackoffMs: 100,
+      createWebSocket: () => {
+        throw new Error('bad URL');
+      },
+    });
+
+    await runMicrotasks();
+    expect(scheduler.pending()).toBe(1); // reconnect timer armed, not dead
     handle.close();
   });
 
@@ -286,6 +321,7 @@ describe('startKeepalive', () => {
       resolveWsUrl: async () => 'ws://localhost:12345',
       scheduler,
       connectionId: 'abcdef12-3456-7890-abcd-ef1234567890',
+      pid: process.pid,
       createWebSocket: (url) => {
         const fake = new FakeWebSocket(url);
         opened.push(fake);
@@ -336,6 +372,47 @@ describe('startKeepalive', () => {
     expect(opened[0].url).not.toContain('clientProtocol');
     expect(opened[0].url).not.toContain('clientRuntime');
     expect(opened[0].url).not.toContain('clientKind');
+    handle.close();
+  });
+
+  test('URL omits pid when no pid option is provided (browser-safe)', async () => {
+    const scheduler = createScheduler();
+    const opened: FakeWebSocket[] = [];
+    const handle = startKeepalive({
+      resolveWsUrl: async () => 'ws://localhost:12345',
+      scheduler,
+      createWebSocket: (url) => {
+        const fake = new FakeWebSocket(url);
+        opened.push(fake);
+        return fake;
+      },
+    });
+    await runMicrotasks();
+    expect(opened.length).toBe(1);
+    expect(opened[0].url).toBe('ws://localhost:12345/collab/keepalive');
+    expect(opened[0].url).not.toContain('pid=');
+    handle.close();
+  });
+
+  test('URL carries no identity params when displayName/clientName/colorSeed are omitted', async () => {
+    const scheduler = createScheduler();
+    const opened: FakeWebSocket[] = [];
+    const handle = startKeepalive({
+      resolveWsUrl: async () => 'ws://localhost:12345',
+      scheduler,
+      connectionId: 'cid-presence-invisible',
+      createWebSocket: (url) => {
+        const fake = new FakeWebSocket(url);
+        opened.push(fake);
+        return fake;
+      },
+    });
+    await runMicrotasks();
+    expect(opened.length).toBe(1);
+    expect(opened[0].url).toContain('connectionId=cid-presence-invisible');
+    expect(opened[0].url).not.toContain('displayName=');
+    expect(opened[0].url).not.toContain('clientName=');
+    expect(opened[0].url).not.toContain('colorSeed=');
     handle.close();
   });
 });

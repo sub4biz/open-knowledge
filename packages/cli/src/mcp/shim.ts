@@ -225,7 +225,8 @@ export async function resolveMcpHttpUrl(opts: ResolveMcpHttpUrlOptions): Promise
   } finally {
     try {
       closeFd(stderrFd);
-    } catch {}
+    } catch {
+    }
   }
 
   const deadline = Date.now() + timeoutMs;
@@ -367,6 +368,7 @@ export async function startMcpShim(opts: StartMcpShimOptions): Promise<void> {
 
   const keepalive = (opts.startKeepalive ?? defaultStartKeepalive)({
     connectionId,
+    pid: process.pid,
     resolveWsUrl: async () => resolveMcpKeepaliveWsUrl(opts, endpointUrl),
     log: (msg) => stderr.write(`[mcp-shim] keepalive: ${msg}\n`),
   });
