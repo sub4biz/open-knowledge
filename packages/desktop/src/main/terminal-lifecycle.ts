@@ -8,9 +8,14 @@ export interface ClosableWindow {
   on(event: 'closed', cb: () => void): void;
 }
 
-export function wireWindowTerminalReap(win: ClosableWindow, reaper: TerminalReaper): void {
+export function wireWindowTerminalReap(
+  win: ClosableWindow,
+  reaper: TerminalReaper,
+  onReap?: (windowId: number) => void,
+): void {
   const windowId = win.id;
   win.on('closed', () => {
     reaper.killForWindow(windowId);
+    onReap?.(windowId);
   });
 }

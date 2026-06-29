@@ -159,6 +159,51 @@ export interface WindowManagerDeps {
   onUtilityExit?(utility: UtilityProcessLike): void;
 }
 
+export function signalDetachedServerStop(
+  entries: ReadonlyArray<readonly [string, number]>,
+  killProbe: (pid: number, signal: number | NodeJS.Signals) => void,
+  log?: { warn(obj: object, msg: string): void },
+): number {
+  let signalled = 0;
+  for (const [projectPath, pid] of entries) {
+    try {
+      killProbe(pid, 'SIGTERM');
+      signalled++;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ESRCH') continue;
+      log?.warn(
+        {
+          event: 'update-install-server-stop-failed',
+          err: (err as Error).message,
+          code,
+          pid,
+          projectPath,
+        },
+        'SIGTERM failed during before-quit-for-update teardown',
+      );
+    }
+  }
+  return signalled;
+}
+
+export function signalStopOwnedUtilityForks(
+  contexts: Iterable<Pick<ProjectContext, 'ownsServer' | 'utility' | 'projectPath'>>,
+  log?: { warn(obj: object, msg: string): void },
+): void {
+  for (const ctx of contexts) {
+    if (!ctx.ownsServer || !ctx.utility) continue;
+    try {
+      ctx.utility.kill('SIGKILL');
+    } catch (err) {
+      log?.warn(
+        { err: (err as Error).message, projectPath: ctx.projectPath },
+        'utility SIGKILL failed during owned-server teardown',
+      );
+    }
+  }
+}
+
 export class WindowManager {
   private readonly windowsByPath = new Map<string, ProjectContext>();
 
@@ -215,17 +260,7 @@ export class WindowManager {
   }
 
   async stopAllOwnedServers(): Promise<void> {
-    for (const ctx of this.windowsByPath.values()) {
-      if (!ctx.ownsServer || !ctx.utility) continue;
-      try {
-        ctx.utility.kill('SIGKILL');
-      } catch (err) {
-        this.deps.log?.warn(
-          { err: (err as Error).message, projectPath: ctx.projectPath },
-          'utility SIGKILL failed during pre-relaunch teardown',
-        );
-      }
-    }
+    signalStopOwnedUtilityForks(this.windowsByPath.values(), this.deps.log);
 
     const readLock = this.deps.readServerLock;
     const stopOne = async (canonicalKey: string, pid: number): Promise<void> => {
@@ -289,6 +324,25 @@ export class WindowManager {
       ...entries.map(([key, pid]) => stopOne(key, pid)),
       ...ephemeralSessions.map((session) => this.teardownEphemeralSession(session)),
     ]);
+  }
+
+  signalStopAllOwnedServers(): void {
+    signalStopOwnedUtilityForks(this.windowsByPath.values(), this.deps.log);
+
+    const detached = [...this.spawnedDetachedPids.entries()];
+    this.spawnedDetachedPids.clear();
+    const ephemeral = [...this.windowsByPath.values()]
+      .map((ctx) => ctx.ephemeral)
+      .filter((e): e is NonNullable<ProjectContext['ephemeral']> => e !== undefined)
+      .map((e) => [e.projectDir, e.pid] as const);
+    const entries = [...detached, ...ephemeral];
+    const signalled = signalDetachedServerStop(entries, this.deps.killProbe, this.deps.log);
+    if (entries.length > 0) {
+      this.deps.log?.info(
+        { event: 'update-install-server-stop', count: entries.length, signalled },
+        '[window-manager] signalled owned detached servers to stop for update install',
+      );
+    }
   }
 
   private async terminateServerByPid(

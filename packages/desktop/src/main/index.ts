@@ -426,6 +426,7 @@ function attachSpellcheckMenuToWindow(win: BrowserWindow): void {
 let navigatorWindow: BrowserWindowLike | null = null;
 let wm: WindowManager;
 let terminalReaper: TerminalReaper | null = null;
+const dockVisibleForWindow = new Map<number, boolean>();
 const showGate: ShowGateRegistry = createShowGateRegistry({
   log: {
     warn: (obj, msg) => {
@@ -547,7 +548,10 @@ function ensureWindowManager() {
       });
       applyCascadePosition(win);
       attachSpellcheckMenuToWindow(win);
-      if (terminalReaper) wireWindowTerminalReap(win, terminalReaper);
+      if (terminalReaper)
+        wireWindowTerminalReap(win, terminalReaper, (windowId) =>
+          dockVisibleForWindow.delete(windowId),
+        );
       return win as unknown as BrowserWindowLike;
     },
     forkUtility: (entry, args, opts) => {
@@ -1590,6 +1594,27 @@ function registerIpcHandlers() {
     if (win) terminalManager.drain({ windowId: win.id, ptyId: req.ptyId, bytes: req.bytes });
     return undefined;
   });
+  handle('ok:pty:list', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win ? terminalManager.listSessions(win.id) : [];
+  });
+  handle('ok:pty:adopt', async (event, req) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      logIpcError({
+        event: 'ipc.error',
+        channel: 'ok:pty:adopt',
+        reason: 'unknown-session',
+        handler: 'adoptPty',
+      });
+      return { ok: false, reason: 'unknown-session' };
+    }
+    return terminalManager.adoptSession({
+      windowId: win.id,
+      ptyId: req.ptyId,
+      webContents: win.webContents,
+    });
+  });
   handle('ok:terminal:claude-assist', async (event, req) => {
     let rewireError: string | undefined;
     if (req.action === 'rewire' && process.platform === 'darwin' && app.isPackaged) {
@@ -1621,6 +1646,11 @@ function registerIpcHandlers() {
       return { onPath: 'unknown' };
     }
     return resolveTerminalCliOnPath(req.cli);
+  });
+
+  handle('ok:terminal:dock-state', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return { visible: win ? (dockVisibleForWindow.get(win.id) ?? false) : false };
   });
 
   handle('ok:dialog:open-folder', async (_event, opts) => {
@@ -1882,8 +1912,12 @@ function registerIpcHandlers() {
     return undefined;
   });
 
-  handle('ok:editor:view-menu-state-changed', async (_event, state) => {
+  handle('ok:editor:view-menu-state-changed', async (event, state) => {
     editorViewMenuState = mergeViewMenuState(editorViewMenuState, state);
+    if (state.terminalVisible !== undefined) {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) dockVisibleForWindow.set(win.id, state.terminalVisible);
+    }
     refreshApplicationMenu();
     return undefined;
   });
@@ -2800,7 +2834,7 @@ function bootPrimaryInstance(): void {
         feedUrl: process.env.OK_UPDATER_FEED_URL || undefined,
         proxyFeed: {
           base: 'https://openknowledge.ai/updates',
-          channels: new Set<UpdateChannel>(['beta']),
+          channels: new Set<UpdateChannel>(['beta', 'latest']),
         },
         whenRendererReady: (fn) => {
           const tryFire = (win: BrowserWindow): void => {
@@ -2889,12 +2923,14 @@ function bootPrimaryInstance(): void {
   });
   electronAutoUpdater.on('before-quit-for-update', () => {
     getLogger('updater').info({}, 'before-quit-for-update — update install will relaunch the app');
+    wm?.signalStopAllOwnedServers();
     flushDesktopLogger();
   });
 
   app.on('will-quit', () => {
     getLogger('lifecycle').info({}, 'will-quit');
     terminalReaper?.killAll();
+    dockVisibleForWindow.clear();
     autoUpdaterHandle?.destroy();
     autoUpdaterHandle = null;
     bundleReplaceWatcherHandle?.stop();
