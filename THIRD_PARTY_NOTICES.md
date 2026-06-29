@@ -1245,7 +1245,7 @@ Homepage: https://github.com/honojs/node-server
 
 Copyright (c) 2022 - present, Yusuke Wada and Hono contributors
 
-### `@hookform/resolvers@5.2.2`
+### `@hookform/resolvers@5.4.0`
 Homepage: https://react-hook-form.com
 
 Copyright (c) 2019-present Beier(Bill) Luo
@@ -4880,7 +4880,7 @@ Homepage: https://github.com/vasturiano/react-force-graph
 
 _(No LICENSE file in package; SPDX identifier in `package.json` is the sole declared grant.)_
 
-### `react-hook-form@7.74.0`
+### `react-hook-form@7.80.0`
 Homepage: https://react-hook-form.com
 
 Copyright (c) 2019-present Beier(Bill) Luo

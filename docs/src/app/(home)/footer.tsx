@@ -3,6 +3,8 @@ import { DiscordIcon } from '@/components/icons/discord';
 import { GitHubIcon } from '@/components/icons/github';
 import { XIcon } from '@/components/icons/x';
 import { InkeepLogo } from '@/components/inkeep-logo';
+import { SubscribeForm } from '@/components/subscribe-form';
+import { DotTexture } from './dot-texture';
 
 const socialLinks = [
   { href: 'https://github.com/inkeep/open-knowledge', label: 'GitHub', Icon: GitHubIcon },
@@ -17,8 +19,12 @@ const legalLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="px-6 py-10">
-      <div className="container mx-auto grid grid-cols-1 items-center gap-6 min-[24rem]:grid-cols-[auto_auto] min-[24rem]:justify-between sm:grid-cols-3 sm:justify-normal">
+    <footer className="relative space-y-16 overflow-hidden px-6 py-10">
+      <DotTexture variant="left" className="bottom-0 left-0 w-32 sm:w-60 lg:w-96" />
+      <div className="container relative z-10 mx-auto">
+        <SubscribeForm />
+      </div>
+      <div className="container relative z-10 mx-auto mt-8 grid grid-cols-1 items-center gap-6 min-[24rem]:grid-cols-[auto_auto] min-[24rem]:justify-between sm:grid-cols-3 sm:justify-normal">
         <div className="flex items-center justify-center gap-5 min-[24rem]:justify-start">
           {socialLinks.map(({ href, label, Icon }) => (
             <Link
