@@ -1,13 +1,14 @@
 'use client';
 
-import { Menu, Star, X } from 'lucide-react';
+import { BookOpen, Menu, Star, X } from 'lucide-react';
 import Link from 'next/link';
 import type { FC, SVGProps } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DiscordIcon } from '@/components/icons/discord';
 import { GitHubIcon } from '@/components/icons/github';
 import { XIcon } from '@/components/icons/x';
 import { OkWordmark } from '@/components/ok-wordmark';
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DOWNLOAD_ROUTE } from '@/lib/site';
 import { MarketingButton } from './marketing-button';
 
@@ -17,15 +18,22 @@ type NavLink = {
   external: boolean;
   icon?: FC<SVGProps<SVGSVGElement>>;
   iconOnly?: boolean;
+  desktopIconHidden?: boolean;
   showStars?: boolean;
 };
 
-const docsLink: NavLink = { href: '/docs', label: 'Docs', external: false };
+const docsLink: NavLink = {
+  href: '/docs',
+  label: 'Docs',
+  external: false,
+  icon: BookOpen,
+  desktopIconHidden: true,
+};
 
 const socialLinks: NavLink[] = [
   {
     href: 'https://x.com/OpenKnowledgeAI',
-    label: 'X',
+    label: 'X (Twitter)',
     external: true,
     icon: XIcon,
     iconOnly: true,
@@ -49,8 +57,6 @@ const githubLink: NavLink = {
 
 const mobileLinks: NavLink[] = [docsLink, ...socialLinks, githubLink];
 
-const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 const starFormatter = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 1,
@@ -58,31 +64,44 @@ const starFormatter = new Intl.NumberFormat('en-US', {
 
 const fullStarFormatter = new Intl.NumberFormat('en-US');
 
-function NavLinkContent({ link }: { link: NavLink }) {
+function NavLinkContent({ link, surface }: { link: NavLink; surface: 'desktop' | 'mobile' }) {
   const Icon = link.icon;
+  const showIcon = !!Icon && (surface === 'mobile' || !link.desktopIconHidden);
+  const showLabel = surface === 'mobile' || !link.iconOnly;
   return (
     <>
-      {Icon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null}
-      {link.iconOnly ? null : link.label}
+      {showIcon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null}
+      {showLabel ? link.label : null}
     </>
   );
 }
 
-function NavItem({ link, className }: { link: NavLink; className: string }) {
-  const ariaLabel = link.iconOnly ? link.label : undefined;
+function NavItem({
+  link,
+  className,
+  surface,
+  onSelect,
+}: {
+  link: NavLink;
+  className: string;
+  surface: 'desktop' | 'mobile';
+  onSelect?: () => void;
+}) {
+  const ariaLabel = surface === 'desktop' && link.iconOnly ? link.label : undefined;
   return link.external ? (
     <a
       href={link.href}
       target="_blank"
       rel="noreferrer"
       aria-label={ariaLabel}
+      onClick={onSelect}
       className={className}
     >
-      <NavLinkContent link={link} />
+      <NavLinkContent link={link} surface={surface} />
     </a>
   ) : (
-    <Link href={link.href} aria-label={ariaLabel} className={className}>
-      <NavLinkContent link={link} />
+    <Link href={link.href} aria-label={ariaLabel} onClick={onSelect} className={className}>
+      <NavLinkContent link={link} surface={surface} />
     </Link>
   );
 }
@@ -103,10 +122,12 @@ function GitHubStarButton({
   link,
   stars,
   variant,
+  onSelect,
 }: {
   link: NavLink;
   stars: number | null;
   variant: 'pill' | 'row';
+  onSelect?: () => void;
 }) {
   const Icon = link.icon;
   const title = stars != null ? `${fullStarFormatter.format(stars)} GitHub stars` : undefined;
@@ -118,6 +139,7 @@ function GitHubStarButton({
         target="_blank"
         rel="noreferrer"
         title={title}
+        onClick={onSelect}
         className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-slide-text transition-colors hover:bg-slide-bg-elevated"
       >
         <span className="flex items-center gap-2">
@@ -158,47 +180,16 @@ function GitHubStarButton({
 
 export function SiteNav({ stars }: { stars: number | null }) {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const prevBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const menu = menuRef.current;
-    const firstFocusable = menu?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    firstFocusable?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        return;
-      }
-      if (e.key !== 'Tab' || !menu) return;
-      const focusables = menu.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
+    const mq = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => {
+      if (mq.matches) setOpen(false);
     };
-    document.addEventListener('keydown', onKey);
-
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevBodyOverflow;
-      (triggerRef.current ?? previouslyFocused)?.focus();
-    };
-  }, [open]);
+    closeOnDesktop();
+    mq.addEventListener('change', closeOnDesktop);
+    return () => mq.removeEventListener('change', closeOnDesktop);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-fd-background/80 backdrop-blur supports-backdrop-filter:bg-fd-background/70">
@@ -213,6 +204,7 @@ export function SiteNav({ stars }: { stars: number | null }) {
           >
             <NavItem
               link={docsLink}
+              surface="desktop"
               className="inline-flex items-center gap-1.5 transition-colors hover:text-slide-text"
             />
           </nav>
@@ -226,6 +218,7 @@ export function SiteNav({ stars }: { stars: number | null }) {
             <NavItem
               key={link.href}
               link={link}
+              surface="desktop"
               className="inline-flex items-center gap-1.5 transition-colors hover:text-slide-text"
             />
           ))}
@@ -236,48 +229,67 @@ export function SiteNav({ stars }: { stars: number | null }) {
           </MarketingButton>
         </nav>
 
-        <button
-          ref={triggerRef}
-          type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slide-muted opacity-60 transition-colors hover:bg-slide-bg-elevated hover:text-slide-text md:hidden"
-          aria-expanded={open}
-          aria-controls="site-nav-mobile"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? (
-            <X className="size-5" aria-hidden="true" />
-          ) : (
-            <Menu className="size-5" aria-hidden="true" />
-          )}
-        </button>
-      </div>
-
-      <div
-        ref={menuRef}
-        id="site-nav-mobile"
-        hidden={!open}
-        className="border-t bg-fd-background md:hidden"
-      >
-        <nav
-          aria-label="Mobile"
-          className="container mx-auto flex flex-col gap-1 px-6 py-4 text-base uppercase font-mono"
-        >
-          {mobileLinks.map((link) =>
-            link.showStars ? (
-              <GitHubStarButton key={link.href} link={link} stars={stars} variant="row" />
-            ) : (
-              <NavItem
-                key={link.href}
-                link={link}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-slide-text transition-colors hover:bg-slide-bg-elevated"
-              />
-            ),
-          )}
-          <MarketingButton href={DOWNLOAD_ROUTE} size="md" className="text-base" showIcon>
-            Download
-          </MarketingButton>
-        </nav>
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-slide-muted opacity-60 transition-colors hover:bg-slide-bg-elevated hover:text-slide-text md:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="size-5" aria-hidden="true" />
+            </button>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            aria-describedby={undefined}
+            showCloseButton={false}
+            className="border-t bg-fd-background md:hidden z-[1300]"
+          >
+            <SheetTitle className="sr-only">Site navigation</SheetTitle>
+            <nav
+              aria-label="Mobile"
+              className="container mx-auto flex flex-col gap-1 px-6 pt-4 pb-6 text-base uppercase font-mono overscroll-contain"
+            >
+              <SheetClose asChild>
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  className="mb-1 inline-flex h-10 w-10 items-center justify-center self-end rounded-md text-slide-muted opacity-60 transition-colors hover:bg-slide-bg-elevated hover:text-slide-text"
+                >
+                  <X className="size-5" aria-hidden="true" />
+                </button>
+              </SheetClose>
+              {mobileLinks.map((link) =>
+                link.showStars ? (
+                  <GitHubStarButton
+                    key={link.href}
+                    link={link}
+                    stars={stars}
+                    variant="row"
+                    onSelect={() => setOpen(false)}
+                  />
+                ) : (
+                  <NavItem
+                    key={link.href}
+                    link={link}
+                    surface="mobile"
+                    onSelect={() => setOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-slide-text transition-colors hover:bg-slide-bg-elevated"
+                  />
+                ),
+              )}
+              <MarketingButton
+                href={DOWNLOAD_ROUTE}
+                size="md"
+                className="text-base"
+                showIcon
+                onClick={() => setOpen(false)}
+              >
+                Download
+              </MarketingButton>
+            </nav>
+          </SheetContent>
+        </Sheet>
       </div>
     </header>
   );
