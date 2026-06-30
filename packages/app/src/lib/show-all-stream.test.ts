@@ -135,4 +135,35 @@ describe('consumeShowAllStream', () => {
     const { entries } = await consumeShowAllStream(ndjsonResponse(body));
     expect(entries.map((e) => e.docName)).toEqual(['beta']);
   });
+
+  test('onBatch delivers each chunk’s entries incrementally before completion', async () => {
+    const res = chunkedResponse([
+      docLine('alpha') + docLine('beta'),
+      docLine('gamma') + completeLine(false, 3),
+    ]);
+    const batches: string[][] = [];
+    const { entries } = await consumeShowAllStream(res, {
+      onBatch: (batch) => batches.push(batch.map((e) => e.docName)),
+    });
+    expect(batches).toEqual([['alpha', 'beta'], ['gamma']]);
+    expect(entries.map((e) => e.docName)).toEqual(['alpha', 'beta', 'gamma']);
+  });
+
+  test('onBatch is not called for a chunk carrying only the terminal complete line', async () => {
+    const res = chunkedResponse([docLine('alpha'), completeLine(false, 1)]);
+    const batchSizes: number[] = [];
+    await consumeShowAllStream(res, { onBatch: (batch) => batchSizes.push(batch.length) });
+    expect(batchSizes).toEqual([1]);
+  });
+
+  test('a throw from onBatch propagates out of consumeShowAllStream', async () => {
+    const res = chunkedResponse([docLine('alpha'), completeLine(false, 1)]);
+    await expect(
+      consumeShowAllStream(res, {
+        onBatch: () => {
+          throw new Error('consumer blew up');
+        },
+      }),
+    ).rejects.toThrow('consumer blew up');
+  });
 });

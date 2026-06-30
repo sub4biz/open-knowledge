@@ -36,6 +36,27 @@ function abortableBodyResponse(signal: AbortSignal | null | undefined): Response
   });
 }
 
+function ndjsonFirstEntryThenAbort(
+  signal: AbortSignal | null | undefined,
+  firstLine: string,
+): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(firstLine));
+      const failWithAbort = () =>
+        controller.error(new DOMException('The operation was aborted.', 'AbortError'));
+      if (!signal) return;
+      if (signal.aborted) failWithAbort();
+      else signal.addEventListener('abort', failWithAbort, { once: true });
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: { 'content-type': 'application/x-ndjson' },
+  });
+}
+
 function deferredDocumentsResponse(): Promise<Response> {
   return new Promise((resolve) => {
     resolveTrailingDocuments = (body: unknown) => resolve(jsonResponse(body));
@@ -315,5 +336,27 @@ describe('FileTree superseded documents refresh', () => {
       (args) => typeof args[0] === 'string' && args[0].includes('[FileTree] fetch failed:'),
     );
     expect(fetchFailedWarns).toEqual([]);
+  });
+
+  test('NDJSON: a superseded mid-stream refresh drops its batch; the fresh listing wins', async () => {
+    documentsFetchPlan.push(
+      (signal) => ndjsonFirstEntryThenAbort(signal, `${JSON.stringify(docEntry('stale'))}\n`),
+      () => jsonResponse({ documents: [docEntry('fresh')], truncated: false }),
+    );
+    render(<FileTree />);
+
+    await waitFor(() => expect(documentsCallCount).toBe(1));
+    await waitFor(() => expect([...model.items.keys()]).toEqual(['stale.md']));
+
+    window.dispatchEvent(new Event('focus'));
+    await waitFor(() => expect(documentsCallCount).toBe(2));
+
+    await waitFor(() => expect([...model.items.keys()]).toEqual(['fresh.md']));
+    expect(model.items.has('stale.md')).toBe(false);
+
+    const supersededWarns = consoleWarnSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].includes('[FileTree] fetch failed:'),
+    );
+    expect(supersededWarns).toEqual([]);
   });
 });

@@ -21,6 +21,7 @@ export {
 } from './prompt-composer.ts';
 export {
   buildClaudeLaunchCommand,
+  buildCliLaunchArgString,
   buildCliLaunchCommand,
   shellSingleQuote,
   TERMINAL_CLI_IDS,

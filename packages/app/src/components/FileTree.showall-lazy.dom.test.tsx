@@ -376,6 +376,81 @@ describe('FileTree showAll lazy root seed', () => {
     });
   });
 
+  test('paints the first NDJSON chunk before the stream completes (incremental seed)', async () => {
+    let releaseRest: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseRest = resolve;
+    });
+    const encoder = new TextEncoder();
+    showAllResponseFactory = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          async start(controller) {
+            controller.enqueue(encoder.encode(`${JSON.stringify(folderEntry('team', true))}\n`));
+            await gate;
+            controller.enqueue(
+              encoder.encode(
+                `${JSON.stringify(docEntry('README'))}\n${JSON.stringify({
+                  type: 'complete',
+                  truncated: false,
+                  count: 2,
+                })}\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/x-ndjson' } },
+      );
+    render(<FileTree />);
+
+    await waitFor(() => expect([...model.items.keys()]).toEqual(['team/']));
+
+    expect(screen.queryByRole('status')).toBeNull();
+
+    releaseRest();
+
+    await waitFor(() => expect([...model.items.keys()].sort()).toEqual(['README.md', 'team/']));
+  });
+
+  test('a first chunk of only hidden entries does not clear the skeleton (no empty-state flash)', async () => {
+    let releaseVisible: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseVisible = resolve;
+    });
+    const encoder = new TextEncoder();
+    showAllResponseFactory = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          async start(controller) {
+            controller.enqueue(encoder.encode(`${JSON.stringify(folderEntry('.github', true))}\n`));
+            await gate;
+            controller.enqueue(
+              encoder.encode(
+                `${JSON.stringify(folderEntry('docs', true))}\n${JSON.stringify({
+                  type: 'complete',
+                  truncated: false,
+                  count: 2,
+                })}\n`,
+              ),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/x-ndjson' } },
+      );
+    render(<FileTree />);
+
+    await waitFor(() => expect(fetchUrls).toContain(SHOW_ALL_DEPTH1_URL));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(screen.queryByText(/No files yet|Create your first/i)).toBeNull();
+    expect(screen.queryByRole('status')).not.toBeNull();
+    expect(model.items.size).toBe(0);
+
+    releaseVisible();
+    await waitFor(() => expect([...model.items.keys()]).toEqual(['docs/']));
+  });
+
   test('a server-emitted NDJSON error line surfaces its problem title, not the connectivity copy', async () => {
     const lines = [
       JSON.stringify(folderEntry('team', true)),

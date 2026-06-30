@@ -24,6 +24,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   mergeAndPruneRecentLocalAdds,
+  mergeRootEntriesAdditive,
   STALE_REFRESH_PRESERVE_WINDOW_MS,
   spliceLazyFolderChildren,
 } from './file-tree-merge';
@@ -246,5 +247,38 @@ describe('spliceLazyFolderChildren', () => {
 
     expect(result).toEqual([folder('team'), doc('just-created')]);
     expect(recentAdds.has('just-created.md')).toBe(true);
+  });
+});
+
+describe('mergeRootEntriesAdditive', () => {
+  test('empty current: returns a copy of the incoming entries', () => {
+    const incoming = [doc('a'), folder('team')];
+    const result = mergeRootEntriesAdditive([], incoming);
+    expect(result).toEqual(incoming);
+    expect(result).not.toBe(incoming);
+  });
+
+  test('empty incoming: returns a copy of the current entries unchanged', () => {
+    const current = [doc('a')];
+    const result = mergeRootEntriesAdditive(current, []);
+    expect(result).toEqual(current);
+    expect(result).not.toBe(current);
+  });
+
+  test('unions new entries onto the current set, preserving order', () => {
+    const result = mergeRootEntriesAdditive([doc('a')], [doc('b'), folder('team')]);
+    expect(result).toEqual([doc('a'), doc('b'), folder('team')]);
+  });
+
+  test('de-dupes by tree path — the existing entry wins on collision', () => {
+    const current = [doc('a', '2026-01-01T00:00:00.000Z')];
+    const incoming = [doc('a', '2099-12-31T00:00:00.000Z'), doc('b')];
+    const result = mergeRootEntriesAdditive(current, incoming);
+    expect(result).toEqual([doc('a', '2026-01-01T00:00:00.000Z'), doc('b')]);
+  });
+
+  test('a folder and a document collide only when their tree paths match', () => {
+    const result = mergeRootEntriesAdditive([folder('team')], [folder('team'), doc('team')]);
+    expect(result).toEqual([folder('team'), doc('team')]);
   });
 });
