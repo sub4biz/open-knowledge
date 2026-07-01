@@ -70,9 +70,10 @@ describe('TerminalGate', () => {
     expect(notice()).toBeNull();
   });
 
-  test('forwards onClose, onTitleChange, and the launch intent to the mounted terminal panel', async () => {
+  test('forwards onClose, onTitleChange, launch, onPtyId, and adoptPtyId to the mounted terminal panel', async () => {
     const onClose = mock(() => {});
     const onTitleChange = mock((_title: string) => {});
+    const onPtyId = mock((_ptyId: string | null) => {});
     const launch = { prompt: 'work on docs/notes', nonce: 1 };
     consentState = { enabled: null, synced: true };
     render(
@@ -81,12 +82,16 @@ describe('TerminalGate', () => {
         onClose={onClose}
         onTitleChange={onTitleChange}
         launch={launch}
+        onPtyId={onPtyId}
+        adoptPtyId="pty-survivor"
       />,
     );
     await screen.findByTestId('terminal-panel');
     expect(lastPanelProps?.onClose).toBe(onClose);
     expect(lastPanelProps?.onTitleChange).toBe(onTitleChange);
     expect(lastPanelProps?.launch).toBe(launch);
+    expect(lastPanelProps?.onPtyId).toBe(onPtyId);
+    expect(lastPanelProps?.adoptPtyId).toBe('pty-survivor');
   });
 
   test('enabled === true mounts the terminal', async () => {

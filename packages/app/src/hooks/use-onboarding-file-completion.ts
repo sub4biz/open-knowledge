@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { subscribeToDocumentsChanged } from '@/lib/documents-events';
 import { type OnboardingCardStore, onboardingCardStore } from '@/lib/onboarding-card-store';

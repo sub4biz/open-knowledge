@@ -4,7 +4,9 @@ import { createPortal } from 'react-dom';
 import { TabsContent } from '@/components/ui/tabs';
 import type { OkDesktopBridge } from '@/lib/desktop-bridge-types';
 import type { TerminalDockPosition } from '@/lib/terminal-dock-store';
+import { emitOpenAskAiComposer } from './ask-ai-composer-events';
 import type { TerminalLaunchIntent } from './EditorPane';
+import { subscribeToActiveTerminalInput } from './handoff/terminal-input-events';
 import { TerminalGate } from './TerminalGate';
 import { TerminalTabStrip } from './TerminalTabStrip';
 
@@ -94,6 +96,11 @@ export function TerminalSessionsHost({
   const sessionCounterRef = useRef(!canRehydrate && visible ? 1 : 0);
   const lastHandledLaunchNonceRef = useRef<number | null>(visible && launch ? launch.nonce : null);
   const prevVisibleRef = useRef(visible);
+  const ptyIdBySessionRef = useRef(new Map<string, string>());
+  function setSessionPtyId(id: string, ptyId: string | null) {
+    if (ptyId === null) ptyIdBySessionRef.current.delete(id);
+    else ptyIdBySessionRef.current.set(id, ptyId);
+  }
 
   function openSession(launchForSession: TerminalLaunchIntent | null) {
     sessionCounterRef.current += 1;
@@ -192,6 +199,19 @@ export function TerminalSessionsHost({
   }, [bridge]);
 
   useEffect(() => {
+    return subscribeToActiveTerminalInput((text) => {
+      const activeId = activeSessionIdRef.current;
+      const livePtyId = activeId === '' ? undefined : ptyIdBySessionRef.current.get(activeId);
+      if (livePtyId != null) {
+        bridge.terminal.input(livePtyId, text);
+        queueMicrotask(() => focusTerminalSession(activeId));
+      } else {
+        emitOpenAskAiComposer();
+      }
+    });
+  }, [bridge]);
+
+  useEffect(() => {
     return bridge.onMenuAction((action) => {
       if (action === 'new-terminal') openSessionRef.current(null);
       else if (action === 'kill-terminal') closeActiveRef.current();
@@ -260,6 +280,7 @@ export function TerminalSessionsHost({
               bridge={bridge}
               launch={session.launch}
               adoptPtyId={session.adoptPtyId}
+              onPtyId={(ptyId) => setSessionPtyId(session.id, ptyId)}
               onTitleChange={(title) => setSessionTitle(session.id, title)}
               onClose={() => closeSession(session.id)}
             />

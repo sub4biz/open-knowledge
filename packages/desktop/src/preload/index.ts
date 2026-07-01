@@ -1,5 +1,4 @@
-
-import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron';
+import { contextBridge, type IpcRendererEvent, ipcRenderer, webUtils } from 'electron';
 import type {
   OkDesktopBridge,
   OkDesktopConfig,
@@ -532,6 +531,11 @@ const bridge: OkDesktopBridge = {
 
   platform: process.platform as 'darwin' | 'win32' | 'linux',
   appVersion: parseArg('app-version') ?? '0.0.0',
+
+  getPathForFile: (file) => {
+    const path = webUtils.getPathForFile(file);
+    return path === '' ? null : path;
+  },
 };
 
 if (parseArg('debug-keyring-smoke') === '1') {

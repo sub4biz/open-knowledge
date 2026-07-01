@@ -1,6 +1,10 @@
 import '@xterm/xterm/css/xterm.css';
 
-import { buildCliLaunchArgString, type TerminalCli } from '@inkeep/open-knowledge-core';
+import {
+  buildCliLaunchArgString,
+  shellSingleQuote,
+  type TerminalCli,
+} from '@inkeep/open-knowledge-core';
 import { useLingui } from '@lingui/react/macro';
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
@@ -13,6 +17,7 @@ import type { ClaudeReadiness, OkDesktopBridge } from '@/lib/desktop-bridge-type
 import { cn } from '@/lib/utils';
 import { ClaudeReadinessBanner } from './ClaudeReadinessBanner';
 import type { TerminalLaunchIntent } from './EditorPane';
+import { filesFromExternalDrop, isExternalFileDrag } from './file-tree-adapter';
 import { TerminalCliMissingBanner } from './TerminalCliMissingBanner';
 import { type TerminalExitInfo, TerminalExitNotice } from './TerminalExitNotice';
 import { TerminalRefusalNotice } from './TerminalRefusalNotice';
@@ -29,6 +34,7 @@ interface TerminalPanelProps {
   readonly onTitleChange?: (title: string) => void;
   readonly launch?: TerminalLaunchIntent | null;
   readonly adoptPtyId?: string | null;
+  readonly onPtyId?: (ptyId: string | null) => void;
 }
 
 export function TerminalPanel({
@@ -39,6 +45,7 @@ export function TerminalPanel({
   onTitleChange,
   launch = null,
   adoptPtyId = null,
+  onPtyId,
 }: TerminalPanelProps) {
   const { t } = useLingui();
   const { resolvedTheme } = useTheme();
@@ -62,6 +69,7 @@ export function TerminalPanel({
           onRestart={() => setRestartKey((k) => k + 1)}
           launch={launch}
           adoptPtyId={adoptForThisMount}
+          onPtyId={onPtyId}
         />
       </div>
     </section>
@@ -82,6 +90,9 @@ interface TerminalSessionProps {
   /** Surviving PTY to adopt on mount instead of spawning a fresh shell; `null`
    *  spawns fresh (the normal path). */
   readonly adoptPtyId?: string | null;
+  /** Reports the live PTY id up (or `null` on teardown) — see
+   *  {@link TerminalPanelProps.onPtyId}. */
+  readonly onPtyId?: (ptyId: string | null) => void;
 }
 
 function TerminalSession({
@@ -92,10 +103,12 @@ function TerminalSession({
   onRestart,
   launch = null,
   adoptPtyId = null,
+  onPtyId,
 }: TerminalSessionProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onExitRef = useRef(onExit);
   const onTitleChangeRef = useRef(onTitleChange);
+  const onPtyIdRef = useRef(onPtyId);
   const { resolvedTheme } = useTheme();
   const termRef = useRef<Terminal | null>(null);
   const initialResolvedThemeRef = useRef(resolvedTheme);
@@ -108,6 +121,7 @@ function TerminalSession({
   useEffect(() => {
     onExitRef.current = onExit;
     onTitleChangeRef.current = onTitleChange;
+    onPtyIdRef.current = onPtyId;
   });
 
   useEffect(() => {
@@ -223,6 +237,7 @@ function TerminalSession({
     const attachSession = (livePtyId: string) => {
       ptyId = livePtyId;
       ptyIdRef.current = livePtyId;
+      onPtyIdRef.current?.(livePtyId);
       setStatus('running');
 
       term.onData((data) => {
@@ -360,6 +375,7 @@ function TerminalSession({
     return () => {
       cancelled = true;
       ptyIdRef.current = null;
+      onPtyIdRef.current?.(null);
       termRef.current = null;
       observer?.disconnect();
       unsubData?.();
@@ -378,6 +394,35 @@ function TerminalSession({
     if (term === null) return;
     term.options.theme = xtermThemeForMode(resolvedTheme);
   }, [resolvedTheme]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container === null) return;
+    function onDragOver(event: DragEvent) {
+      if (!isExternalFileDrag(event)) return;
+      event.preventDefault();
+    }
+    function onDrop(event: DragEvent) {
+      if (!isExternalFileDrag(event)) return;
+      event.preventDefault();
+      const livePtyId = ptyIdRef.current;
+      if (livePtyId === null) return;
+      const paths = filesFromExternalDrop(event)
+        .map((file) => bridge.getPathForFile(file))
+        .filter(
+          (path): path is string =>
+            path !== null && path !== '' && !Array.from(path).some((ch) => ch.charCodeAt(0) < 0x20),
+        );
+      if (paths.length === 0) return;
+      bridge.terminal.input(livePtyId, `${paths.map(shellSingleQuote).join(' ')} `);
+    }
+    container.addEventListener('dragover', onDragOver, { capture: true });
+    container.addEventListener('drop', onDrop, { capture: true });
+    return () => {
+      container.removeEventListener('dragover', onDragOver, { capture: true });
+      container.removeEventListener('drop', onDrop, { capture: true });
+    };
+  }, [bridge]);
 
   return (
     <div className="flex h-full w-full flex-col">

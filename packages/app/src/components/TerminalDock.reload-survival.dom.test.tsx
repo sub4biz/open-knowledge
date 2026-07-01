@@ -1,9 +1,9 @@
-
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { OkDesktopBridge } from '@/lib/desktop-bridge-types';
+import { requestActiveTerminalInput } from './handoff/terminal-input-events';
 
 const TERMINAL_PANEL_ID = 'terminal-dock-panel';
 
@@ -30,9 +30,18 @@ mock.module('@/components/ui/resizable', () => ({
 }));
 
 mock.module('./TerminalGate', () => ({
-  TerminalGate: () => (
-    <span data-testid="terminal-session" className="xterm-helper-textarea" tabIndex={-1} />
-  ),
+  // biome-ignore lint/suspicious/noExplicitAny: test stub
+  TerminalGate: ({ adoptPtyId, onPtyId }: any) => {
+    const onPtyIdRef = useRef(onPtyId);
+    useEffect(() => {
+      onPtyIdRef.current = onPtyId;
+    });
+    useEffect(() => {
+      if (adoptPtyId != null) onPtyIdRef.current?.(adoptPtyId);
+      return () => onPtyIdRef.current?.(null);
+    }, [adoptPtyId]);
+    return <span data-testid="terminal-session" className="xterm-helper-textarea" tabIndex={-1} />;
+  },
 }));
 
 mock.module('@/lib/terminal-height-store', () => ({
@@ -43,7 +52,15 @@ mock.module('@/lib/terminal-height-store', () => ({
 const { TerminalDock } = await import('./TerminalDock');
 const { TerminalSessionsHost } = await import('./TerminalSessionsHost');
 
-function ReloadHarness({ bridge, visible }: { bridge: OkDesktopBridge; visible: boolean }) {
+function ReloadHarness({
+  bridge,
+  visible,
+  launch = null,
+}: {
+  bridge: OkDesktopBridge;
+  visible: boolean;
+  launch?: { prompt: string; cli: string; nonce: number } | null;
+}) {
   const [bottomContainer, setBottomContainer] = useState<HTMLDivElement | null>(null);
   return (
     <TooltipProvider>
@@ -60,7 +77,8 @@ function ReloadHarness({ bridge, visible }: { bridge: OkDesktopBridge; visible: 
         bridge={bridge}
         visible={visible}
         onVisibleChange={() => {}}
-        launch={null}
+        // biome-ignore lint/suspicious/noExplicitAny: test launch shape
+        launch={launch as any}
         container={bottomContainer}
         isShowing={visible && bottomContainer != null}
         onRequestEditorFocus={() => {}}
@@ -78,6 +96,7 @@ function makeSurvivingMainBridge(preExisting: ReadonlyArray<{ ptyId: string }>) 
     return { ok: true as const, ptyId: `fresh-pty-${freshCounter}` };
   });
   const kill = mock(async (_id: string) => {});
+  const input = mock((_id: string, _d: string) => {});
   const listLive = mock(async () => preExisting);
   const bridge = {
     onMenuAction: () => () => {},
@@ -85,6 +104,7 @@ function makeSurvivingMainBridge(preExisting: ReadonlyArray<{ ptyId: string }>) 
     terminal: {
       create,
       kill,
+      input,
       list: listLive,
       listSessions: listLive,
       getSessions: listLive,
@@ -92,7 +112,7 @@ function makeSurvivingMainBridge(preExisting: ReadonlyArray<{ ptyId: string }>) 
       restoreSessions: listLive,
     },
   } as unknown as OkDesktopBridge;
-  return { bridge, create, listLive };
+  return { bridge, create, input, listLive };
 }
 
 function renderDock(bridge: OkDesktopBridge, visible: boolean) {
@@ -159,5 +179,23 @@ describe('issue #351 — the terminal dock rehydrates surviving sessions after a
     await waitFor(() => expect(screen.getAllByTestId('terminal-session')).toHaveLength(1), {
       timeout: 2000,
     });
+  });
+
+  test('an Ask-AI selection reuses a reload-rehydrated (adopted) session via a direct PTY write', async () => {
+    const { bridge, create, input } = makeSurvivingMainBridge([{ ptyId: 'pty-1' }]);
+    render(dockUi(bridge, true));
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-session')).toHaveLength(1), {
+      timeout: 2000,
+    });
+    await act(async () => {}); // flush the onPtyId report into the host's reuse map
+
+    await act(async () => {
+      requestActiveTerminalInput('explain');
+    });
+
+    await waitFor(() => expect(input).toHaveBeenCalledWith('pty-1', 'explain'));
+    expect(screen.getAllByTestId('terminal-session')).toHaveLength(1);
+    expect(create).not.toHaveBeenCalled();
   });
 });

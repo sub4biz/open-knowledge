@@ -1,4 +1,3 @@
-
 export const TERMINAL_DOCK_KEY = 'ok-terminal-dock-v1';
 
 export type TerminalDockPosition = 'bottom' | 'right';
@@ -27,8 +26,7 @@ export function writeTerminalDock(position: TerminalDockPosition, storage?: Dock
   try {
     const s = storage ?? localStorage;
     s.setItem(TERMINAL_DOCK_KEY, position);
-  } catch {
-  }
+  } catch {}
 }
 
 export function getInitialTerminalDock(): TerminalDockPosition {

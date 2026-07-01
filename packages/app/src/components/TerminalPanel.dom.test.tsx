@@ -1,4 +1,3 @@
-
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type {
@@ -137,6 +136,7 @@ function makeBridge(
       terminal,
       shell: { openExternal },
       config: { e2eSmoke: false },
+      getPathForFile: (file: File) => `/dropped/${file.name}`,
     } as unknown as OkDesktopBridge,
     terminal,
     openExternal,
@@ -297,6 +297,95 @@ describe('TerminalPanel', () => {
 
     act(() => lastTerm?.onDataCb?.('ls\r'));
     expect(terminal.input).toHaveBeenCalledWith('pty-1', 'ls\r');
+  });
+
+  test('dropping files inserts their shell-escaped paths at the prompt (PRD-7238)', async () => {
+    const { bridge, terminal } = makeBridge({ ok: true, ptyId: 'pty-1' });
+    render(<TerminalPanel bridge={bridge} />);
+    await waitFor(() => expect(lastTerm?.onDataCb).toBeTruthy());
+
+    const container = document.querySelector('[data-terminal-status]');
+    if (container === null) throw new Error('terminal container not found');
+
+    const fileA = new File(['x'], 'shot.png', { type: 'image/png' });
+    const fileB = new File(['y'], "a b's.png", { type: 'image/png' });
+    const dataTransfer = { types: ['Files'], files: [fileA, fileB] };
+    fireEvent.dragOver(container, { dataTransfer });
+    fireEvent.drop(container, { dataTransfer });
+
+    expect(terminal.input).toHaveBeenCalledWith(
+      'pty-1',
+      "'/dropped/shot.png' '/dropped/a b'\\''s.png' ",
+    );
+  });
+
+  test('a drop where every file resolves to no disk path writes nothing (clipboard blobs)', async () => {
+    const { bridge, terminal } = makeBridge({ ok: true, ptyId: 'pty-1' });
+    (bridge as unknown as { getPathForFile: (f: File) => string }).getPathForFile = () => '';
+    render(<TerminalPanel bridge={bridge} />);
+    await waitFor(() => expect(lastTerm?.onDataCb).toBeTruthy());
+
+    const container = document.querySelector('[data-terminal-status]');
+    if (container === null) throw new Error('terminal container not found');
+
+    const blob = new File(['x'], 'pasted.png', { type: 'image/png' });
+    const dataTransfer = { types: ['Files'], files: [blob] };
+    fireEvent.dragOver(container, { dataTransfer });
+    fireEvent.drop(container, { dataTransfer });
+
+    expect(terminal.input).not.toHaveBeenCalled();
+  });
+
+  test('a mixed drop writes only the files that resolve to a disk path', async () => {
+    const { bridge, terminal } = makeBridge({ ok: true, ptyId: 'pty-1' });
+    (bridge as unknown as { getPathForFile: (f: File) => string | null }).getPathForFile = (
+      file,
+    ) => (file.name === 'ghost.png' ? null : `/dropped/${file.name}`);
+    render(<TerminalPanel bridge={bridge} />);
+    await waitFor(() => expect(lastTerm?.onDataCb).toBeTruthy());
+
+    const container = document.querySelector('[data-terminal-status]');
+    if (container === null) throw new Error('terminal container not found');
+
+    const real = new File(['x'], 'shot.png', { type: 'image/png' });
+    const ghost = new File(['y'], 'ghost.png', { type: 'image/png' });
+    const dataTransfer = { types: ['Files'], files: [real, ghost] };
+    fireEvent.dragOver(container, { dataTransfer });
+    fireEvent.drop(container, { dataTransfer });
+
+    expect(terminal.input).toHaveBeenCalledTimes(1);
+    expect(terminal.input).toHaveBeenCalledWith('pty-1', "'/dropped/shot.png' ");
+  });
+
+  test('a dropped path containing a control char is filtered (no PTY command injection)', async () => {
+    const { bridge, terminal } = makeBridge({ ok: true, ptyId: 'pty-1' });
+    render(<TerminalPanel bridge={bridge} />);
+    await waitFor(() => expect(lastTerm?.onDataCb).toBeTruthy());
+
+    const container = document.querySelector('[data-terminal-status]');
+    if (container === null) throw new Error('terminal container not found');
+
+    const clean = new File(['x'], 'shot.png', { type: 'image/png' });
+    const tainted = new File(['y'], 'a\nrm -rf ~.png', { type: 'image/png' });
+    const dataTransfer = { types: ['Files'], files: [clean, tainted] };
+    fireEvent.dragOver(container, { dataTransfer });
+    fireEvent.drop(container, { dataTransfer });
+
+    expect(terminal.input).toHaveBeenCalledTimes(1);
+    expect(terminal.input).toHaveBeenCalledWith('pty-1', "'/dropped/shot.png' ");
+  });
+
+  test('a drag that carries no external files is ignored (no PTY write)', async () => {
+    const { bridge, terminal } = makeBridge({ ok: true, ptyId: 'pty-1' });
+    render(<TerminalPanel bridge={bridge} />);
+    await waitFor(() => expect(lastTerm?.onDataCb).toBeTruthy());
+
+    const container = document.querySelector('[data-terminal-status]');
+    if (container === null) throw new Error('terminal container not found');
+
+    const dataTransfer = { types: ['text/plain'], files: [] };
+    fireEvent.drop(container, { dataTransfer });
+    expect(terminal.input).not.toHaveBeenCalled();
   });
 
   test('re-fits and resizes the PTY when the container resizes', async () => {

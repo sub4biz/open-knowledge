@@ -1,10 +1,10 @@
-
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { OkDesktopBridge } from '@/lib/desktop-bridge-types';
+import { requestActiveTerminalInput } from './handoff/terminal-input-events';
 
 const TERMINAL_PANEL_ID = 'terminal-dock-panel';
 
@@ -61,12 +61,14 @@ function emitTitle(ptyId: string, title: string): boolean {
 
 mock.module('./TerminalGate', () => ({
   // biome-ignore lint/suspicious/noExplicitAny: test stub
-  TerminalGate: ({ bridge, launch, onTitleChange }: any) => {
+  TerminalGate: ({ bridge, launch, onTitleChange, onPtyId }: any) => {
     const ptyIdRef = useRef<string | null>(null);
     const cancelledRef = useRef(false);
     const onTitleChangeRef = useRef(onTitleChange);
+    const onPtyIdRef = useRef(onPtyId);
     useEffect(() => {
       onTitleChangeRef.current = onTitleChange;
+      onPtyIdRef.current = onPtyId;
     });
     useEffect(() => {
       cancelledRef.current = false;
@@ -76,6 +78,7 @@ mock.module('./TerminalGate', () => ({
           if (cancelledRef.current) bridge?.terminal?.kill?.(result.ptyId);
           else {
             ptyIdRef.current = result.ptyId;
+            onPtyIdRef.current?.(result.ptyId);
             titleEmitters.set(result.ptyId, (title: string) => onTitleChangeRef.current?.(title));
           }
         },
@@ -83,6 +86,7 @@ mock.module('./TerminalGate', () => ({
       return () => {
         cancelledRef.current = true;
         if (ptyIdRef.current != null) {
+          onPtyIdRef.current?.(null);
           titleEmitters.delete(ptyIdRef.current);
           bridge?.terminal?.kill?.(ptyIdRef.current);
         }
@@ -116,6 +120,7 @@ function makeBridge() {
     return { ok: true as const, ptyId: `pty-${ptyCounter}` };
   });
   const kill = mock(async (_id: string) => {});
+  const input = mock((_ptyId: string, _data: string) => {});
   const bridge = {
     onMenuAction(cb: (action: string) => void) {
       menuHandlers.push(cb);
@@ -129,12 +134,13 @@ function makeBridge() {
         viewMenuPushes.push(state);
       },
     },
-    terminal: { create, kill },
+    terminal: { create, kill, input },
   } as unknown as OkDesktopBridge;
   return {
     bridge,
     create,
     kill,
+    input,
     viewMenuPushes,
     dispatchMenuAction(action: string) {
       for (const cb of menuHandlers) cb(action);
@@ -172,10 +178,13 @@ function DockHarness({ v, l, onVisibleChange, bridge }: any) {
   );
 }
 
-function renderDock(visible: boolean, launch?: { prompt: string; nonce: number } | null) {
+function renderDock(
+  visible: boolean,
+  launch?: { prompt: string; nonce: number; cli?: string } | null,
+) {
   const onVisibleChange = mock((_v: boolean) => {});
-  const { bridge, create, kill, viewMenuPushes, dispatchMenuAction } = makeBridge();
-  const ui = (v: boolean, l?: { prompt: string; nonce: number } | null) => (
+  const { bridge, create, kill, input, viewMenuPushes, dispatchMenuAction } = makeBridge();
+  const ui = (v: boolean, l?: { prompt: string; nonce: number; cli?: string } | null) => (
     <DockHarness v={v} l={l ?? null} onVisibleChange={onVisibleChange} bridge={bridge} />
   );
   const utils = render(ui(visible, launch));
@@ -184,9 +193,10 @@ function renderDock(visible: boolean, launch?: { prompt: string; nonce: number }
     onVisibleChange,
     create,
     kill,
+    input,
     viewMenuPushes,
     dispatchMenuAction,
-    rerender: (v: boolean, l?: { prompt: string; nonce: number } | null) =>
+    rerender: (v: boolean, l?: { prompt: string; nonce: number; cli?: string } | null) =>
       utils.rerender(ui(v, l)),
   };
 }
@@ -499,37 +509,69 @@ describe('TerminalDock multi-session', () => {
     expect(sessions[0]?.getAttribute('data-launch')).toBe('9');
   });
 
-  test('a launch while a tab is running opens a NEW tab and leaves the running one untouched', () => {
+  test('a launch always opens its own tab, even when a terminal is already live', async () => {
     const view = renderDock(true);
-    expect(screen.getAllByTestId('terminal-session')).toHaveLength(1);
+    await waitFor(() => expect(emitTitle('pty-1', 'zsh')).toBe(true));
     const runningId = activePanelId();
-    expect(launchNonceOf(runningId)).toBe('none');
+    expect(screen.getAllByTestId('terminal-session')).toHaveLength(1);
 
-    act(() => view.rerender(true, { prompt: 'work on docs', nonce: 1 }));
+    act(() => view.rerender(true, { prompt: 'work on docs', cli: 'claude', nonce: 1 }));
 
-    expect(screen.getAllByTestId('terminal-session')).toHaveLength(2);
+    const sessions = screen.getAllByTestId('terminal-session');
+    expect(sessions).toHaveLength(2);
     const launchedId = activePanelId();
     expect(launchedId).not.toBe(runningId);
     expect(launchNonceOf(launchedId)).toBe('1');
-    expect(launchNonceOf(runningId)).toBe('none');
+    expect(view.input).not.toHaveBeenCalled();
   });
 
-  test('distinct launch nonces each open their own tab', () => {
+  test('the selection input reuses the live terminal — raw PTY write, no new tab', async () => {
     const view = renderDock(true);
+    await waitFor(() => expect(emitTitle('pty-1', 'zsh')).toBe(true));
+    const runningId = activePanelId();
+    expect(screen.getAllByTestId('terminal-session')).toHaveLength(1);
 
-    act(() => view.rerender(true, { prompt: 'a', nonce: 1 }));
-    act(() => view.rerender(true, { prompt: 'b', nonce: 2 }));
+    await act(async () => {
+      requestActiveTerminalInput('explain this');
+    });
+
+    await waitFor(() => expect(view.input).toHaveBeenCalledWith('pty-1', 'explain this'));
+    expect(screen.getAllByTestId('terminal-session')).toHaveLength(1);
+    expect(activePanelId()).toBe(runningId);
+  });
+
+  test('a launch before the seed terminal PTY is live also opens its own tab', () => {
+    const view = renderDock(true);
+    expect(screen.getAllByTestId('terminal-session')).toHaveLength(1);
+    const seedId = activePanelId();
+
+    act(() => view.rerender(true, { prompt: 'work on docs', cli: 'claude', nonce: 1 }));
+
+    expect(screen.getAllByTestId('terminal-session')).toHaveLength(2);
+    const launchedId = activePanelId();
+    expect(launchedId).not.toBe(seedId);
+    expect(launchNonceOf(launchedId)).toBe('1');
+  });
+
+  test('distinct launches each open their own tab', async () => {
+    const view = renderDock(true);
+    await waitFor(() => expect(emitTitle('pty-1', 'zsh')).toBe(true));
+
+    act(() => view.rerender(true, { prompt: 'a', cli: 'claude', nonce: 1 }));
+    act(() => view.rerender(true, { prompt: 'b', cli: 'claude', nonce: 2 }));
 
     expect(screen.getAllByTestId('terminal-session')).toHaveLength(3);
+    expect(view.input).not.toHaveBeenCalled();
   });
 
-  test('a repeated launch with the same nonce does not open a second tab', () => {
+  test('a repeated launch with the same nonce opens only one tab', async () => {
     const view = renderDock(true);
+    await waitFor(() => expect(emitTitle('pty-1', 'zsh')).toBe(true));
 
-    act(() => view.rerender(true, { prompt: 'a', nonce: 1 }));
+    act(() => view.rerender(true, { prompt: 'a', cli: 'claude', nonce: 1 }));
     expect(screen.getAllByTestId('terminal-session')).toHaveLength(2);
 
-    act(() => view.rerender(true, { prompt: 'a', nonce: 1 }));
+    act(() => view.rerender(true, { prompt: 'a', cli: 'claude', nonce: 1 }));
     expect(screen.getAllByTestId('terminal-session')).toHaveLength(2);
   });
 

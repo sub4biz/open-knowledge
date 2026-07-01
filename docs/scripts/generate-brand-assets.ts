@@ -3,7 +3,6 @@ import path from 'node:path';
 import { zipSync } from 'fflate';
 import sharp from 'sharp';
 
-
 const root = path.resolve(import.meta.dirname, '..');
 const outDir = path.join(root, 'public', 'brand');
 

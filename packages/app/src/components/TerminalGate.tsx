@@ -19,6 +19,9 @@ interface TerminalGateProps {
   /** Surviving PTY to adopt after a renderer reload, forwarded to the session;
    *  `null` for a freshly-opened tab. */
   readonly adoptPtyId?: string | null;
+  /** Reports the session's live PTY id up to the host — see
+   *  {@link TerminalPanelProps.onPtyId}. */
+  readonly onPtyId?: (ptyId: string | null) => void;
 }
 
 export function TerminalGate({
@@ -27,6 +30,7 @@ export function TerminalGate({
   onTitleChange,
   launch = null,
   adoptPtyId = null,
+  onPtyId,
 }: TerminalGateProps) {
   const { enabled, synced } = useTerminalConsentState();
   const writer = useTerminalEnabledWriter();
@@ -63,6 +67,7 @@ export function TerminalGate({
             onTitleChange={onTitleChange}
             launch={launch}
             adoptPtyId={adoptPtyId}
+            onPtyId={onPtyId}
           />
         </Suspense>
       </ErrorBoundary>

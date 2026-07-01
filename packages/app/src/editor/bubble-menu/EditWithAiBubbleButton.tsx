@@ -1,10 +1,10 @@
-
 import { Trans } from '@lingui/react/macro';
 import { isMacOS } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { Sparkles } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
 import { emitOpenAskAiComposer } from '@/components/ask-ai-composer-events';
+import { requestActiveTerminalInput } from '@/components/handoff/terminal-input-events';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useIsEmbedded } from '@/hooks/use-is-embedded';
@@ -17,7 +17,7 @@ function isNativeTextControl(target: EventTarget | null): boolean {
 }
 
 export function EditWithAiBubbleButton({
-  editor: _editor,
+  editor,
   shortcutEnabled = false,
 }: {
   editor: Editor;
@@ -27,10 +27,16 @@ export function EditWithAiBubbleButton({
   const isEmbedded = useIsEmbedded();
   if (!isMac || isEmbedded) return null;
 
-  return <EditWithAiBubbleMenu shortcutEnabled={shortcutEnabled} />;
+  return <EditWithAiBubbleMenu editor={editor} shortcutEnabled={shortcutEnabled} />;
 }
 
-function EditWithAiBubbleMenu({ shortcutEnabled }: { shortcutEnabled: boolean }): ReactNode {
+function EditWithAiBubbleMenu({
+  editor,
+  shortcutEnabled,
+}: {
+  editor: Editor;
+  shortcutEnabled: boolean;
+}): ReactNode {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (!shortcutEnabled) return;
@@ -56,7 +62,14 @@ function EditWithAiBubbleMenu({ shortcutEnabled }: { shortcutEnabled: boolean })
         size="sm"
         data-testid="edit-with-ai-bubble-button"
         className="gap-1 px-2 text-sm font-medium text-accent-foreground/80"
-        onClick={() => emitOpenAskAiComposer()}
+        onClick={() => {
+          const { from, to } = editor.state.selection;
+          const text = editor.state.doc.textBetween(from, to, '\n');
+          requestAnimationFrame(() => {
+            if (text.trim() === '') emitOpenAskAiComposer();
+            else requestActiveTerminalInput(text);
+          });
+        }}
       >
         <Sparkles className="size-3.5" aria-hidden="true" />
         <span>

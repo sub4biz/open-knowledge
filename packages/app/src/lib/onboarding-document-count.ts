@@ -1,4 +1,3 @@
-
 import { type DocumentListSuccess, DocumentListSuccessSchema } from '@inkeep/open-knowledge-core';
 import { filterVisibleEntries } from '@/components/file-tree-utils';
 

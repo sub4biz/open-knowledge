@@ -1,14 +1,21 @@
-
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Schema } from '@tiptap/pm/model';
 import type { Editor } from '@tiptap/react';
 import type { ReactNode } from 'react';
 import { subscribeToOpenAskAiComposer } from '@/components/ask-ai-composer-events';
+import { subscribeToActiveTerminalInput } from '@/components/handoff/terminal-input-events';
 import { setEditorDocName } from '../extensions/doc-context.ts';
 
 mock.module('sonner', () => ({ toast: { error: () => {}, success: () => {} } }));
+
+if (typeof globalThis.requestAnimationFrame === 'undefined') {
+  globalThis.requestAnimationFrame = ((callback) => {
+    queueMicrotask(() => callback(0));
+    return 0;
+  }) as typeof globalThis.requestAnimationFrame;
+}
 
 const { EditWithAiBubbleButton } = await import('./EditWithAiBubbleButton');
 
@@ -20,12 +27,18 @@ const schema = new Schema({
   },
 });
 
-function makeEditor(docName: string, text: string): Editor {
+/** A minimal fake TipTap editor. The click handler reads the selection text via
+ *  `state.doc.textBetween(from, to)`; `collapsed` yields an empty selection so
+ *  the caret-only → composer fallback can be exercised. */
+function makeEditor(docName: string, text: string, collapsed = false): Editor {
   const doc = schema.node('doc', null, [schema.node('paragraph', null, [schema.text(text)])]);
+  const from = 1;
+  const to = collapsed ? 1 : 1 + text.length;
   const editor = {
     state: {
       schema,
-      selection: { content: () => doc.slice(0, doc.content.size) },
+      doc,
+      selection: { from, to, content: () => doc.slice(from, to) },
     },
   } as unknown as Editor;
   setEditorDocName(editor, docName);
@@ -51,6 +64,8 @@ const EMBEDDED_UA = `${PLAIN_UA} Cursor/1.2.3`;
 
 let openRequests = 0;
 let unsubscribe: (() => void) | null = null;
+let terminalInputs: string[] = [];
+let unsubscribeTerminal: (() => void) | null = null;
 
 function renderButton({
   editor,
@@ -84,14 +99,20 @@ function dispatchEditWithAiShortcut(target: EventTarget): void {
 
 beforeEach(() => {
   openRequests = 0;
+  terminalInputs = [];
   unsubscribe = subscribeToOpenAskAiComposer(() => {
     openRequests += 1;
+  });
+  unsubscribeTerminal = subscribeToActiveTerminalInput((text) => {
+    terminalInputs.push(text);
   });
 });
 
 afterEach(() => {
   unsubscribe?.();
   unsubscribe = null;
+  unsubscribeTerminal?.();
+  unsubscribeTerminal = null;
   cleanup();
   setUserAgent(PLAIN_UA);
 });
@@ -126,7 +147,7 @@ describe('EditWithAiBubbleButton', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  test('clicking the trigger requests the Ask AI composer open+focus', async () => {
+  test('clicking the trigger sends the selected passage to the active terminal', async () => {
     setPlatform('MacIntel');
     const user = userEvent.setup();
     const editor = makeEditor('specs/foo/SPEC', 'A passage.');
@@ -134,7 +155,20 @@ describe('EditWithAiBubbleButton', () => {
 
     await user.click(screen.getByTestId('edit-with-ai-bubble-button'));
 
-    expect(openRequests).toBe(1);
+    await waitFor(() => expect(terminalInputs).toEqual(['A passage.']));
+    expect(openRequests).toBe(0);
+  });
+
+  test('clicking with an empty selection opens the Ask AI composer instead', async () => {
+    setPlatform('MacIntel');
+    const user = userEvent.setup();
+    const editor = makeEditor('specs/foo/SPEC', 'A passage.', /* collapsed */ true);
+    renderButton({ editor });
+
+    await user.click(screen.getByTestId('edit-with-ai-bubble-button'));
+
+    await waitFor(() => expect(openRequests).toBe(1));
+    expect(terminalInputs).toEqual([]);
   });
 
   test('Cmd+Shift+I requests the Ask AI composer open+focus', async () => {

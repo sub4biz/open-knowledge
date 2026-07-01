@@ -21,8 +21,7 @@ export function LogoContextMenu({ children }: { children: ReactNode }) {
       await copySvgToClipboard(PRIMARY_BRAND_ASSET.svg);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-    }
+    } catch {}
   }
 
   return (
