@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { SiteFooter } from '@/components/footer';
 import { MarketingButton } from '@/components/marketing-button';
 import SectionHeading from '@/components/section-heading';
+import { SlidePageShell } from '@/components/slide-page';
 import { BRAND_ASSETS, BRAND_ROUTE, BRAND_ZIP } from '@/lib/brand-assets';
 import { cn } from '@/lib/utils';
 
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 
 export default function BrandPage() {
   return (
-    <div className="font-[family-name:var(--font-dm-sans)] selection:bg-[var(--slide-accent)]/20">
-      <section className="container mx-auto px-6 py-16 sm:py-24">
+    <SlidePageShell>
+      <div className="selection:bg-[var(--slide-accent)]/20">
         <SectionHeading
           tag="Brand"
           description="Download the official OpenKnowledge logos and brand assets for press, partnerships, or just to share about us."
@@ -68,9 +68,7 @@ export default function BrandPage() {
             </div>
           ))}
         </div>
-      </section>
-
-      <SiteFooter showSubscribe={false} />
-    </div>
+      </div>
+    </SlidePageShell>
   );
 }
