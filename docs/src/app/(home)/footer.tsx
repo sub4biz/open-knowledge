@@ -4,6 +4,7 @@ import { GitHubIcon } from '@/components/icons/github';
 import { XIcon } from '@/components/icons/x';
 import { InkeepLogo } from '@/components/inkeep-logo';
 import { SubscribeForm } from '@/components/subscribe-form';
+import { BRAND_ROUTE } from '@/lib/brand-assets';
 import { DISCORD_URL, GITHUB_URL, X_URL } from '@/lib/site';
 import { DotTexture } from './dot-texture';
 
@@ -14,8 +15,13 @@ const socialLinks = [
 ];
 
 const legalLinks = [
-  { href: 'https://inkeep.com/policies/terms-of-service', label: 'Terms of Service' },
-  { href: 'https://inkeep.com/policies/privacy', label: 'Privacy' },
+  { href: BRAND_ROUTE, label: 'Brand', external: false },
+  {
+    href: 'https://inkeep.com/policies/terms-of-service',
+    label: 'Terms of Service',
+    external: true,
+  },
+  { href: 'https://inkeep.com/policies/privacy', label: 'Privacy', external: true },
 ];
 
 export function SiteFooter({ showSubscribe = true }: { showSubscribe?: boolean }) {
@@ -53,12 +59,12 @@ export function SiteFooter({ showSubscribe = true }: { showSubscribe?: boolean }
           <InkeepLogo className="w-20" />
         </Link>
         <div className="flex items-center justify-center gap-6 text-sm text-slide-muted min-[24rem]:justify-end">
-          {legalLinks.map(({ href, label }) => (
+          {legalLinks.map(({ href, label, external }) => (
             <Link
               key={href}
               href={href}
-              target="_blank"
-              rel="noreferrer"
+              target={external ? '_blank' : undefined}
+              rel={external ? 'noreferrer' : undefined}
               className="rounded-sm outline-none transition-colors hover:text-slide-text focus-visible:ring-2 focus-visible:ring-slide-accent focus-visible:ring-offset-2"
             >
               {label}

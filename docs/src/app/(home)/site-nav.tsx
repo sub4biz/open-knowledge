@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { DiscordIcon } from '@/components/icons/discord';
 import { GitHubIcon } from '@/components/icons/github';
 import { XIcon } from '@/components/icons/x';
+import { LogoContextMenu } from '@/components/logo-context-menu';
 import { OkWordmark } from '@/components/ok-wordmark';
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DISCORD_URL, DOWNLOAD_ROUTE, GITHUB_URL, X_URL } from '@/lib/site';
@@ -195,9 +196,11 @@ export function SiteNav({ stars }: { stars: number | null }) {
     <header className="sticky top-0 z-50 bg-fd-background/80 backdrop-blur supports-backdrop-filter:bg-fd-background/70">
       <div className="container mx-auto flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-6">
-          <Link href="/" aria-label="OpenKnowledge home" className="inline-flex items-center">
-            <OkWordmark aria-label="OpenKnowledge" className="h-8 w-auto text-slide-text" />
-          </Link>
+          <LogoContextMenu>
+            <Link href="/" aria-label="OpenKnowledge home" className="inline-flex items-center">
+              <OkWordmark aria-label="OpenKnowledge" className="h-8 w-auto text-slide-text" />
+            </Link>
+          </LogoContextMenu>
           <nav
             aria-label="Primary"
             className="hidden items-center gap-6 text-sm text-slide-muted md:flex uppercase font-mono"

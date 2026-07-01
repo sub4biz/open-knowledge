@@ -13,6 +13,7 @@
     "typecheck": "next typegen && fumadocs-mdx && tsc --noEmit",
     "validate-link": "bun scripts/validate-link.ts",
     "generate:og-wordmark": "bun scripts/generate-og-wordmark.ts",
+    "generate:brand-assets": "bun scripts/generate-brand-assets.ts",
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
@@ -56,10 +57,12 @@
     "@types/node": "^24.0.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "fflate": "0.4.8",
     "fumadocs-typescript": "~4.0.13",
     "next-validate-link": "^1.6.6",
     "remark-mdx-snippets": "^0.3.3",
     "schema-dts": "^2.0.0",
+    "sharp": "^0.34.5",
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4",
     "typescript": "^5.7"

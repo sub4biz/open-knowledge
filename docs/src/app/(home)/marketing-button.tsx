@@ -52,7 +52,7 @@ const getRadiusClasses = (variant: MarketingButtonVariant) => {
 const getDimensionClasses = (variant: MarketingButtonVariant, size: MarketingButtonSize) => {
   if (variant === 'minimal') return 'h-auto px-0';
   if (variant === 'outline') return 'py-[13px] px-5';
-  if (variant === 'tertiary') return 'py-[13px] px-[14px]';
+  if (variant === 'tertiary') return size === 'sm' ? 'py-1.5 px-2.5' : 'py-[13px] px-[14px]';
   if (variant === 'icon') return 'p-2';
   if (variant === 'secondary') return 'h-10 px-[22px] py-[14px]';
   if (size === 'sm') return 'h-[36px] px-[22px] py-2.5';
@@ -74,7 +74,8 @@ const getTextClasses = (variant: MarketingButtonVariant, size: MarketingButtonSi
     return 'text-night-sky-800 text-sm font-medium leading-none uppercase';
   }
   if (variant === 'tertiary') {
-    return 'text-night-sky text-base font-normal leading-[115%] tracking-[-0.64px] uppercase';
+    const tertiaryTextSize = size === 'sm' ? 'text-xs' : 'text-base';
+    return `text-night-sky ${tertiaryTextSize} font-normal leading-[115%] tracking-[-0.64px] uppercase`;
   }
   if (variant === 'outline') {
     return 'text-azure-blue text-sm sm:text-base font-normal leading-[115%] tracking-normal';
@@ -185,7 +186,7 @@ export function MarketingButton({
   const isFileLink = typeof href === 'string' && href.split('?')[0]?.toLowerCase().endsWith('.pdf');
   const isRedirectRoute =
     typeof href === 'string' && (href.startsWith('/download/') || href.startsWith('/updates/'));
-  const useRawAnchor = isFileLink || isRedirectRoute;
+  const useRawAnchor = isFileLink || isRedirectRoute || typeof download !== 'undefined';
   const computedDownload = typeof download !== 'undefined' ? download : isFileLink ? '' : undefined;
 
   const buttonContent = (
