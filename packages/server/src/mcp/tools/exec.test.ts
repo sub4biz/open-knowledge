@@ -11,6 +11,7 @@ import {
   buildExecResult,
   DESCRIPTION,
   type ExecStructuredResult,
+  formatFileEntry,
   RESULT_BODY_BUDGET_BYTES,
   WIRE_BODY_COPIES,
 } from './exec.ts';
@@ -183,6 +184,8 @@ describe('exec — happy path', () => {
     expect(specAEntry?.mostRecentMd).toBeDefined();
     expect(result.content[0].text).toContain('specs/spec-a/');
     expect(result.content[0].text).toContain('md file');
+    expect(result.content[0].text).toContain('1 md file here (2 in tree)');
+    expect(result.content[0].text).toMatch(/most recent:.*\d{4}-\d{2}-\d{2}/);
   });
 
   test('ls with explicit dir arg surfaces nested .ok/frontmatter.yml folder defaults', async () => {
@@ -250,6 +253,8 @@ describe('exec — happy path', () => {
     expect(rfc).toBeDefined();
     expect(rfc?.title).toBe('RFC');
     expect(rfc?.description).toBe('Request for comments');
+    expect(result.content[0].text).toContain('templates: rfc');
+    expect(result.content[0].text).toContain('Request for comments');
   });
 });
 
@@ -827,5 +832,113 @@ describe('exec — explicit subdirectory cwd', () => {
     expect(result.isError).toBeFalsy();
     expect(structured(result).cwd).toBe(project);
     expect(fileEntries(structured(result))[0].path).toBe('articles/auth.md');
+  });
+});
+
+describe('formatFileEntry rendering', () => {
+  test('renders graph role, status, and type in the text an agent reads', () => {
+    const line = formatFileEntry({
+      path: 'architecture/auth.md',
+      title: 'Authentication',
+      tags: [],
+      frontmatter: { status: 'canonical', type: 'spec' },
+      backlinkCount: 6,
+      backlinks: null,
+      forwardLinkCount: 2,
+      forwardLinks: null,
+      history: null,
+      historySource: null,
+      projectHistory: null,
+      projectHistorySource: null,
+      graphRole: 'hub',
+    });
+    expect(line).toContain('graph: hub');
+    expect(line).toContain('status: canonical');
+    expect(line).toContain('type: spec');
+  });
+
+  test('inlines backlink and forward-link source paths', () => {
+    const line = formatFileEntry({
+      path: 'architecture/auth.md',
+      title: 'Authentication',
+      tags: [],
+      frontmatter: {},
+      backlinkCount: 2,
+      backlinks: [
+        { source: 'login.md', title: 'Login' },
+        { source: 'sessions.md', title: 'Sessions' },
+      ],
+      forwardLinkCount: 1,
+      forwardLinks: [{ kind: 'doc', docName: 'tokens.md', title: 'Tokens' }],
+      history: null,
+      historySource: null,
+      projectHistory: null,
+      projectHistorySource: null,
+      graphRole: null,
+    });
+    expect(line).toContain('backlinks: 2 (login.md, sessions.md)');
+    expect(line).toContain('forward links: 1 (tokens.md)');
+  });
+
+  test('omits the graph line when graphRole is null', () => {
+    const line = formatFileEntry({
+      path: 'architecture/auth.md',
+      title: 'Authentication',
+      tags: [],
+      frontmatter: {},
+      backlinkCount: null,
+      backlinks: null,
+      forwardLinkCount: null,
+      forwardLinks: null,
+      history: null,
+      historySource: null,
+      projectHistory: null,
+      projectHistorySource: null,
+      graphRole: null,
+    });
+    expect(line).not.toContain('graph:');
+  });
+
+  test('truncates link source lists past 5 with an ellipsis', () => {
+    const line = formatFileEntry({
+      path: 'architecture/auth.md',
+      title: 'Authentication',
+      tags: [],
+      frontmatter: {},
+      backlinkCount: 7,
+      backlinks: [1, 2, 3, 4, 5, 6, 7].map((n) => ({ source: `src${n}.md`, title: `Src ${n}` })),
+      forwardLinkCount: 7,
+      forwardLinks: [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+        kind: 'doc' as const,
+        docName: `dst${n}.md`,
+        title: `Dst ${n}`,
+      })),
+      history: null,
+      historySource: null,
+      projectHistory: null,
+      projectHistorySource: null,
+      graphRole: null,
+    });
+    expect(line).toContain('backlinks: 7 (src1.md, src2.md, src3.md, src4.md, src5.md, …)');
+    expect(line).toContain('forward links: 7 (dst1.md, dst2.md, dst3.md, dst4.md, dst5.md, …)');
+  });
+
+  test('renders the url for an external forward link', () => {
+    const line = formatFileEntry({
+      path: 'architecture/auth.md',
+      title: 'Authentication',
+      tags: [],
+      frontmatter: {},
+      backlinkCount: null,
+      backlinks: null,
+      forwardLinkCount: 1,
+      forwardLinks: [{ kind: 'external' as const, url: 'https://example.com', title: 'Example' }],
+      history: null,
+      historySource: null,
+      projectHistory: null,
+      projectHistorySource: null,
+      graphRole: null,
+    });
+    expect(line).toContain('forward links: 1 (https://example.com)');
   });
 });

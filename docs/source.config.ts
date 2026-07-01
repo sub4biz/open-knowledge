@@ -21,9 +21,51 @@ export const docs = defineDocs({
   },
 });
 
+/**
+ * Turn ` ```html preview ` fences into a live <HtmlPreview> iframe, matching
+ * OpenKnowledge's own editor: the block renders as an interactive sandboxed
+ * preview on both surfaces (native in the OK editor, this plugin on the docs
+ * site). Raw HTML is base64'd onto the JSX attribute so nothing in the block
+ * (quotes, braces, `<`) collides with MDX parsing.
+ */
+function remarkHtmlPreview() {
+  return (tree: unknown) => {
+    const visit = (node: { children?: unknown[] } | null) => {
+      if (!node || !Array.isArray(node.children)) return;
+      for (let i = 0; i < node.children.length; i++) {
+        const child = node.children[i] as {
+          type?: string;
+          lang?: string;
+          meta?: string;
+          value?: string;
+          children?: unknown[];
+        };
+        if (
+          child.type === 'code' &&
+          child.lang === 'html' &&
+          typeof child.meta === 'string' &&
+          /(^|\s)preview(\s|$)/.test(child.meta)
+        ) {
+          const b64 = Buffer.from(child.value ?? '', 'utf8').toString('base64');
+          node.children[i] = {
+            type: 'mdxJsxFlowElement',
+            name: 'HtmlPreview',
+            attributes: [{ type: 'mdxJsxAttribute', name: 'code', value: b64 }],
+            children: [],
+          } as unknown;
+        } else {
+          visit(child as { children?: unknown[] });
+        }
+      }
+    };
+    visit(tree as { children?: unknown[] });
+  };
+}
+
 export default defineConfig({
   mdxOptions: {
     remarkPlugins: [
+      remarkHtmlPreview,
       remarkAutoTypeTable,
       remarkMdxMermaid,
       [mdxSnippet, { snippetsDir: path.resolve(process.cwd(), '_snippets') }],

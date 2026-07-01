@@ -4,9 +4,9 @@ icon: custom/MCP
 description: Tools the OpenKnowledge MCP server exposes to AI agents.
 ---
 
-The MCP server gives AI agents structured access to your knowledge base. Two reads are server-free: `exec` (shell-style reads, fs-direct against the disk) and `preview_url` (reads `ui.lock` directly) both work even when the editor is down. Every other read tool (`search`, `links`, `history`, etc.) and all write tools route through the Hocuspocus server, which OpenKnowledge starts for you on the first write.
+The MCP server gives AI agents structured access to your knowledge base. A few tools answer without a running server: `exec` (fs-direct shell reads straight off the disk — only the backlink and history enrichment needs the server), plus `config` and `palette`. `preview_url` resolves from the project's lock files, but treats opening a preview as demand: if no server is running it auto-starts one (under the `OK_MCP_AUTOSTART` gate). Every other read tool (`search`, `links`, `history`, etc.) and all write tools route through the Hocuspocus server, which OpenKnowledge starts for you on the first write.
 
-The surface is **19 tools**. Three of the four write verbs — `write`, `edit`, `delete` — are native CRUD operations polymorphic over a target (`document`, `folder`, `template`, `asset`): per-target fields nest inside the address key (`write({ document: { path, content } })`), and you pass exactly one target per call. `move` is the fourth write verb but takes flat `from`/`to` paths and auto-detects whether the path is a document, folder, or asset (no `template` target).
+The surface is **19 tools**. The four write verbs — `write`, `edit`, `delete`, `move` — are native CRUD operations polymorphic over a target. `write`, `edit`, and `delete` nest per-target fields inside the address key (`write({ document: { path, content } })`) and take exactly one target per call: `document`, `folder`, `template`, or `skill` — plus `asset` for `write` and `delete`. `move` takes flat `from`/`to` paths and auto-detects a document, folder, or asset, with nested `template` and `skill` targets for those two.
 
 ## Tools
 
@@ -15,22 +15,22 @@ The surface is **19 tools**. Three of the four write verbs — `write`, `edit`, 
 | `exec` | Read-only shell (`cat`, `ls`, `grep`, `find`, `head`, `tail`, `wc`, `sort`, `uniq`, `cut`); reads return frontmatter, backlinks, and recent history. Fs-direct; works without the server. |
 | `search` | Ranked workspace search (title boost + body BM25 + recency; same engine the cmd-K palette uses). When [semantic search](/docs/reference/configuration#semantic-search) is enabled, an embeddings signal is additionally fused into `full_text` ranking (opt-in, content egress) — pass `semantic: false` to force pure-lexical. |
 | `links` | Wiki-link graph. `kind` selects: `backlinks`, `forward`, `dead`, `orphans`, `hubs`, or `suggest`. Accepts an array (e.g. `["dead", "orphans", "hubs"]`) to fetch several views in one call; each view nests under its own key in the response |
-| `history` | Version timeline for a doc. Each entry carries a `version` (commit SHA) you pass to `restore_version` |
+| `history` | Version timeline for a `document`, `folder`, or `skill`. Each entry carries a `version` (commit SHA) you pass to `restore_version` |
 | `skills` | Find and read agent skills. Omit `name` to list every skill across Project + Global; pass `name` to read one (addressed by `name`+`scope`, never by path) |
 | `config` | Read the effective merged config (`config({ key: "appearance.theme" })` for a sub-tree; omit `key` for the whole config) |
 | `palette` | Markdown-native authoring forms, themed `html preview` embed starters, and theme tokens. Pass `components` for the canonical components' full JSX prop schemas |
 | `preview_url` | Resolve the browser-reachable preview URL. Per-response `previewUrl` fields elsewhere are route-only (`/#/<doc>`); call this when you need the full openable URL |
 | `share_link` | Build a GitHub-substrate share URL for a doc to send to a teammate (read-only against `.git/`; never publishes) |
-| `write` | Create or overwrite a `document`, `folder`, `template`, or `asset`. For a document: `{ path, content }`, or `{ path, template }` to instantiate from a folder template. `position` selects `replace` (full rewrite; the only mode that touches frontmatter), `append`, or `prepend` |
-| `edit` | Modify a `document` (body find/replace **or** a frontmatter merge-patch), a `folder` (frontmatter merge-patch), or a `template` |
-| `delete` | Delete a `document` (one path or an array), `folder`, `template`, or `asset` |
-| `move` | Move or rename a `document`, `folder`, or `asset` and rewrite every affected link |
+| `write` | Create or overwrite a `document`, `folder`, `template`, `skill`, or `asset`. For a document: `{ path, content }`, or `{ path, template }` to instantiate from a folder template. `position` selects `replace` (full rewrite; the only mode that touches frontmatter), `append`, or `prepend` |
+| `edit` | Modify a `document` (body find/replace **or** a frontmatter merge-patch), a `folder` (frontmatter merge-patch), a `template`, or a `skill` |
+| `delete` | Delete a `document` (one path or an array), `folder`, `template`, `skill`, or `asset` |
+| `move` | Move or rename a `document`, `folder`, `asset`, `template`, or `skill`, rewriting every affected link (templates and skills carry no inbound links) |
 | `install` | Project an authored skill (the Draft produced by `write({ skill })`) into your editors — the Draft → Installed step |
 | `checkpoint` | Save a project-wide version snapshot — a single restore point. Returns its `version` |
-| `restore_version` | Restore one document to a historical `version` (the SHA from `history` or `checkpoint`) |
+| `restore_version` | Restore one `document` or `skill` to a historical `version` (the SHA from `history` or `checkpoint`) |
 | `conflicts` | Read GitHub-sync merge conflicts. `kind: "list"` enumerates tracked conflicts; `kind: "content"` returns one file's base / ours / theirs stages |
 | `resolve_conflict` | Write a chosen resolution (`mine` / `theirs` / `content` / `delete`) and commit |
-| `workflow` | Procedural guides. `kind` selects: `ingest` (capture a source), `research` (gather + write provisional findings), `consolidate` (promote research to a canonical article), or `discover` (onboard an existing repo) |
+| `workflow` | Procedural guides. `kind` selects: `ingest` (capture a source), `research` (gather + write provisional findings), `consolidate` (promote research to a canonical article), `discover` (onboard an existing repo), or `wiki` (generate a navigable, source-grounded wiki of a codebase) |
 
 ## Output shape mirrors the input
 
@@ -48,7 +48,7 @@ Use `edit({ document: { path, frontmatter } })` for frontmatter edits: it applie
 
 ## Edit summaries
 
-The write tools (`write`, `edit`, `move`, `checkpoint`) accept an optional `summary` describing the intent of the edit, e.g. `"Fixed token-refresh race"`. Summaries appear on the document's timeline so readers can scan recent agent activity.
+The write tools (`write`, `edit`, `move`, `install`, `checkpoint`, `restore_version`) accept an optional `summary` describing the intent of the edit, e.g. `"Fixed token-refresh race"`. Summaries appear on the document's timeline so readers can scan recent agent activity.
 
 Cap is 80 characters. Avoid secrets and PII; summaries persist to git history.
 

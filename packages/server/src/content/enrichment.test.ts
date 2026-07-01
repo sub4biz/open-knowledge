@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { commitWip, initShadowRepo, type WriterIdentity } from '@inkeep/open-knowledge-server';
 import simpleGit from 'simple-git';
-import { enrichDirectory, enrichPath } from './enrichment.ts';
+import { computeGraphRole, enrichDirectory, enrichPath } from './enrichment.ts';
 
 let tmpDir: string;
 
@@ -256,5 +256,32 @@ describe('enrichPath/enrichDirectory — defense-in-depth path containment', () 
     await expect(enrichDirectory('/etc', { projectDir: project })).rejects.toThrow(
       /escapes the configured root/,
     );
+  });
+});
+
+describe('computeGraphRole', () => {
+  test('null when neither count is known', () => {
+    expect(computeGraphRole(null, null)).toBe(null);
+  });
+  test('null on partial data (one count unknown)', () => {
+    expect(computeGraphRole(null, 3)).toBe(null);
+    expect(computeGraphRole(3, null)).toBe(null);
+  });
+  test('orphan when there are no links', () => {
+    expect(computeGraphRole(0, 0)).toBe('orphan');
+  });
+  test('hub at or above the inbound floor', () => {
+    expect(computeGraphRole(5, 0)).toBe('hub');
+    expect(computeGraphRole(9, 2)).toBe('hub');
+  });
+  test('connector with links in and out below the hub floor', () => {
+    expect(computeGraphRole(2, 3)).toBe('connector');
+  });
+  test('one below the hub floor is a connector, not a hub', () => {
+    expect(computeGraphRole(4, 1)).toBe('connector');
+  });
+  test('leaf with a few links in one direction only', () => {
+    expect(computeGraphRole(0, 2)).toBe('leaf');
+    expect(computeGraphRole(2, 0)).toBe('leaf');
   });
 });

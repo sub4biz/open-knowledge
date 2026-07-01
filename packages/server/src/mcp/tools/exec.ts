@@ -177,28 +177,60 @@ function formatDirectoryEntry(d: DirectoryMeta): string {
   const parts: string[] = [leader];
   if (d.description) parts.push(d.description);
   if (d.tags && d.tags.length > 0) parts.push(`tags: ${d.tags.join(', ')}`);
+  if (d.templates_available && d.templates_available.length > 0) {
+    const tpl = d.templates_available
+      .map((t) =>
+        t.description ? `${t.name} — ${t.description} (${t.scope})` : `${t.name} (${t.scope})`,
+      )
+      .join(', ');
+    parts.push(`templates: ${tpl}`);
+  }
   const counts: string[] = [];
-  counts.push(`${d.recursiveMdCount} md file${d.recursiveMdCount === 1 ? '' : 's'}`);
+  counts.push(
+    d.recursiveMdCount > d.directMdCount
+      ? `${d.directMdCount} md file${d.directMdCount === 1 ? '' : 's'} here (${d.recursiveMdCount} in tree)`
+      : `${d.directMdCount} md file${d.directMdCount === 1 ? '' : 's'}`,
+  );
   if (d.childDirCount > 0) {
     counts.push(`${d.childDirCount} subdir${d.childDirCount === 1 ? '' : 's'}`);
   }
   parts.push(counts.join(', '));
   if (d.mostRecentMd) {
+    const when = d.mostRecentMd.updatedAt ? `, ${d.mostRecentMd.updatedAt.slice(0, 10)}` : '';
     parts.push(
-      `most recent: ${d.mostRecentMd.title ?? d.mostRecentMd.path} (${d.mostRecentMd.path})`,
+      `most recent: ${d.mostRecentMd.title ?? d.mostRecentMd.path} (${d.mostRecentMd.path}${when})`,
     );
   }
   if (d.truncated) parts.push('scan truncated');
   return `- ${parts.join(' — ')}`;
 }
 
-function formatFileEntry(m: EnrichedMeta): string {
+export function formatFileEntry(m: EnrichedMeta): string {
   const title = m.title ?? m.path;
   const parts: string[] = [`**${title}** (${m.path})`];
   if (m.description) parts.push(m.description);
   if (m.tags.length > 0) parts.push(`tags: ${m.tags.join(', ')}`);
-  if (m.backlinkCount !== null) parts.push(`backlinks: ${m.backlinkCount}`);
-  if (m.forwardLinkCount !== null) parts.push(`forward links: ${m.forwardLinkCount}`);
+  if (m.graphRole) parts.push(`graph: ${m.graphRole}`);
+  const fmStatus = typeof m.frontmatter.status === 'string' ? m.frontmatter.status : null;
+  const fmType = typeof m.frontmatter.type === 'string' ? m.frontmatter.type : null;
+  if (fmStatus) parts.push(`status: ${fmStatus}`);
+  if (fmType) parts.push(`type: ${fmType}`);
+  if (m.backlinkCount !== null) {
+    let line = `backlinks: ${m.backlinkCount}`;
+    if (m.backlinks && m.backlinks.length > 0) {
+      const names = m.backlinks.slice(0, 5).map((b) => b.source);
+      line += ` (${names.join(', ')}${m.backlinks.length > 5 ? ', …' : ''})`;
+    }
+    parts.push(line);
+  }
+  if (m.forwardLinkCount !== null) {
+    let line = `forward links: ${m.forwardLinkCount}`;
+    if (m.forwardLinks && m.forwardLinks.length > 0) {
+      const names = m.forwardLinks.slice(0, 5).map((f) => (f.kind === 'doc' ? f.docName : f.url));
+      line += ` (${names.join(', ')}${m.forwardLinks.length > 5 ? ', …' : ''})`;
+    }
+    parts.push(line);
+  }
   if (m.history && m.history.length > 0) {
     const entries = m.history.map((h) => {
       const who =
@@ -401,6 +433,7 @@ export async function buildExecResult(
           historySource: null,
           projectHistory: null,
           projectHistorySource: null,
+          graphRole: null,
         }),
       ),
     ),

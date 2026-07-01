@@ -92,6 +92,24 @@ export interface EnrichedMeta {
   historySource: HistorySource | null;
   projectHistory: GitCommit[] | null;
   projectHistorySource: ProjectHistorySource | null;
+  graphRole: GraphRole | null;
+}
+
+export type GraphRole = 'hub' | 'connector' | 'leaf' | 'orphan';
+
+const HUB_MIN_INBOUND = 5;
+
+export function computeGraphRole(
+  backlinkCount: number | null,
+  forwardLinkCount: number | null,
+): GraphRole | null {
+  if (backlinkCount === null || forwardLinkCount === null) return null;
+  const inbound = backlinkCount;
+  const outbound = forwardLinkCount;
+  if (inbound === 0 && outbound === 0) return 'orphan';
+  if (inbound >= HUB_MIN_INBOUND) return 'hub';
+  if (inbound > 0 && outbound > 0) return 'connector';
+  return 'leaf';
 }
 
 interface EnrichPathDeps {
@@ -277,6 +295,7 @@ export async function enrichPath(
       historySource: null,
       projectHistory: null,
       projectHistorySource: null,
+      graphRole: null,
     };
   }
 
@@ -309,6 +328,7 @@ export async function enrichPath(
     historySource: shadow.source,
     projectHistory: project.commits,
     projectHistorySource: project.source,
+    graphRole: computeGraphRole(backlinks?.length ?? null, forwardLinks?.length ?? null),
   };
 }
 

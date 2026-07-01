@@ -1,12 +1,60 @@
 ---
-title: Karpathy's LLM wiki workflow
+title: LLM wiki
 icon: LuBrain
-description: Build a source-grounded knowledge base where an LLM agent curates the wiki from the raw material you feed it. Every claim traces back to a preserved source. Maps directly to the Knowledge base starter pack.
+description: "An AI second brain that doesn't rot: a wiki of your own files an agent reads, writes, and keeps organized. What an LLM wiki is, and how to build one with the Knowledge base starter pack."
 ---
 
-A persistent, compounding knowledge base where you bring the raw material and the LLM does the summarization, cross-referencing, and maintenance. The pattern is Andrej Karpathy's, from [his April 2026 gist on LLM-curated wikis](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). OpenKnowledge ships the **Knowledge base** starter pack as a direct implementation, with one extension Karpathy doesn't formalize: **the wiki layer is split** into `research/` (status: provisional) and `articles/` (status: canonical), with the `consolidate` workflow as the explicit promotion step, so premature canonicalization becomes a thing you opt into rather than something that drifts in.
+An LLM wiki is a knowledge base of your own markdown files that an agent reads, writes, and keeps organized. You supply the raw material. The agent files it, links it, and cites it. It gets more organized the more you use it.
 
-The point of this guide is to show how **OpenKnowledge's features compose** to make the pattern feel native: the starter-pack picker scaffolds the layout in one click; per-folder templates + agent-readable folder frontmatter teach the LLM the conventions (Karpathy's centralized `CLAUDE.md` / `AGENTS.md` schema, distributed per-folder); the `workflow` tool's three pipeline kinds (`ingest`, `research`, `consolidate`) cover the sources → provisional → canonical pipeline; the WYSIWYG editor + CRDT keep editing frictionless; the activity panel attributes every write; the `links` tool keeps the source graph clean. Every step uses three or four of these together. That's the product.
+```html preview
+<div style="padding:18px">
+  <div id="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch"></div>
+  <div class="cap">Each file is a live CRDT (Yjs) document, so you and the agent can edit the same one and it converges.</div>
+</div>
+<style>
+#row .node{flex:1;min-width:120px;border:1px solid var(--border);border-radius:12px;padding:11px 13px;background:var(--card);transition:box-shadow .3s,border-color .3s;cursor:pointer}
+#row .node .t{font-weight:600;font-size:13px}
+#row .node .s{color:var(--muted-foreground);font-size:11.5px;margin-top:2px}
+#row .node.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--accent-soft)}
+#row .node.on .t{color:var(--accent-ink)}
+#row .arrow{align-self:center;color:var(--muted-foreground)}
+.cap{margin-top:12px;color:var(--muted-foreground);font-size:12.5px}
+.cap::before{content:"\21BB  ";color:var(--primary);font-weight:700}
+@media (prefers-reduced-motion:reduce){#row .node{transition:none}}
+</style>
+<script>
+var steps=[["You","drop a source"],["Agent","files &middot; links &middot; cites"],["Your wiki","markdown + backlinks"],["You ask","agent reads it back"]];
+var row=document.getElementById("row"),nodes=[];
+steps.forEach(function(s,i){
+  if(i){var a=document.createElement("div");a.className="arrow";a.textContent="→";row.appendChild(a);}
+  var d=document.createElement("div");d.className="node";
+  var t=document.createElement("div");t.className="t";t.textContent=s[0];
+  var sub=document.createElement("div");sub.className="s";sub.innerHTML=s[1];
+  d.appendChild(t);d.appendChild(sub);
+  d.onclick=function(){pinned=true;set(i);};
+  row.appendChild(d);nodes.push(d);
+});
+var cur=0,pinned=false;
+function set(i){cur=i;nodes.forEach(function(n,j){n.classList.toggle("on",j===i);});}
+set(0);
+if(!matchMedia("(prefers-reduced-motion:reduce)").matches){setInterval(function(){if(!pinned)set((cur+1)%nodes.length);},1500);}
+</script>
+```
+
+The difference from a folder of notes or a RAG app is who maintains it, and how it is stored:
+
+| | Note pile / RAG app | An LLM wiki |
+| --- | --- | --- |
+| Who organizes | you, eventually, never | the agent, as you go |
+| What's stored | raw clips, or an opaque vector copy | authored markdown with structure |
+| Over time | it decays | it compounds |
+| Can you read it | the notes yes, the index no | all of it, it's just files |
+
+The structure you and the agent author (folders, titles, backlinks, a one-line purpose per folder) *is* the index. No second copy, nothing to keep in sync. The agent retrieves across it with [agentic search](../reference/agentic-search.mdx) — searching, grepping, and following backlinks over your live files, no vector database — and you teach it conventions with [skills](../features/skills.mdx) authored in the same editor as your docs.
+
+The rest of this guide builds one end to end. The pattern is Andrej Karpathy's, from [his April 2026 gist on LLM-curated wikis](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). OpenKnowledge ships the **Knowledge base** starter pack as a direct implementation, with one extension Karpathy doesn't formalize: **the wiki layer is split** into `research/` (status: provisional) and `articles/` (status: canonical), with the `consolidate` workflow as the explicit promotion step, so premature canonicalization becomes a thing you opt into rather than something that drifts in.
+
+The point of this guide is to show how **OpenKnowledge's features compose** to make the pattern feel native: the starter-pack picker scaffolds the layout in one click; per-folder templates + agent-readable folder frontmatter teach the LLM the conventions (Karpathy's centralized `CLAUDE.md` / `AGENTS.md` schema, distributed per-folder); the `workflow` tool's `ingest`, `research`, and `consolidate` kinds cover the sources → provisional → canonical pipeline; the WYSIWYG editor + CRDT keep editing frictionless; the activity panel attributes every write; the `links` tool keeps the source graph clean. Every step uses three or four of these together. That's the product.
 
 ## Who this is for
 
@@ -120,7 +168,7 @@ If you accepted the desktop app's first-launch offer to wire up your agent assis
 
 <CopyPrompt>list the workflow tools available</CopyPrompt>
 
-You should see `mcp__open-knowledge__workflow` (its `kind` covers `ingest` / `research` / `consolidate` / `discover`), alongside the standard reads/writes (`exec`, `search`, `write`, `links`, etc.). The workflow guides cover the sources → provisional → canonical pipeline described in the mapping table above.
+You should see `mcp__open-knowledge__workflow` (its `kind` covers `ingest` / `research` / `consolidate` / `discover` / `wiki`), alongside the standard reads/writes (`exec`, `search`, `write`, `links`, etc.). The workflow guides cover the sources → provisional → canonical pipeline described in the mapping table above.
 
 ### 4. Ingest the five sources
 
@@ -166,7 +214,7 @@ You don't consolidate yet in our scenario; the team hasn't decided. Maybe in two
 
 The `workflow` tool's `consolidate` kind starts with a STOP gate asking whether the decision is actually made. If yes, it writes `articles/agent-framework-evaluation.md` with `status: canonical` and a `supersedes:` chain pointing back to the research log. That `research/` doc isn't deleted; it's superseded, so the evidence chain stays intact.
 
-**What just composed.** Five sources became one canonical article via: the **Knowledge base starter pack** (three folders, three templates, agent-readable folder frontmatter, one click), the **`workflow` tool's three pipeline kinds** (`ingest`/`research`/`consolidate` mapping 1:1 to Karpathy's layers), the **agent activity panel** (every fetch + write attributed), the **wikilink graph + frontmatter `sources:` arrays** (citation chain audit-able doc by doc), and the **WYSIWYG editor** (review and refine without leaving the same surface). The same vault, the same product, the whole stack working as one thing.
+**What just composed.** Five sources became one canonical article via: the **Knowledge base starter pack** (three folders, three templates, agent-readable folder frontmatter, one click), the **`workflow` tool's `ingest` / `research` / `consolidate` kinds** (mapping 1:1 to Karpathy's layers), the **agent activity panel** (every fetch + write attributed), the **wikilink graph + frontmatter `sources:` arrays** (citation chain audit-able doc by doc), and the **WYSIWYG editor** (review and refine without leaving the same surface). The same vault, the same product, the whole stack working as one thing.
 
 ## The promotion rhythm
 

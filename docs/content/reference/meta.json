@@ -1,5 +1,12 @@
 {
   "title": "Reference",
   "icon": "LuBookText",
-  "pages": ["core-concepts", "cli", "configuration", "mcp", "what-open-knowledge-writes"]
+  "pages": [
+    "core-concepts",
+    "agentic-search",
+    "cli",
+    "configuration",
+    "mcp",
+    "what-open-knowledge-writes"
+  ]
 }
