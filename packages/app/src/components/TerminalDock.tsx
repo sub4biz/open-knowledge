@@ -33,6 +33,7 @@ export function TerminalDock({
   const panelRef = usePanelRef();
   const [isCollapsed, setIsCollapsed] = useState(!visible);
   const xtermBackground = xtermThemeForMode(resolvedTheme).background;
+  const bottomOpen = visible && dockPosition === 'bottom';
   const showBottomRevealTab = !visible && dockPosition === 'bottom' && onReveal != null;
 
   const [initialHeightPx] = useState(() => getInitialTerminalHeight());
@@ -64,12 +65,12 @@ export function TerminalDock({
   useEffect(() => {
     const panel = panelRef.current;
     if (panel == null) return;
-    if (visible && dockPosition === 'bottom') {
+    if (bottomOpen) {
       panel.resize(`${heightPxRef.current}px`);
     } else {
       panel.collapse();
     }
-  }, [visible, panelRef, dockPosition]);
+  }, [bottomOpen, panelRef]);
 
   return (
     <ResizablePanelGroup
@@ -96,17 +97,19 @@ export function TerminalDock({
           ) : null}
         </div>
       </ResizablePanel>
-      {/* The handle drags only while the terminal is open: you can resize it, and
-          drag all the way down to collapse (hide). Once hidden it is disabled — the
-          reveal tab is the single open mechanism, so there is no drag-up-to-open
-          (which would be a second, redundant way in). Gating on the controlled
-          `visible` prop (not `isCollapsed`) means an in-progress drag-to-collapse
+      {/* The handle drags only while the bottom panel is open: you can resize it,
+          and drag all the way down to collapse (hide). Otherwise it is disabled —
+          when bottom-docked-and-hidden the reveal tab rendered above is the single
+          way back in, and when right-docked the ways in live outside this file
+          (EditorArea's reveal tab; the tab strip's dock-toggle) — so there is no
+          drag-up-to-open (which would be a second, redundant way in). Gating on
+          controlled props (not `isCollapsed`) means an in-progress drag-to-collapse
           completes before the handle disables on the next commit. */}
       <ResizableHandle
-        withHandle={visible}
-        disabled={!visible}
+        withHandle={bottomOpen}
+        disabled={!bottomOpen}
         onPointerDown={() => {
-          if (!visible) return;
+          if (!bottomOpen) return;
           setIsDragging(true);
           isDraggingRef.current = true;
           const handleUp = () => {
@@ -123,7 +126,7 @@ export function TerminalDock({
         id={TERMINAL_PANEL_ID}
         style={{ backgroundColor: xtermBackground }}
         panelRef={panelRef}
-        defaultSize={visible && dockPosition === 'bottom' ? `${initialHeightPx}px` : 0}
+        defaultSize={bottomOpen ? `${initialHeightPx}px` : 0}
         minSize="120px"
         maxSize="95%"
         collapsible

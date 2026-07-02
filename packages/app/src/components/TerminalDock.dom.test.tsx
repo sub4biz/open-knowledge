@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useEffect, useRef, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { OkDesktopBridge } from '@/lib/desktop-bridge-types';
+import type { TerminalDockPosition } from '@/lib/terminal-dock-store';
 import { requestActiveTerminalInput } from './handoff/terminal-input-events';
 
 const TERMINAL_PANEL_ID = 'terminal-dock-panel';
@@ -46,10 +47,11 @@ mock.module('@/components/ui/resizable', () => ({
     );
   },
   // biome-ignore lint/suspicious/noExplicitAny: test stub
-  ResizableHandle: ({ onPointerDown, disabled }: any) => (
+  ResizableHandle: ({ onPointerDown, disabled, withHandle }: any) => (
     <div
       data-testid="terminal-resize-handle"
       data-disabled={disabled ? 'true' : 'false'}
+      data-with-handle={withHandle ? 'true' : 'false'}
       onPointerDown={onPointerDown}
     />
   ),
@@ -153,7 +155,7 @@ function makeBridge() {
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: test harness props
-function DockHarness({ v, l, onVisibleChange, bridge, onReveal }: any) {
+function DockHarness({ v, l, onVisibleChange, bridge, onReveal, dock = 'bottom' }: any) {
   const [bottomContainer, setBottomContainer] = useState<HTMLDivElement | null>(null);
   const [editorRegionEl, setEditorRegionEl] = useState<HTMLDivElement | null>(null);
   return (
@@ -161,7 +163,7 @@ function DockHarness({ v, l, onVisibleChange, bridge, onReveal }: any) {
       <TerminalDock
         visible={v}
         onVisibleChange={onVisibleChange}
-        dockPosition="bottom"
+        dockPosition={dock}
         onBottomContainer={setBottomContainer}
         onEditorRegion={setEditorRegionEl}
         onReveal={onReveal}
@@ -176,7 +178,7 @@ function DockHarness({ v, l, onVisibleChange, bridge, onReveal }: any) {
         container={bottomContainer}
         isShowing={v && bottomContainer != null}
         onRequestEditorFocus={() => editorRegionEl?.focus()}
-        dockPosition="bottom"
+        dockPosition={dock}
         onToggleDock={() => {}}
       />
     </TooltipProvider>
@@ -190,13 +192,18 @@ function renderDock(
 ) {
   const onVisibleChange = mock((_v: boolean) => {});
   const { bridge, create, kill, input, viewMenuPushes, dispatchMenuAction } = makeBridge();
-  const ui = (v: boolean, l?: { prompt: string; nonce: number; cli?: string } | null) => (
+  const ui = (
+    v: boolean,
+    l?: { prompt: string; nonce: number; cli?: string } | null,
+    dock?: TerminalDockPosition,
+  ) => (
     <DockHarness
       v={v}
       l={l ?? null}
       onVisibleChange={onVisibleChange}
       bridge={bridge}
       onReveal={onReveal}
+      dock={dock ?? 'bottom'}
     />
   );
   const utils = render(ui(visible, launch));
@@ -208,8 +215,11 @@ function renderDock(
     input,
     viewMenuPushes,
     dispatchMenuAction,
-    rerender: (v: boolean, l?: { prompt: string; nonce: number; cli?: string } | null) =>
-      utils.rerender(ui(v, l)),
+    rerender: (
+      v: boolean,
+      l?: { prompt: string; nonce: number; cli?: string } | null,
+      dock?: TerminalDockPosition,
+    ) => utils.rerender(ui(v, l, dock)),
   };
 }
 
@@ -795,6 +805,18 @@ describe('TerminalDock multi-session', () => {
     expect(screen.getByTestId('terminal-resize-handle').getAttribute('data-disabled')).toBe(
       'false',
     );
+  });
+
+  test('hides the grabber while right-docked and restores it on return to bottom', () => {
+    const view = renderDock(true);
+    act(() => view.rerender(true, null, 'right'));
+    const handle = () => screen.getByTestId('terminal-resize-handle');
+    expect(handle().getAttribute('data-disabled')).toBe('true');
+    expect(handle().getAttribute('data-with-handle')).toBe('false');
+
+    act(() => view.rerender(true, null, 'bottom'));
+    expect(handle().getAttribute('data-disabled')).toBe('false');
+    expect(handle().getAttribute('data-with-handle')).toBe('true');
   });
 });
 
