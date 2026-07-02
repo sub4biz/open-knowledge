@@ -34,7 +34,7 @@ test.describe('asset-embed — rename stability (SPEC §6 FR-7 / P5.1 / P5.1a / 
 
     await page.goto(`/#/docs/${origDoc}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const renameRes = await page.request.post('/api/rename-path', {
       data: {
@@ -69,7 +69,7 @@ test.describe('asset-embed — rename stability (SPEC §6 FR-7 / P5.1 / P5.1a / 
 
     await page.goto(`/#/docs/${origDoc}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const renameRes = await page.request.post('/api/rename-path', {
       data: {

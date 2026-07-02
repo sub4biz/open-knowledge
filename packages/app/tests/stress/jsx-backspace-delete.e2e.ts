@@ -10,7 +10,7 @@ async function setupDoc(page: Page, api: ApiSeed, markdown: string): Promise<str
   const docName = `backspace-${randomUUID().slice(0, 8)}`;
   await api.seedDocs([{ name: docName, markdown }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await page.waitForFunction(() => Boolean(window.__activeEditor), null, { timeout: 5_000 });
   return docName;
 }
@@ -250,7 +250,9 @@ test('FR17 regression: cursor in a regular paragraph + Backspace deletes one cha
   expect(await selectionType(page)).toBe('TextSelection');
 
   await page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror') as HTMLElement | null;
+    const pm = document.querySelector(
+      '.ProseMirror:not(.composer-prosemirror)',
+    ) as HTMLElement | null;
     pm?.focus();
   });
 
@@ -345,7 +347,9 @@ test('AC19: cursor inside a JSX wrapper body + Backspace deletes one character (
   expect(await selectionType(page)).toBe('TextSelection');
 
   await page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror') as HTMLElement | null;
+    const pm = document.querySelector(
+      '.ProseMirror:not(.composer-prosemirror)',
+    ) as HTMLElement | null;
     pm?.focus();
   });
 

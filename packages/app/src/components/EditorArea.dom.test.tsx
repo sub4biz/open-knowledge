@@ -142,6 +142,12 @@ mock.module('@/components/FolderOverview', () => ({
   ),
 }));
 
+mock.module('./BottomComposer', () => ({
+  BottomComposer: ({ docName, folderPath }: { docName?: string | null; folderPath?: string }) => (
+    <div data-testid="bottom-composer" data-doc={docName ?? ''} data-folder={folderPath ?? ''} />
+  ),
+}));
+
 mock.module('@/components/AssetPreview', () => ({
   AssetPreview: ({ assetPath }: { assetPath: string }) => (
     <div data-testid="asset-preview">{assetPath}</div>

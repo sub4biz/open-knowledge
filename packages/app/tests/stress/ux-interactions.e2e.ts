@@ -24,7 +24,7 @@ async function openFreshDoc(api: ApiHelpers, page: Page, label: string): Promise
   await api.testReset(docName);
   await page.goto(`/#/${docName}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   return docName;
 }
 
@@ -50,14 +50,16 @@ test('visual mode: real pointer click + keystrokes land in ProseMirror', async (
   await openFreshDoc(api, page, 'visual-hit-test');
   await expect(visualToggle(page)).toBeChecked();
 
-  const pm = page.locator('.ProseMirror');
+  const pm = page.locator('.ProseMirror:not(.composer-prosemirror)');
   const box = await pm.boundingBox();
   if (!box) throw new Error('ProseMirror has no bounding box');
   await page.mouse.click(box.x + box.width / 2, box.y + 30);
   await expect(pm).toBeFocused();
 
   await page.keyboard.type('HITPM');
-  await expect(page.locator('.ProseMirror')).toContainText('HITPM', { timeout: 5_000 });
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText('HITPM', {
+    timeout: 5_000,
+  });
 });
 
 test('hidden-editor wrapper does not intercept pointer events (both modes)', async ({
@@ -96,8 +98,8 @@ test('table cell-handle layer does not shift document content', async ({ page, a
 
 test('WYSIWYG→Source: typing in ProseMirror appears in CodeMirror', async ({ page, api }) => {
   await openFreshDoc(api, page, 'wysiwyg-to-source');
-  await page.locator('.ProseMirror').click();
-  await expect(page.locator('.ProseMirror')).toBeFocused();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').click();
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeFocused();
   await page.keyboard.insertText('Hello from WYSIWYG');
 
   await page.waitForFunction(
@@ -136,22 +138,23 @@ test('Source→WYSIWYG: typing in CodeMirror renders in ProseMirror', async ({ p
 
   await page.waitForFunction(
     () => {
-      const content = document.querySelector('.ProseMirror')?.textContent ?? '';
+      const content =
+        document.querySelector('.ProseMirror:not(.composer-prosemirror)')?.textContent ?? '';
       return content.includes('Source Heading') && content.includes('Paragraph from source');
     },
     null,
     { timeout: 10_000 },
   );
 
-  const pmContent = await page.locator('.ProseMirror').textContent();
+  const pmContent = await page.locator('.ProseMirror:not(.composer-prosemirror)').textContent();
   expect(pmContent).toContain('Source Heading');
   expect(pmContent).toContain('Paragraph from source');
 });
 
 test('round-trip: edits in both modes survive toggle cycle', async ({ page, api }) => {
   await openFreshDoc(api, page, 'round-trip');
-  await page.locator('.ProseMirror').click();
-  await expect(page.locator('.ProseMirror')).toBeFocused();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').click();
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeFocused();
   await page.keyboard.insertText('WYSIWYG edit');
 
   await page.waitForFunction(
@@ -181,22 +184,23 @@ test('round-trip: edits in both modes survive toggle cycle', async ({ page, api 
 
   await page.waitForFunction(
     () => {
-      const content = document.querySelector('.ProseMirror')?.textContent ?? '';
+      const content =
+        document.querySelector('.ProseMirror:not(.composer-prosemirror)')?.textContent ?? '';
       return content.includes('WYSIWYG edit') && content.includes('Source edit');
     },
     null,
     { timeout: 10_000 },
   );
 
-  const pmContent = await page.locator('.ProseMirror').textContent();
+  const pmContent = await page.locator('.ProseMirror:not(.composer-prosemirror)').textContent();
   expect(pmContent).toContain('WYSIWYG edit');
   expect(pmContent).toContain('Source edit');
 });
 
 test('concurrent agent write: user + agent content coexist', async ({ page, api, baseURL }) => {
   const docName = await openFreshDoc(api, page, 'concurrent-agent');
-  await page.locator('.ProseMirror').click();
-  await expect(page.locator('.ProseMirror')).toBeFocused();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').click();
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeFocused();
   await page.keyboard.insertText('User typing');
 
   await page.waitForFunction(
@@ -290,7 +294,7 @@ test('markdown link edit dialog preserves page mode while clearing and updates t
   ]);
   await page.goto(`/#/${docName}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await page.waitForFunction(
     () =>
@@ -382,7 +386,7 @@ test('LINK-CLICK-DOC-SAME-TAB: bare click on resolved doc link routes hash to th
   ]);
   await page.goto(`/#/${sourceDoc}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await expect(page.locator('[data-resolution-state="resolved"]').first()).toBeVisible({
     timeout: 10_000,
@@ -444,7 +448,7 @@ test('LINK-CLICK-WIKI: bare click on resolved wiki-link routes hash to the targe
   ]);
   await page.goto(`/#/${sourceDoc}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   const chip = page.locator('[data-wiki-link]').first();
   await expect(chip).toBeVisible({ timeout: 10_000 });

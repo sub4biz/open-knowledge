@@ -43,10 +43,14 @@ test('PRD-6955(b): remote fix to a hidden-but-mounted doc survives reveal + loca
 
   await page.goto(`/#/${docA}`);
   await waitForProvider(page);
-  await expect(page.locator('.ProseMirror').last()).toContainText('state one CORRUPT marker.');
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').last()).toContainText(
+    'state one CORRUPT marker.',
+  );
   await page.goto(`/#/${docB}`);
   await waitForProvider(page);
-  await expect(page.locator('.ProseMirror').last()).toContainText('parking doc.');
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').last()).toContainText(
+    'parking doc.',
+  );
 
   const res = await fetch(`${baseURL}/api/agent-patch`, {
     method: 'POST',
@@ -65,8 +69,10 @@ test('PRD-6955(b): remote fix to a hidden-but-mounted doc survives reveal + loca
 
   await page.goto(`/#/${docA}`);
   await waitForProvider(page);
-  await expect(page.locator('.ProseMirror').last()).toContainText('state two FIXED marker.');
-  const editor = page.locator('.ProseMirror').last();
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').last()).toContainText(
+    'state two FIXED marker.',
+  );
+  const editor = page.locator('.ProseMirror:not(.composer-prosemirror)').last();
   await editor.click();
   await page.keyboard.press('End');
   await page.keyboard.type(' touched', { delay: 15 });

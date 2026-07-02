@@ -47,8 +47,10 @@ test.describe('docs-open-scroll-restore — F1 RED (deterministic via portal-app
 
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Bottom Marker' })).toBeVisible({
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Bottom Marker' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -63,7 +65,9 @@ test.describe('docs-open-scroll-restore — F1 RED (deterministic via portal-app
 
     await openFromSidebar(page, 'doc-b.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -75,7 +79,9 @@ test.describe('docs-open-scroll-restore — F1 RED (deterministic via portal-app
 
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Bottom Marker' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Bottom Marker' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 

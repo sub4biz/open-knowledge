@@ -38,12 +38,17 @@ ${DOC_BODY}`;
 }
 
 async function waitForEditorReady(page: Page) {
-  await page.waitForSelector('.ProseMirror', { state: 'attached', timeout: 15_000 });
-  await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 10_000 });
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)', {
+    state: 'attached',
+    timeout: 15_000,
+  });
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+    timeout: 10_000,
+  });
 }
 
 async function assertBodyEditorRendersContent(page: Page) {
-  const editor = page.locator('.ProseMirror').first();
+  const editor = page.locator('.ProseMirror:not(.composer-prosemirror)').first();
   await expect(editor).toBeVisible({ timeout: 10_000 });
 
   const editorText = (await editor.textContent()) ?? '';

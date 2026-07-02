@@ -34,7 +34,7 @@ async function seedDoc(api: ApiHelpers, page: Page): Promise<string> {
   await page.waitForFunction(() => Boolean(window.__activeProvider?.isSynced), null, {
     timeout: 15_000,
   });
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await api.replaceDoc(docName, DOC);
 

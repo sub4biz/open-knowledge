@@ -20,7 +20,7 @@ test('S6: multi-turn stress — large content + user edits', async ({ page, api,
   await page.waitForFunction(() => Boolean(window.__activeProvider), null, {
     timeout: 15_000,
   });
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   const markers = ['USER-E2E-MARK-1', 'USER-E2E-MARK-2', 'USER-E2E-MARK-3'];
 
@@ -39,7 +39,7 @@ test('S6: multi-turn stress — large content + user edits', async ({ page, api,
       { timeout: 30_000 },
     );
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.keyboard.type(marker, { delay: 5 });
 
     await page.waitForFunction(

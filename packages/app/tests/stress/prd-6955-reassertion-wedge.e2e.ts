@@ -24,7 +24,9 @@ test('PRD-6955(b) wedge: Y→PM apply dropped + local touch → does stale PM re
   ]);
   await page.goto(`/#/${docName}`);
   await waitForProvider(page);
-  await expect(page.locator('.ProseMirror').last()).toContainText('state one STALE marker.');
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').last()).toContainText(
+    'state one STALE marker.',
+  );
   await expect
     .poll(
       () =>
@@ -79,7 +81,7 @@ test('PRD-6955(b) wedge: Y→PM apply dropped + local touch → does stale PM re
   console.log('[wedge] after fix: Y.Text has FIXED | dropped y-sync trs:', dropped);
   expect(dropped).toBeGreaterThan(0);
 
-  const editor = page.locator('.ProseMirror').last();
+  const editor = page.locator('.ProseMirror:not(.composer-prosemirror)').last();
   await editor.click();
   await page.keyboard.press('End');
   await page.keyboard.type(' X', { delay: 20 });

@@ -13,7 +13,7 @@ test.describe('FR-7a: source-mode toggle disabled during disconnect', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('connected state: source toggle is interactive', async ({ page }) => {

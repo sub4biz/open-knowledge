@@ -26,12 +26,12 @@ async function seedAndOpenWysiwyg(
   await api.seedDocs([{ name: docName, markdown }]);
   await page.goto(`/#/${docName}`);
   await waitForActiveProviderSynced(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 }
 
 async function selectFirstParagraph(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror');
+    const pm = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
     if (!pm) throw new Error('no ProseMirror');
     const p = pm.querySelector('p');
     if (!p?.firstChild) throw new Error('no paragraph text node');
@@ -187,7 +187,7 @@ test.describe('Edit with AI — affordance + deep-link dispatch (live app)', () 
     await expect(page.getByTestId('edit-with-ai-bubble-button')).toHaveCount(0);
   });
 
-  test('QA-010: affordance hidden on a non-macOS host (platform spoofed to Linux)', async ({
+  test('QA-010: button present on a non-macOS host (platform spoofed to Linux)', async ({
     page,
     api,
     workerServer,
@@ -202,7 +202,7 @@ test.describe('Edit with AI — affordance + deep-link dispatch (live app)', () 
     await seedAndOpenWysiwyg(page, api, 'qa-ewai-linux', `# H\n\n${PROSE}`);
     await selectFirstParagraph(page);
     await expect(page.getByTestId('bubble-menu-bar')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('edit-with-ai-bubble-button')).toHaveCount(0);
+    await expect(page.getByTestId('edit-with-ai-bubble-button')).toBeVisible();
   });
 
   test('QA-011: no Edit-with-AI button on an image node selection (node controls instead)', async ({

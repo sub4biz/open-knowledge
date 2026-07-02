@@ -36,7 +36,9 @@ test.describe('warm-skeleton rename restoration', () => {
       timeout: 10_000,
     });
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Tall Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Tall Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -84,7 +86,9 @@ test.describe('warm-skeleton rename restoration', () => {
     );
 
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Tall Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Tall Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 

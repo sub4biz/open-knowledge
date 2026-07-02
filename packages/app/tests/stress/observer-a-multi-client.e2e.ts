@@ -32,8 +32,8 @@ test('QA-016: agent write + local WYSIWYG edit converge in DOM on both clients',
       pageB.waitForFunction(() => Boolean(window.__activeProvider), null, { timeout: 15_000 }),
     ]);
     await Promise.all([
-      pageA.waitForSelector('.ProseMirror'),
-      pageB.waitForSelector('.ProseMirror'),
+      pageA.waitForSelector('.ProseMirror:not(.composer-prosemirror)'),
+      pageB.waitForSelector('.ProseMirror:not(.composer-prosemirror)'),
     ]);
 
     const seedRes = await fetch(`${baseURL}/api/agent-write-md`, {
@@ -64,7 +64,7 @@ test('QA-016: agent write + local WYSIWYG edit converge in DOM on both clients',
       ),
     ]);
 
-    await pageA.locator('.ProseMirror').focus();
+    await pageA.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await pageA.keyboard.press('End');
 
     await api.replaceDoc(docName, `baseline-line ${AGENT_MARKER}\n`);
@@ -84,7 +84,7 @@ test('QA-016: agent write + local WYSIWYG edit converge in DOM on both clients',
       ),
     ]);
 
-    await pageA.locator('.ProseMirror').focus();
+    await pageA.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await pageA.keyboard.press('End');
     await pageA.keyboard.type(` ${USER_MARKER}`, { delay: 15 });
 
@@ -110,7 +110,9 @@ test('QA-016: agent write + local WYSIWYG edit converge in DOM on both clients',
     const captureState = async (page: typeof pageA): Promise<{ ytext: string; dom: string }> =>
       page.evaluate(() => {
         const ytext = window.__activeProvider?.document?.getText('source')?.toString() ?? '';
-        const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
+        const editor = document.querySelector(
+          '.ProseMirror:not(.composer-prosemirror)',
+        ) as HTMLElement | null;
         const dom = editor?.innerText ?? '';
         return { ytext, dom };
       });

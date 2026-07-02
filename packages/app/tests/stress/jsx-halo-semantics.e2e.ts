@@ -10,7 +10,7 @@ async function setupDoc(page: Page, api: ApiSeed, markdown: string): Promise<str
   const docName = `halo-${randomUUID().slice(0, 8)}`;
   await api.seedDocs([{ name: docName, markdown }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await page.waitForFunction(() => Boolean(window.__activeEditor), null, { timeout: 5_000 });
   return docName;
 }

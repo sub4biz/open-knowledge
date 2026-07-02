@@ -35,7 +35,7 @@ async function seedAndNavigate(
   await api.seedDocs([{ name: DOC_NAME, markdown: DOC_MARKDOWN }]);
   await page.goto(`/#/${DOC_NAME}`);
   await waitForActiveProviderSynced(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await expect(seededDocRow(page)).toBeVisible({ timeout: 15_000 });
 }
 

@@ -43,7 +43,7 @@ test.describe('FR-2 walker URL classifier — WYSIWYG cross-app source-fallback'
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('QA-001 standalone relative-path image paragraph emits block source-fallback', async ({
@@ -62,7 +62,7 @@ test.describe('FR-2 walker URL classifier — WYSIWYG cross-app source-fallback'
     await expect(async () => {
       expect(await getYText(page)).toContain('![chart](./Q3-sales.png)');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
 
@@ -89,7 +89,7 @@ test.describe('FR-2 walker URL classifier — WYSIWYG cross-app source-fallback'
     await expect(async () => {
       expect(await getYText(page)).toContain('![alt](./x.jpg)');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
 
@@ -121,7 +121,7 @@ test.describe('FR-2 walker URL classifier — WYSIWYG cross-app source-fallback'
     await expect(async () => {
       expect(await getYText(page)).toContain('https://example.com/x.jpg');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
 
@@ -146,7 +146,7 @@ test.describe('FR-2 walker URL classifier — WYSIWYG cross-app source-fallback'
     await expect(async () => {
       expect(await getYText(page)).toContain('![chart](./local.png)');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
     expect(captured.plain).toContain('# H');
@@ -180,7 +180,7 @@ test.describe('FR-13 sister tiebreak — Source→Source OK→OK paste byte-iden
 
     await page.goto(`/#/${sourceDocName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await page.getByRole('radio', { name: /Markdown source/i }).click({ timeout: 10_000 });
     await page.waitForSelector('.cm-content');
     await expect(page.locator('.cm-content')).toContainText('OtherDoc#Section', {
@@ -230,7 +230,7 @@ test.describe('FR-6 / FR-7 partial-failure mid-walk continuation', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const warns: string[] = [];
     page.on('console', (msg) => {
@@ -248,7 +248,7 @@ test.describe('FR-6 / FR-7 partial-failure mid-walk continuation', () => {
     await expect(async () => {
       expect(await getYText(page)).toContain('![first](./a.jpg)');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
     expect(captured.plain).toContain('![first](./a.jpg)');
@@ -273,7 +273,7 @@ test.describe('NFR Performance — walker post-pass under typical selections', (
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const lines: string[] = [];
     for (let i = 0; i < 50; i++) lines.push(`![img${i}](./img-${i}.jpg)`);
@@ -288,7 +288,7 @@ test.describe('NFR Performance — walker post-pass under typical selections', (
       expect(await getYText(page)).toContain('![img0](./img-0.jpg)');
       expect(await getYText(page)).toContain('![img49](./img-49.jpg)');
     }).toPass({ timeout: 10_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const warns: string[] = [];
     page.on('console', (msg) => {

@@ -67,8 +67,8 @@ test.describe('asset-embed — drop UX (SPEC §6 FR-1, FR-1a, FR-2, FR-8)', () =
     await api.replaceDoc(docName, '# Test\n');
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('P1.1: drop a PDF → server stores + Y.Text contains ![[draft.pdf]]', async ({ page }) => {

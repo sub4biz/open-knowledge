@@ -14,11 +14,11 @@ import {
 
 async function resetEditor(_api: ApiHelpers, page: Page, docName: string) {
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
   await page.waitForFunction(
-    () => document.querySelector('.ProseMirror')?.textContent === '',
+    () => document.querySelector('.ProseMirror:not(.composer-prosemirror)')?.textContent === '',
     null,
     {
       timeout: 5_000,
@@ -28,7 +28,7 @@ async function resetEditor(_api: ApiHelpers, page: Page, docName: string) {
 
 async function getEditorState(page: Page) {
   return page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror');
+    const pm = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
     return {
       text: pm?.textContent ?? '',
       h1Count: pm?.querySelectorAll('h1').length ?? 0,
@@ -84,7 +84,7 @@ async function getPopupInfo(page: Page) {
 
 async function getCursorRect(page: Page) {
   return page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror');
+    const pm = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
     if (!pm) return null;
     const walker = document.createTreeWalker(pm, NodeFilter.SHOW_TEXT);
     let lastText: Text | null = null;
@@ -114,7 +114,7 @@ test.describe('slash command — triggering and filtering', () => {
       throw new Error(`Uncaught page error: ${e.message}`);
     });
     await page.goto(`/#/${docName}`);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('typing / in an empty paragraph opens the command menu', async ({ page, api }) => {
@@ -158,7 +158,9 @@ test.describe('slash command — triggering and filtering', () => {
   test('typing / after whitespace mid-line opens the menu', async ({ page, api }) => {
     await resetEditor(api, page, docName);
     await page.keyboard.type('hello world ');
-    await expect(page.locator('.ProseMirror')).toContainText('hello world');
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+      'hello world',
+    );
     await page.keyboard.type('/bullet');
     await waitForSlashMenuFirstOption(page, 'bullet list');
 
@@ -190,7 +192,7 @@ test.describe('slash command — item insertion', () => {
       throw new Error(`Uncaught page error: ${e.message}`);
     });
     await page.goto(`/#/${docName}`);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('selecting an item via Enter inserts it and removes the trigger text', async ({
@@ -247,7 +249,7 @@ test.describe('slash command — item insertion', () => {
     await expect(page.locator('.ProseMirror table')).toHaveCount(1);
 
     const info = await page.evaluate(() => {
-      const pm = document.querySelector('.ProseMirror');
+      const pm = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
       const table = pm?.querySelector('table');
       return {
         exists: !!table,
@@ -266,7 +268,9 @@ test.describe('slash command — item insertion', () => {
   }) => {
     await resetEditor(api, page, docName);
     await page.keyboard.type('hello world ');
-    await expect(page.locator('.ProseMirror')).toContainText('hello world');
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+      'hello world',
+    );
     await page.keyboard.type('/bullet');
     await waitForSlashMenuFirstOption(page, 'bullet list');
     await page.keyboard.press('Enter');
@@ -320,7 +324,7 @@ test.describe('slash command — keyboard navigation', () => {
       throw new Error(`Uncaught page error: ${e.message}`);
     });
     await page.goto(`/#/${docName}`);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('arrow keys move the selection through menu items', async ({ page, api }) => {
@@ -379,7 +383,7 @@ test.describe('slash command — keyboard navigation', () => {
     await expect.poll(() => getSelectedItemSnapshot(page).then((s) => s.index)).toBe(5);
 
     await page.keyboard.press('Backspace');
-    await expect(page.locator('.ProseMirror')).not.toContainText('/');
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).not.toContainText('/');
     await page.keyboard.type('/heading');
     await waitForSlashMenuFilteredBy(page, 'heading');
 
@@ -444,7 +448,7 @@ test.describe('slash command — accessibility', () => {
       throw new Error(`Uncaught page error: ${e.message}`);
     });
     await page.goto(`/#/${docName}`);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('the menu uses listbox role with labeled options', async ({ page, api }) => {
@@ -593,7 +597,7 @@ test.describe('slash command — menu positioning', () => {
       throw new Error(`Uncaught page error: ${e.message}`);
     });
     await page.goto(`/#/${docName}`);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('the menu appears just below the cursor', async ({ page, api }) => {

@@ -21,7 +21,7 @@ async function setupDocWithTrailingEmptyParagraph(
   const docName = `placeholder-${randomUUID().slice(0, 8)}`;
   await api.seedDocs([{ name: docName, markdown: `${componentMarkdown}\n\n` }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await page.waitForFunction(() => Boolean(window.__activeEditor), null, { timeout: 5_000 });
   await page.evaluate(() => {
     const editor = window.__activeEditor;

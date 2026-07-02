@@ -57,7 +57,7 @@ test.describe('Tabs component strip', () => {
     await api.replaceDoc(docName, NESTED_TABS_MD);
     await page.goto(`/#/${docName}`);
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const pills = page.locator('.tabs-tablist [role="tab"]');
     await expect(pills).toHaveCount(2, { timeout: 10_000 });

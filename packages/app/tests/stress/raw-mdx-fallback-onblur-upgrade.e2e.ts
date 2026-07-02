@@ -18,7 +18,7 @@ async function setupDoc(page: Page, api: ApiHelpers, markdown: string): Promise<
   await page.waitForFunction(() => Boolean(window.__activeProvider?.isSynced), null, {
     timeout: 15_000,
   });
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   return docName;
 }
 
@@ -66,7 +66,7 @@ test('S21: fixing broken MDX in nested CM upgrades rawMdxFallback to jsxComponen
   for (let i = 0; i < originalLen; i++) await page.keyboard.press('Backspace');
   await page.keyboard.insertText('<Callout type="info">\n\nfixed content\n\n</Callout>');
 
-  await page.locator('.ProseMirror').focus();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
 
   await page.waitForFunction(
     () => {
@@ -123,7 +123,7 @@ test('S22: blur with still-invalid source does not churn the rawMdxFallback node
   for (let i = 0; i < originalLen; i++) await page.keyboard.press('Backspace');
   await page.keyboard.insertText('<Foo>text</Baz>');
 
-  await page.locator('.ProseMirror').focus();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
 
   await page.waitForFunction(
     () => {

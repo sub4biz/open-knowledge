@@ -88,8 +88,8 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
     await api.replaceDoc(docName, '# Dispatch test\n');
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('P9.1: post-reload `![[file.pdf]]` renders as a File row via WikiEmbedFile (no link chip)', async ({
@@ -99,7 +99,7 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
     await api.replaceDoc(docName, `# Source\n\n![[meeting.pdf]]\n`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const fileRow = page.locator('.ok-file-attachment').first();
     await fileRow.waitFor({ state: 'visible', timeout: 5_000 });
@@ -123,7 +123,7 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
 
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const chip = page.locator('[data-wiki-link]').first();
     await chip.waitFor({ state: 'visible', timeout: 5_000 });
@@ -148,7 +148,7 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
 
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await expect(page.locator('[data-resolution-state="asset"]').first()).toBeVisible({
       timeout: 10_000,
     });
@@ -178,7 +178,7 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
 
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await expect(page.locator('[data-resolution-state="asset"]').first()).toBeVisible({
       timeout: 10_000,
     });
@@ -221,7 +221,7 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
     );
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.click('span[data-link]');
     const openedPage = await context.waitForEvent('page', { timeout: 1_000 }).catch(() => null);
@@ -237,8 +237,8 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
     await api.replaceDoc(subdirDoc, '# Subdir doc\n');
     await page.goto(`/#/${subdirDoc}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     await dropFileIntoEditor(page, TINY_PNG_BYTES, 'photo.png', 'image/png');
 
@@ -268,8 +268,8 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
     await api.replaceDoc(subdirDoc, '# Subdir doc\n');
     await page.goto(`/#/${subdirDoc}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     await dropFileIntoEditor(page, TINY_PDF_BYTES, 'doc.pdf', 'application/pdf');
 
@@ -331,8 +331,8 @@ test.describe('asset-click dispatcher — P9 E2E scenarios (SPEC 2026-04-23)', (
     await api.replaceDoc(subdirDoc, '# Video doc\n');
     await page.goto(`/#/${subdirDoc}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
 
     const TINY_M4V_BYTES = Array.from(
       Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypM4V '), Buffer.alloc(8, 0)]),

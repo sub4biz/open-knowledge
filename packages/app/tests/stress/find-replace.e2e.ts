@@ -72,7 +72,7 @@ test('TipTap find/replace highlights, navigates, replaces current, and replaces 
 
   await page.goto(`/#/${docName}`);
   await waitForActiveProviderSynced(page);
-  await expect(page.locator('.ProseMirror')).toContainText('needle one');
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText('needle one');
 
   await page.keyboard.press(replaceShortcut());
   const bar = page.getByTestId('find-replace-bar');
@@ -132,7 +132,9 @@ test('TipTap find navigation scrolls an off-screen active match into view', asyn
 
   await page.goto(`/#/${docName}`);
   await waitForActiveProviderSynced(page);
-  await expect(page.locator('.ProseMirror')).toContainText('scrollneedle first');
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+    'scrollneedle first',
+  );
 
   const scrollContainer = visibleScrollContainer(page);
   await expect(scrollContainer).toHaveCount(1);

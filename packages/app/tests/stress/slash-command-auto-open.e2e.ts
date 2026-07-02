@@ -9,9 +9,9 @@ test('SLASH-AUTOOPEN-IMG: slash-inserting Image auto-opens its PropPanel', async
   const docName = `slash-autoopen-img-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -27,9 +27,9 @@ test('SLASH-AUTOOPEN-VIDEO: slash-inserting Video auto-opens its PropPanel', asy
   const docName = `slash-autoopen-video-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/video');
   await waitForSlashMenuFirstOption(page, 'video');
@@ -45,9 +45,9 @@ test('SLASH-AUTOOPEN-CALLOUT: slash-inserting Callout auto-opens its PropPanel',
   const docName = `slash-autoopen-callout-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/callout');
   await waitForSlashMenuFirstOption(page, 'callout');
@@ -63,12 +63,12 @@ test('SLASH-AUTOOPEN-IMG-MULTI: slash-inserting Image with a prior Image auto-op
   const docName = `slash-autoopen-img-multi-${Math.random().toString(36).slice(2, 10)}`;
   await api.seedDocs([{ name: docName, markdown: '<img src="prior-marker.png" />\n\n\n' }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
 
   await expect(page.locator('[data-jsx-component]')).toHaveCount(1);
 
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
   await page.keyboard.press('ControlOrMeta+End');
 
   await page.keyboard.type('/image');
@@ -104,9 +104,9 @@ test('PLACEHOLDER-RENDERS-FRESH: slash-inserted img shows placeholder + auto-ope
   const docName = `placeholder-renders-fresh-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -125,9 +125,9 @@ test('PLACEHOLDER-CLICK-OPENS-PANEL: clicking placeholder NodeSelects + reopens 
   const docName = `placeholder-click-opens-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -161,9 +161,9 @@ test('PLACEHOLDER-FILL-DISMISSES: filling src dismisses placeholder, real img re
   const docName = `placeholder-fill-dismisses-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -191,9 +191,9 @@ test('PLACEHOLDER-CONTAINER-EXCLUDED: slash-inserting /callout does NOT show pla
   const docName = `placeholder-container-excluded-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/callout');
   await waitForSlashMenuFirstOption(page, 'callout');
@@ -212,9 +212,9 @@ test('PLACEHOLDER-CHROME-VISIBLE: chrome bar (gear, delete) renders alongside th
   const docName = `placeholder-chrome-visible-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -239,9 +239,9 @@ test('PLACEHOLDER-DOM-SHAPE: placeholder is a div (not button) and is full-width
   const docName = `placeholder-dom-shape-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -272,9 +272,9 @@ test('PLACEHOLDER-CLOSE-ADVANCES-CARET: PM selection lands past the image after 
   const docName = `placeholder-close-caret-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');
@@ -331,9 +331,9 @@ test('PLACEHOLDER-CLOSE-RETURNS-DOM-FOCUS: typing after Escape lands keystrokes 
   const docName = `placeholder-close-focus-${Math.random().toString(36).slice(2, 10)}`;
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
-  await page.click('.ProseMirror');
+  await page.click('.ProseMirror:not(.composer-prosemirror)');
 
   await page.keyboard.type('/image');
   await waitForSlashMenuFirstOption(page, 'image');

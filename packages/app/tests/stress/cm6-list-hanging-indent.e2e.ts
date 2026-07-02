@@ -121,7 +121,7 @@ test.describe('CM6 source-mode padding contract', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await seedMarkdown(api, docName, FIXTURE_MARKDOWN);
     await switchToSourceAndWaitForLists(page, FIXTURE.length);
@@ -161,7 +161,7 @@ test.describe('CM6 source-mode padding contract', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const fencedFixture = [
       '```js',
@@ -258,7 +258,7 @@ test.describe('CM6 source-mode padding contract', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const tableFixture = [
       'Baseline prose paragraph for alignment.',

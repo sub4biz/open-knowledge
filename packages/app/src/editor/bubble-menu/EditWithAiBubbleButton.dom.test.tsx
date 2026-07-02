@@ -130,13 +130,35 @@ describe('EditWithAiBubbleButton', () => {
     expect(button.textContent).toContain('Ask AI');
   });
 
-  test('does not render anything on a non-macOS host', () => {
+  test('renders the Ask AI trigger on a non-macOS host too (button is cross-platform)', () => {
     setPlatform('Linux x86_64');
     const editor = makeEditor('specs/foo/SPEC', 'A passage.');
-    const { container } = renderButton({ editor });
+    renderButton({ editor });
 
-    expect(screen.queryByTestId('edit-with-ai-bubble-button')).toBeNull();
-    expect(container.firstChild).toBeNull();
+    const button = screen.getByTestId('edit-with-ai-bubble-button');
+    expect(button).toBeTruthy();
+    expect(button.textContent).toContain('Ask AI');
+  });
+
+  test('the keyboard shortcut stays macOS-only — Ctrl+Shift+I is inert off macOS (does not steal DevTools)', async () => {
+    setPlatform('Linux x86_64');
+    const editor = makeEditor('specs/foo/SPEC', 'A passage.');
+    renderButton({ editor });
+
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'I',
+          code: 'KeyI',
+          ctrlKey: true,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(openRequests).toBe(0);
   });
 
   test('does not render anything when embedded inside an agent host', () => {

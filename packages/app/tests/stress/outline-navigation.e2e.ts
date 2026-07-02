@@ -40,7 +40,7 @@ async function seedDoc(api: ApiHelpers, page: Page, baseURL: string): Promise<st
   await page.waitForFunction(() => Boolean(window.__activeProvider?.isSynced), null, {
     timeout: 15_000,
   });
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await api.replaceDoc(docName, DOC);
 
@@ -181,7 +181,7 @@ async function seedFencedDoc(api: ApiHelpers, page: Page, baseURL: string): Prom
   await page.waitForFunction(() => Boolean(window.__activeProvider?.isSynced), null, {
     timeout: 15_000,
   });
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await api.replaceDoc(docName, DOC_WITH_FENCED_HASH_COMMENT);
 

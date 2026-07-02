@@ -5,12 +5,14 @@ export async function simulateCopyAndRead(
   page: Page,
   view: 'wysiwyg' | 'source' = 'wysiwyg',
 ): Promise<{ plain: string; html: string }> {
-  const selector = view === 'source' ? '.cm-content' : '.ProseMirror';
+  const selector = view === 'source' ? '.cm-content' : '.ProseMirror:not(.composer-prosemirror)';
   await selectAllAndWaitForSelection(page, selector);
   return page.evaluate((sel) => {
     const editor = document.querySelector(sel) as HTMLElement | null;
     if (!editor) {
-      const editorCount = document.querySelectorAll('.ProseMirror, .cm-content').length;
+      const editorCount = document.querySelectorAll(
+        '.ProseMirror:not(.composer-prosemirror), .cm-content',
+      ).length;
       const rootPreview = (document.body?.outerHTML ?? '').slice(0, 400);
       throw new Error(
         `simulateCopyAndRead: editor "${sel}" not found — editor views on page: ${editorCount}. document.body head:\n${rootPreview}`,
@@ -40,12 +42,14 @@ export async function simulateCutAndRead(
   page: Page,
   view: 'wysiwyg' | 'source' = 'wysiwyg',
 ): Promise<{ plain: string; html: string; contentAfter: string }> {
-  const selector = view === 'source' ? '.cm-content' : '.ProseMirror';
+  const selector = view === 'source' ? '.cm-content' : '.ProseMirror:not(.composer-prosemirror)';
   await selectAllAndWaitForSelection(page, selector);
   return page.evaluate((sel) => {
     const editor = document.querySelector(sel) as HTMLElement | null;
     if (!editor) {
-      const editorCount = document.querySelectorAll('.ProseMirror, .cm-content').length;
+      const editorCount = document.querySelectorAll(
+        '.ProseMirror:not(.composer-prosemirror), .cm-content',
+      ).length;
       const rootPreview = (document.body?.outerHTML ?? '').slice(0, 400);
       throw new Error(
         `simulateCutAndRead: editor "${sel}" not found — editor views on page: ${editorCount}. document.body head:\n${rootPreview}`,

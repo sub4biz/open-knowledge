@@ -95,8 +95,8 @@ test.describe('Drop pipeline does not auto-open the descriptor PropPanel', () =>
       await api.createPage(`${docName}.md`);
       await page.goto(`/#/${docName}`);
       await waitForProvider(page);
-      await page.waitForSelector('.ProseMirror');
-      await page.click('.ProseMirror');
+      await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+      await page.click('.ProseMirror:not(.composer-prosemirror)');
 
       await dropFileIntoEditor(page, c.bytes(), c.filename, c.mime);
 

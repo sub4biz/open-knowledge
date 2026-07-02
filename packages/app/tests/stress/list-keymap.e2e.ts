@@ -18,7 +18,7 @@ async function getYText(page: Page): Promise<string> {
 async function seedMarkdown(api: ApiHelpers, page: Page, docName: string, markdown: string) {
   await api.replaceDoc(docName, markdown);
   await expect.poll(() => getYText(page)).toContain(markdown.split('\n')[0]?.trim() || '');
-  await expect(page.locator('.ProseMirror')).not.toBeEmpty();
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).not.toBeEmpty();
 }
 
 async function openDoc(api: ApiHelpers, page: Page, docName: string) {
@@ -26,7 +26,7 @@ async function openDoc(api: ApiHelpers, page: Page, docName: string) {
   await api.testReset(docName);
   await page.goto(`/#/${docName}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 }
 
 function uniqueDocName(label: string): string {
@@ -39,7 +39,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- first\n- second\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li').nth(1).click();
     await page.keyboard.press('End');
 
@@ -57,7 +57,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- top\n  - nested\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     const nestedLi = page.locator('.ProseMirror li li').first();
     await nestedLi.click();
     await page.keyboard.press('End');
@@ -77,7 +77,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '| a | b |\n| - | - |\n| 1 | 2 |\n');
 
-    const editor = page.locator('.ProseMirror');
+    const editor = page.locator('.ProseMirror:not(.composer-prosemirror)');
     const cellOne = editor.locator('td').filter({ hasText: /^1$/ });
     await cellOne.click();
     await expect(editor).toBeFocused();
@@ -140,7 +140,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- sf\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li').first().click();
     await page.keyboard.press('End');
     await waitForPmSelectionInNode(page, 'listItem');
@@ -157,7 +157,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '1. sf\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li').first().click();
     await page.keyboard.press('End');
     await waitForPmSelectionInNode(page, 'listItem');
@@ -171,7 +171,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- [ ] sf\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li').first().click();
     await page.keyboard.press('End');
     await waitForPmSelectionInNode(page, 'listItem');
@@ -188,7 +188,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- item one\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li').first().click();
     await page.keyboard.press('End');
     await waitForPmSelectionInNode(page, 'listItem');
@@ -210,7 +210,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- top\n  - sub\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li li').first().click();
     await page.keyboard.press('End');
     await waitForPmSelectionInNode(page, 'listItem');
@@ -232,7 +232,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '- bullet item\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror li').first().click();
     await page.keyboard.press('End');
     await waitForPmSelectionInNode(page, 'listItem');
@@ -252,7 +252,7 @@ test.describe('OQ1: Tab/Shift-Tab scoping by cursor context', () => {
     await openDoc(api, page, docName);
     await seedMarkdown(api, page, docName, '```\nfirst\n```\n');
 
-    await page.locator('.ProseMirror').focus();
+    await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
     await page.locator('.ProseMirror pre code').click();
     await page.keyboard.press('End');
 

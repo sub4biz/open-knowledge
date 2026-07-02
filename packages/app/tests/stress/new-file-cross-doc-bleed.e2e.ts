@@ -92,7 +92,7 @@ async function assertVisibleActivityHasOnlyEmptyEditor(page: Page): Promise<void
     'exactly one editor scroll container should be visible after the New File flow',
   ).toHaveCount(1);
 
-  const pms = scroll.locator('.tiptap.ProseMirror');
+  const pms = scroll.locator('.tiptap.ProseMirror:not(.composer-prosemirror)');
   await expect(
     pms,
     "new file Activity must contain exactly one .tiptap.ProseMirror (cross-doc bleed signal: pmCount > 1 means another editor's view.dom has been vacuumed into this Activity's EditorContent ref div)",
@@ -120,7 +120,9 @@ test.describe('new-file cross-doc bleed', () => {
     await expect(page.getByText(CANARY)).toBeVisible({ timeout: 30_000 });
     await waitForActiveProviderSynced(page);
 
-    await expect(visibleScrollContainer(page).locator('.tiptap.ProseMirror')).toHaveCount(1);
+    await expect(
+      visibleScrollContainer(page).locator('.tiptap.ProseMirror:not(.composer-prosemirror)'),
+    ).toHaveCount(1);
 
     const newDocName = `newfile-${randomUUID()}`;
     await newFileViaShortcut(page, newDocName);

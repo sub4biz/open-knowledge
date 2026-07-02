@@ -11,7 +11,9 @@ async function expectSourceMounted(page: Page, timeout = 10_000): Promise<void> 
 }
 
 async function expectWysiwygMounted(page: Page, timeout = 10_000): Promise<void> {
-  await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout });
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+    timeout,
+  });
 }
 
 test.describe('editor-mode-persistence — SPEC §8.3', () => {
@@ -168,6 +170,8 @@ test.describe('editor-mode-persistence — SPEC §8.3', () => {
     await waitForProvider(page);
 
     await expectSourceMounted(page);
-    await expect(page.locator('.ProseMirror').first()).toBeHidden({ timeout: 2_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeHidden({
+      timeout: 2_000,
+    });
   });
 });

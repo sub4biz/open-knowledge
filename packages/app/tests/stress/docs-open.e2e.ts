@@ -37,15 +37,19 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'small.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await openFromSidebar(page, 'big.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Big Doc' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Big Doc' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
     await openFromSidebar(page, 'small.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Small' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Small' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -85,7 +89,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
     if (!result) throw new Error('F0 result not captured');
 
     const editorStart = await page.evaluate(() => performance.now());
-    await expect(page.locator('.ProseMirror', { hasText: 'Big Doc' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Big Doc' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
     const editorMs = await page.evaluate(
@@ -109,12 +115,16 @@ test.describe('docs-open — hybrid navigation UX', () => {
 
     await openFromSidebar(page, 'doc-warm-a.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
     await openFromSidebar(page, 'doc-warm-b.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -136,7 +146,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
 
     await openFromSidebar(page, 'doc-warm-a.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -162,8 +174,10 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Bottom Marker' })).toBeVisible({
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Bottom Marker' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -178,13 +192,17 @@ test.describe('docs-open — hybrid navigation UX', () => {
 
     await openFromSidebar(page, 'doc-b.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Bottom Marker' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Bottom Marker' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -208,7 +226,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__f3SkeletonEverVisible = false;
@@ -226,7 +244,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
 
     await openFromSidebar(page, 'doc-b.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -250,7 +270,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__test_armPendingRejection?.('doc-b', 'timeout');
@@ -264,7 +284,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
 
     await errorAlert.getByRole('button', { name: 'Try again' }).click();
 
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B Heading' }),
+    ).toBeVisible({
       timeout: 10_000,
     });
   });
@@ -278,8 +300,10 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Heading' })).toBeVisible({
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -302,7 +326,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
         intervals: [100, 200, 400],
       })
       .toContain('doc-a');
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
   });
@@ -313,12 +339,16 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Heading' })).toBeVisible({
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
-    const expectedText = await page.locator('.ProseMirror').textContent();
+    const expectedText = await page
+      .locator('.ProseMirror:not(.composer-prosemirror)')
+      .textContent();
     expect(expectedText).toContain('Doc A Heading');
 
     await page.evaluate(() => {
@@ -333,7 +363,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -345,7 +377,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc A Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc A Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -365,7 +399,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await openFromSidebar(page, 'doc-b.md');
     await openFromSidebar(page, 'doc-c.md');
@@ -380,7 +414,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
       })
       .toContain('doc-e');
 
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc E Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc E Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
@@ -404,7 +440,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.getByRole('radio', { name: 'Markdown source' }).click();
     await page.waitForSelector('.cm-content', { timeout: 15_000 });
@@ -437,7 +473,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__f13BarAttrs = null;
@@ -457,7 +493,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
 
     await openFromSidebar(page, 'doc-b.md');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B Heading' }),
+    ).toBeVisible({
       timeout: 30_000,
     });
     await page.evaluate(() => window.__f13ObserverCleanup?.());
@@ -493,7 +531,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__test_armPendingRejection?.('doc-b', 'timeout');
@@ -505,11 +543,13 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await expect(errorAlert).toContainText('doc-b');
 
     await errorAlert.getByRole('button', { name: 'Try again' }).click();
-    await expect(page.locator('.ProseMirror', { hasText: 'Doc B Heading' })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', { hasText: 'Doc B Heading' }),
+    ).toBeVisible({
       timeout: 10_000,
     });
 
-    const editor = page.locator('.ProseMirror').first();
+    const editor = page.locator('.ProseMirror:not(.composer-prosemirror)').first();
     await editor.click();
     await page.keyboard.press('End'); // move cursor to end of existing content
     await page.keyboard.type(' post-recovery typed content');
@@ -528,7 +568,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__test_armPendingRejection?.('doc-b', 'timeout');
@@ -541,7 +581,9 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await openFromSidebar(page, 'doc-a.md');
 
     await expect(errorAlert).toBeHidden({ timeout: 5_000 });
-    await expect(page.locator('.ProseMirror').first()).toContainText('Doc A Heading');
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toContainText(
+      'Doc A Heading',
+    );
   });
 
   test('QA-024: errored-doc revisit re-renders error (cached-rejection persistence)', async ({
@@ -556,7 +598,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__test_armPendingRejection?.('doc-b', 'predisconnect');
@@ -583,7 +625,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     await page.evaluate(() => {
       window.__test_armPendingRejection?.('doc-b', 'predisconnect');
@@ -620,7 +662,7 @@ test.describe('docs-open — hybrid navigation UX', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     const before = await page.evaluate(() => {
       const pool = window.__providerPool;
@@ -691,7 +733,7 @@ test.describe('docs-open — WS-interception scenarios', () => {
     await page.goto('/');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
     blockMode = 'close';
     await openFromSidebar(page, 'doc-b.md');
@@ -722,10 +764,10 @@ test.describe('docs-open — WS-interception scenarios', () => {
 
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await openFromSidebar(page, 'doc-b.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
 
@@ -763,10 +805,10 @@ test.describe('docs-open — WS-interception scenarios', () => {
 
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await openFromSidebar(page, 'doc-b.md');
     await waitForActiveProviderSynced(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await openFromSidebar(page, 'doc-a.md');
     await waitForActiveProviderSynced(page);
 

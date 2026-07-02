@@ -87,7 +87,7 @@ test('PRD-6914: clicking + escaping real fallback chrome does not mutate source 
   await fallbackCm.click();
   await awaitSourceQuiescence(page);
   await page.keyboard.press('Escape');
-  await page.locator('.ProseMirror').focus();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
   const after = await awaitSourceQuiescence(page);
 
   expect(after).toBe(before);

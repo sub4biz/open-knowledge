@@ -37,7 +37,7 @@ test('CHIP-POS-WIKI: wiki-link PropPanel anchors to chip rect when scrolled past
   await api.createPage(`${docName}.md`);
   await api.replaceDoc(docName, `${FILLER}\n\nTrailing chip: [[fake-target]]\n`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
 
   const chip = page.locator('[data-wiki-link]').first();
@@ -67,7 +67,7 @@ test('CHIP-POS-LINK: internal-link PropPanel anchors to chip rect when scrolled 
   await api.createPage(`${docName}.md`);
   await api.replaceDoc(docName, `${FILLER}\n\nTrailing chip: [Beta page](beta.md)\n`);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
 
   const chip = page.locator('span[data-link]').first();

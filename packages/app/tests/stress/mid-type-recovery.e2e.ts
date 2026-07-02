@@ -11,7 +11,7 @@ async function getYText(page: Page): Promise<string> {
 
 async function getEditorStructure(page: Page) {
   return page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror');
+    const pm = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
     if (!pm) return { text: '', h1Count: 0, h2Count: 0, pCount: 0, hasRawFallback: false };
     return {
       text: pm.textContent ?? '',
@@ -56,7 +56,7 @@ test.beforeEach(async ({ page, api }) => {
   await api.createPage(`${docName}.md`);
   await page.goto(`/#/${docName}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 });
 
 test('mid-type recovery: surrounding structure stable during <Callout> character-by-character typing', async ({
@@ -67,7 +67,10 @@ test('mid-type recovery: surrounding structure stable during <Callout> character
   await api.replaceDoc(docName, seedMd);
 
   await page.waitForFunction(
-    () => document.querySelector('.ProseMirror')?.textContent?.includes('Top Heading'),
+    () =>
+      document
+        .querySelector('.ProseMirror:not(.composer-prosemirror)')
+        ?.textContent?.includes('Top Heading'),
     null,
     { timeout: 10_000 },
   );
@@ -119,10 +122,12 @@ test('mid-type recovery: surrounding structure stable during <Callout> character
   expect(finalYText).toContain('## Bottom Heading');
 
   await visualToggle(page).click();
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await page.waitForFunction(
-    () => (document.querySelector('.ProseMirror')?.textContent?.length ?? 0) > 10,
+    () =>
+      (document.querySelector('.ProseMirror:not(.composer-prosemirror)')?.textContent?.length ??
+        0) > 10,
     null,
     { timeout: 10_000 },
   );
@@ -140,7 +145,10 @@ test('mid-type recovery: tag mismatch shows rawMdxFallback with surrounding stru
   await api.replaceDoc(docName, seedMd);
 
   await page.waitForFunction(
-    () => document.querySelector('.ProseMirror')?.textContent?.includes('Header'),
+    () =>
+      document
+        .querySelector('.ProseMirror:not(.composer-prosemirror)')
+        ?.textContent?.includes('Header'),
     null,
     { timeout: 10_000 },
   );
@@ -163,11 +171,11 @@ test('mid-type recovery: tag mismatch shows rawMdxFallback with surrounding stru
   );
 
   await visualToggle(page).click();
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await page.waitForFunction(
     () => {
-      const pm = document.querySelector('.ProseMirror');
+      const pm = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
       return pm?.querySelectorAll('h1').length === 1 && pm?.querySelectorAll('h2').length === 1;
     },
     null,
@@ -190,7 +198,10 @@ test('mid-type recovery: partial attribute does not collapse document', async ({
   await api.replaceDoc(docName, seedMd);
 
   await page.waitForFunction(
-    () => document.querySelector('.ProseMirror')?.textContent?.includes('Title'),
+    () =>
+      document
+        .querySelector('.ProseMirror:not(.composer-prosemirror)')
+        ?.textContent?.includes('Title'),
     null,
     { timeout: 10_000 },
   );
@@ -209,10 +220,12 @@ test('mid-type recovery: partial attribute does not collapse document', async ({
   );
 
   await visualToggle(page).click();
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 
   await page.waitForFunction(
-    () => document.querySelector('.ProseMirror')?.querySelectorAll('h1').length === 1,
+    () =>
+      document.querySelector('.ProseMirror:not(.composer-prosemirror)')?.querySelectorAll('h1')
+        .length === 1,
     null,
     { timeout: 10_000 },
   );

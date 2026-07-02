@@ -239,13 +239,11 @@ export function BottomComposer({
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, []);
 
-  const didMountRef = useRef(false);
+  const prevDismissedRef = useRef(dismissed);
   useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-    if (!dismissed) inputRef.current?.focus();
+    const wasDismissed = prevDismissedRef.current;
+    prevDismissedRef.current = dismissed;
+    if (wasDismissed && !dismissed) inputRef.current?.focus();
   }, [dismissed]);
 
   const [touchedFiles, setTouchedFiles] = useState<readonly string[]>([]);

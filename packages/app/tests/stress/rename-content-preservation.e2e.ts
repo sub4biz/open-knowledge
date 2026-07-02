@@ -25,7 +25,9 @@ test.describe('FileTree sidebar rename — content preservation', () => {
     await api.seedDocs([{ name: 'source-doc', markdown: DOC_CONTENT }]);
     await page.goto('/#/source-doc');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.ProseMirror')).toContainText(MARKER, { timeout: 15_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(MARKER, {
+      timeout: 15_000,
+    });
 
     const sourceItem = page.getByRole('treeitem', { name: /source-doc\.md/ });
     await sourceItem.click({ button: 'right' });
@@ -34,7 +36,9 @@ test.describe('FileTree sidebar rename — content preservation', () => {
     await renameInput.fill('renamed-doc.md');
     await renameInput.press('Enter');
 
-    await expect(page.locator('.ProseMirror')).toContainText(MARKER, { timeout: 15_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(MARKER, {
+      timeout: 15_000,
+    });
 
     await wait(PERSISTENCE_SETTLE_MS);
 
@@ -100,9 +104,12 @@ test.describe('FileTree sidebar rename — content preservation', () => {
     await expect(page.getByRole('button', { name: 'bar/hello.md', exact: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.locator('.ProseMirror')).toContainText('rename-stays-here', {
-      timeout: 15_000,
-    });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+      'rename-stays-here',
+      {
+        timeout: 15_000,
+      },
+    );
 
     const sourceItem = page.getByRole('treeitem', { name: 'hello.md', exact: true });
     await sourceItem.click({ button: 'right' });
@@ -116,9 +123,12 @@ test.describe('FileTree sidebar rename — content preservation', () => {
     await expect(page.getByRole('button', { name: 'bar/something.md', exact: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.locator('.ProseMirror')).toContainText('rename-stays-here', {
-      timeout: 15_000,
-    });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+      'rename-stays-here',
+      {
+        timeout: 15_000,
+      },
+    );
   });
 
   test('renaming the active doc preserves expanded non-active nested folders', async ({

@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ReactNode, type Ref, useEffect, useImperativeHandle, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  StrictMode,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import type { ComposerMentionInputHandle } from '@/editor/ComposerMentionInput';
 import { VISIBLE_TARGETS } from '@/lib/handoff/targets';
 import { matchesKeyboardShortcut } from '@/lib/keyboard-shortcuts';
@@ -328,6 +335,16 @@ describe('BottomComposer (shell behavior)', () => {
     dispatchOpenAskAiShortcut();
 
     expect(document.activeElement).toBe(input);
+  });
+
+  test('mounting never steals focus, even under StrictMode effect double-invoke', async () => {
+    const { BottomComposer } = await import('./BottomComposer');
+    render(
+      <StrictMode>
+        <BottomComposer docName="notes" surface="wysiwyg" />
+      </StrictMode>,
+    );
+    expect(document.activeElement).not.toBe(getInput());
   });
 
   test('⌘L is ignored while a native form field is focused (no caret theft)', async () => {

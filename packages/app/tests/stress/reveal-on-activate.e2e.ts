@@ -171,9 +171,9 @@ test('exactly one selected row, matching activeDocName (D9)', async ({ page }) =
 test('activation does not steal focus from the editor', async ({ page }) => {
   await page.goto(`/#/test-doc`);
   await fileRow(page, 'test-doc.md').waitFor({ state: 'visible', timeout: 15_000 });
-  await page.waitForSelector('.ProseMirror', { timeout: 15_000 });
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)', { timeout: 15_000 });
 
-  await page.locator('.ProseMirror').focus();
+  await page.locator('.ProseMirror:not(.composer-prosemirror)').focus();
   const editorFocused = await page.evaluate(() =>
     document.activeElement?.classList.contains('ProseMirror'),
   );

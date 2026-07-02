@@ -31,7 +31,9 @@ test.describe('PROBE: sidebar rename — no-extension typed', () => {
     await api.seedDocs([{ name: srcName, markdown: DOC_CONTENT }]);
     await page.goto(`/#/${srcName}`);
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('.ProseMirror')).toContainText(MARKER, { timeout: 15_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(MARKER, {
+      timeout: 15_000,
+    });
 
     const srcDoc = await (await fetch(`${baseURL}/api/document?docName=${srcName}`)).json();
     console.log(`[PROBE] BEFORE rename — server Y.Doc for ${srcName}:`, {

@@ -173,7 +173,6 @@ function EditorAreaInner({
 
   const [embeddedHost] = useState(() => detectEmbeddedHostFromBrowser());
   const isEmbedded = embeddedHost !== null;
-  const [isDesktop] = useState(() => typeof window !== 'undefined' && window.okDesktop != null);
   const [rightPartition, setRightPartition] = useState(() =>
     resolvePartition(embeddedHost, window.innerWidth, 'right'),
   );
@@ -414,7 +413,6 @@ function EditorAreaInner({
     const showFolderComposer = shouldShowFolderComposer({
       terminalVisible,
       isEmbedded,
-      isDesktop,
     });
     viewContent = (
       <div className="relative flex h-full min-h-0 flex-col">
@@ -518,7 +516,6 @@ function EditorAreaInner({
     const showBottomComposer = shouldShowBottomComposer({
       terminalVisible,
       isEmbedded,
-      isDesktop,
       activeDocName,
     });
     const editorContent = (

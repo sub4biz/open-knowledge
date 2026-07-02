@@ -49,7 +49,9 @@ test('source-mode find scrolls an off-screen match into view', async ({ page, ap
 
   await page.goto(`/#/${docName}`);
   await waitForActiveProviderSynced(page);
-  await expect(page.locator('.ProseMirror')).toContainText('Source Find Scroll');
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+    'Source Find Scroll',
+  );
 
   await sourceToggle(page).click();
   await page.waitForSelector('.cm-content');

@@ -14,7 +14,7 @@ async function setupDoc(page: Page, api: ApiHelpers, markdown: string): Promise<
   await page.waitForFunction(() => Boolean(window.__activeProvider?.isSynced), null, {
     timeout: 15_000,
   });
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   return docName;
 }
 
@@ -159,7 +159,11 @@ test('S1d: ArrowUp from inside compound Callout exits to TextSelection above', a
   await setupDoc(page, api, '# Title\n\n<Callout type="note">\n\nbody content\n\n</Callout>\n');
   await page.waitForSelector('.jsx-component-wrapper[data-component-type="callout"]');
 
-  await page.locator('.ProseMirror p').filter({ hasText: 'body content' }).first().click();
+  await page
+    .locator('.ProseMirror:not(.composer-prosemirror) p')
+    .filter({ hasText: 'body content' })
+    .first()
+    .click();
   await page.keyboard.press('Home');
   await waitForPmSelectionInNode(page, 'jsxComponent');
 
@@ -185,7 +189,11 @@ test('S1e: Esc inside compound Callout enters NodeSelection mode via L1', async 
   await setupDoc(page, api, '<Callout type="note">\n\nbody content\n\n</Callout>\n');
   await page.waitForSelector('.jsx-component-wrapper[data-component-type="callout"]');
 
-  await page.locator('.ProseMirror p').filter({ hasText: 'body content' }).first().click();
+  await page
+    .locator('.ProseMirror:not(.composer-prosemirror) p')
+    .filter({ hasText: 'body content' })
+    .first()
+    .click();
   await page.keyboard.press('Home');
   await waitForPmSelectionInNode(page, 'jsxComponent');
 
@@ -686,7 +694,7 @@ test('S16: axe-core — zero critical violations on selection-layer surfaces', a
   expect(selected).toBe(true);
 
   const results = await new AxeBuilder({ page })
-    .include('.ProseMirror')
+    .include('.ProseMirror:not(.composer-prosemirror)')
     .include('[role="status"][aria-live="polite"]')
     .withTags(['wcag2a', 'wcag2aa'])
     .analyze();

@@ -37,11 +37,15 @@ test.describe('NG7 Pattern D — rapid-nav coherence', () => {
       docB,
       { timeout: 30_000 },
     );
-    await expect(page.locator('.ProseMirror', { hasText: `Unique-B-marker-${docB}` })).toBeVisible({
+    await expect(
+      page.locator('.ProseMirror:not(.composer-prosemirror)', {
+        hasText: `Unique-B-marker-${docB}`,
+      }),
+    ).toBeVisible({
       timeout: 30_000,
     });
 
-    const totalPmCount = await page.locator('.ProseMirror').count();
+    const totalPmCount = await page.locator('.ProseMirror:not(.composer-prosemirror)').count();
     expect(totalPmCount).toBeLessThanOrEqual(3);
     expect(totalPmCount).toBeGreaterThanOrEqual(1);
 

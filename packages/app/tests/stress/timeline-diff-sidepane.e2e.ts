@@ -51,7 +51,9 @@ async function seedTimelineDoc(
 
 async function navigateToDoc(page: Page, docName: string) {
   await page.goto(`/#/${docName}`);
-  await expect(page.locator('.ProseMirror')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 async function openTimelineTab(page: Page) {
@@ -95,7 +97,7 @@ test.describe('Timeline inline diff — side pane', () => {
     await expect(row).toHaveAttribute('aria-expanded', 'true');
     await expect(diffPanels(page)).toHaveCount(1);
 
-    await expect(page.locator('.ProseMirror')).toBeVisible();
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeVisible();
 
     await row.click();
     await expect(row).toHaveAttribute('aria-expanded', 'false');
@@ -319,7 +321,9 @@ test.describe('Timeline inline diff — side pane', () => {
     await expect(diffPanels(page)).toHaveCount(1);
 
     await page.goto(`/#/${docB}`);
-    await expect(page.locator('.ProseMirror')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.locator('[aria-label="Loading timeline history"]')).toBeHidden({
       timeout: 15_000,
     });
@@ -345,12 +349,12 @@ test.describe('Timeline inline diff — side pane', () => {
 
     await expect(expandButtons(page).first()).toBeVisible({ timeout: 15_000 });
 
-    await expect(page.locator('.ProseMirror')).toBeVisible();
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeVisible();
 
     await expandButtons(page).first().click();
     await page.locator('[data-testid="timeline-entry-restore"]').first().click();
 
-    await expect(page.locator('.ProseMirror')).toBeVisible();
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toBeVisible();
     await expect(page.getByText(/^Viewing:/)).toHaveCount(0);
   });
 
@@ -512,7 +516,9 @@ test.describe('Timeline inline diff — side pane', () => {
 
     await navigateToDoc(page, doc);
 
-    await expect(page.locator('.ProseMirror')).toContainText('Version-two body');
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+      'Version-two body',
+    );
 
     await openTimelineTab(page);
     await expect(expandButtons(page).first()).toBeVisible({ timeout: 15_000 });
@@ -524,9 +530,14 @@ test.describe('Timeline inline diff — side pane', () => {
     await expect(dialog).toBeVisible();
     await dialog.getByTestId('timeline-entry-restore-confirm').click();
 
-    await expect(page.locator('.ProseMirror')).toContainText('Version-one body', {
-      timeout: 15_000,
-    });
-    await expect(page.locator('.ProseMirror')).not.toContainText('Version-two body');
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).toContainText(
+      'Version-one body',
+      {
+        timeout: 15_000,
+      },
+    );
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)')).not.toContainText(
+      'Version-two body',
+    );
   });
 });

@@ -10,7 +10,7 @@ async function setupDoc(page: Page, api: ApiSeed, markdown: string): Promise<str
   const docName = `grip-${randomUUID().slice(0, 8)}`;
   await api.seedDocs([{ name: docName, markdown }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await page.waitForFunction(() => Boolean(window.__activeEditor), null, { timeout: 5_000 });
   return docName;
 }
@@ -187,7 +187,7 @@ test('AC23: grip drag still moves block (drag past dragstart threshold)', async 
   });
   expect(orderBefore).toEqual(['first paragraph', 'second paragraph', 'third paragraph']);
 
-  const firstP = page.locator('.ProseMirror > p').nth(0);
+  const firstP = page.locator('.ProseMirror:not(.composer-prosemirror) > p').nth(0);
   const firstBox = await firstP.boundingBox();
   if (!firstBox) throw new Error('first paragraph not measurable');
   await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
@@ -197,7 +197,7 @@ test('AC23: grip drag still moves block (drag past dragstart threshold)', async 
   const gripBox = await grip.boundingBox();
   if (!gripBox) throw new Error('grip not measurable');
 
-  const thirdP = page.locator('.ProseMirror > p').nth(2);
+  const thirdP = page.locator('.ProseMirror:not(.composer-prosemirror) > p').nth(2);
   const thirdBox = await thirdP.boundingBox();
   if (!thirdBox) throw new Error('third paragraph not measurable');
 
@@ -233,7 +233,7 @@ test('AC29: sub-threshold pointer movement still fires click → NodeSelect (no 
   await setupDoc(page, api, 'paragraph one\n\nparagraph two\n');
   await resetSelectionToDocStart(page);
 
-  const firstP = page.locator('.ProseMirror > p').nth(0);
+  const firstP = page.locator('.ProseMirror:not(.composer-prosemirror) > p').nth(0);
   const firstBox = await firstP.boundingBox();
   if (!firstBox) throw new Error('first paragraph not measurable');
   await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);

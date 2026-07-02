@@ -43,7 +43,7 @@ async function assertVisibleActivityHasOnlyEmptyEditor(page: Page): Promise<void
     'exactly one editor scroll container should be visible after the mode-flip flow',
   ).toHaveCount(1);
 
-  const pms = scroll.locator('.tiptap.ProseMirror');
+  const pms = scroll.locator('.tiptap.ProseMirror:not(.composer-prosemirror)');
   await expect(
     pms,
     "empty-doc Activity must contain exactly one .tiptap.ProseMirror (cross-doc bleed signal: pmCount > 1 means another editor's view.dom has been vacuumed into this Activity's EditorContent ref div)",
@@ -72,7 +72,9 @@ test.describe('editor mode-flip cross-doc bleed', () => {
     await expect(page.getByText(CANARY)).toBeVisible({ timeout: 30_000 });
     await waitForActiveProviderSynced(page);
 
-    await expect(visibleScrollContainer(page).locator('.tiptap.ProseMirror')).toHaveCount(1);
+    await expect(
+      visibleScrollContainer(page).locator('.tiptap.ProseMirror:not(.composer-prosemirror)'),
+    ).toHaveCount(1);
 
     await page.goto(`/#/${seedBName}`);
     await page.waitForFunction(
@@ -99,7 +101,9 @@ test.describe('editor mode-flip cross-doc bleed', () => {
 
     const visualToggle = page.getByRole('radio', { name: 'Visual editor' });
     await visualToggle.click();
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 10_000,
+    });
     await yieldFramesInPage(page);
     await yieldFramesInPage(page);
 

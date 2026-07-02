@@ -21,7 +21,9 @@ async function dropFileBytesIntoEditor(
   const arr = Array.from(bytes);
   await page.evaluate(
     ({ b, name, type }) => {
-      const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
+      const editor = document.querySelector(
+        '.ProseMirror:not(.composer-prosemirror)',
+      ) as HTMLElement | null;
       if (!editor) throw new Error('no editor');
       const file = new File([new Uint8Array(b)], name, { type });
       const dt = new DataTransfer();
@@ -84,8 +86,8 @@ test.describe('asset-embed — real-fidelity byte-identity (QA-001/002/003/004/0
     await api.replaceDoc(docName, '# Real\n');
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     (page as unknown as { __docName: string }).__docName = docName;
   });
 

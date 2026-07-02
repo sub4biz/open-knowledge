@@ -85,7 +85,9 @@ test.describe('non-embedded UA', () => {
     await waitForActiveProviderSynced(page);
     const state = await leftSidebarState(page);
     expect(state, 'left sidebar should be collapsed at narrow width with no pin').toBe('collapsed');
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test('QA-003c: resize 900px → 1200px expands left sidebar', async ({ page, api }) => {
@@ -318,7 +320,9 @@ test.describe('non-embedded UA', () => {
     await seedDoc(api, 'qa-021');
     await page.setViewportSize(WIDE);
     await page.goto('/#/qa-021');
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(page.locator('#doc-panel')).toBeAttached({ timeout: 10_000 });
     const probe = await page.evaluate(() => {
       const root = document.querySelector('#doc-panel');
@@ -355,7 +359,9 @@ test.describe('non-embedded UA', () => {
     await page.setViewportSize(WIDE);
     await page.goto('/#/qa-022');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 30_000,
+    });
     const handle = page.locator('[data-slot="resizable-handle"]').first();
     await expect(handle).toBeVisible({ timeout: 10_000 });
     const box = await handle.boundingBox();
@@ -424,7 +430,9 @@ test.describe('non-embedded UA', () => {
     await page.setViewportSize({ width: 800, height: 800 });
     await page.goto('/#/qa-027');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 30_000,
+    });
     const probe800 = await page.evaluate(() => {
       const panel = document.querySelector('#doc-panel') as HTMLElement | null;
       const toggle = document.querySelector('[data-doc-panel-toggle]') as HTMLElement | null;
@@ -478,7 +486,9 @@ test.describe('non-embedded UA', () => {
     await page.setViewportSize(NARROW);
     await page.goto('/#/qa-031');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page.locator('#doc-panel')).toBeAttached({ timeout: 10_000 });
     expect(await docPanelOpen(page)).toBe(false);
     const sizeProbe = await page.evaluate(() => {
@@ -563,7 +573,7 @@ test.describe('non-embedded UA', () => {
     expect(await leftSidebarState(page)).toBe('expanded');
     await page.setViewportSize(WIDE);
     await expect(page.locator('[data-doc-panel-toggle]')).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('.ProseMirror').first()).toBeVisible();
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible();
   });
 
   test('QA-041: right doc-panel pixel width sticky as window expands (Q-RIGHT-WIDTH)', async ({
@@ -577,7 +587,9 @@ test.describe('non-embedded UA', () => {
     await page.setViewportSize({ width: 1400, height: 800 });
     await page.goto('/#/qa-041');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 30_000,
+    });
 
     const widthAt1400 = await page.evaluate(() => {
       const panel = document.querySelector('#doc-panel') as HTMLElement | null;
@@ -682,7 +694,7 @@ test.describe('non-embedded UA', () => {
     await page.locator('[data-sidebar="trigger"]').click();
     await expect(page.locator('[data-sidebar="trigger"]')).toHaveAttribute('aria-expanded', 'true');
     await page
-      .locator('.ProseMirror')
+      .locator('.ProseMirror:not(.composer-prosemirror)')
       .first()
       .click({ position: { x: 10, y: 10 } });
     await page.keyboard.press('Escape');
@@ -795,12 +807,16 @@ test.describe('Cursor UA (embedded)', () => {
     await page.setViewportSize(WIDE);
     await page.goto('/#/qa-043');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 30_000,
+    });
     expect(await leftSidebarState(page)).toBe('collapsed');
     expect(await docPanelOpen(page)).toBe(false);
 
     const before = await page.evaluate(() => {
-      const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
+      const editor = document.querySelector(
+        '.ProseMirror:not(.composer-prosemirror)',
+      ) as HTMLElement | null;
       const sidebarWidth = getComputedStyle(document.documentElement)
         .getPropertyValue('--sidebar-width')
         .trim();
@@ -829,7 +845,9 @@ test.describe('Cursor UA (embedded)', () => {
     }
 
     const after = await page.evaluate(() => {
-      const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
+      const editor = document.querySelector(
+        '.ProseMirror:not(.composer-prosemirror)',
+      ) as HTMLElement | null;
       const sidebarWidth = getComputedStyle(document.documentElement)
         .getPropertyValue('--sidebar-width')
         .trim();
@@ -907,7 +925,9 @@ test.describe('Codex(Dev) UA — parenthetical-tolerant embedded', () => {
     await page.setViewportSize(WIDE);
     await page.goto('/#/qa-038');
     await waitForActiveProviderSynced(page);
-    await expect(page.locator('.ProseMirror').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ProseMirror:not(.composer-prosemirror)').first()).toBeVisible({
+      timeout: 30_000,
+    });
     expect(await leftSidebarState(page)).toBe('collapsed');
     expect(await docPanelOpen(page)).toBe(false);
     await page.keyboard.press('ControlOrMeta+KeyK');

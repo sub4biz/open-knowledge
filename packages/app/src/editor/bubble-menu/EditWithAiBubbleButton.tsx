@@ -27,9 +27,8 @@ export function EditWithAiBubbleButton({
   editor: Editor;
   shortcutEnabled?: boolean;
 }): ReactNode {
-  const isMac = isMacOS();
   const isEmbedded = useIsEmbedded();
-  if (!isMac || isEmbedded) return null;
+  if (isEmbedded) return null;
 
   return <EditWithAiBubbleMenu editor={editor} shortcutEnabled={shortcutEnabled} />;
 }
@@ -41,7 +40,9 @@ function EditWithAiBubbleMenu({
   editor: Editor;
   shortcutEnabled: boolean;
 }): ReactNode {
+  const shortcutBound = isMacOS();
   useEffect(() => {
+    if (!shortcutBound) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (!shortcutEnabled) return;
       if (!matchesKeyboardShortcut(event, 'edit-with-ai')) return;
@@ -55,7 +56,7 @@ function EditWithAiBubbleMenu({
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [shortcutEnabled]);
+  }, [shortcutEnabled, shortcutBound]);
 
   return (
     <>

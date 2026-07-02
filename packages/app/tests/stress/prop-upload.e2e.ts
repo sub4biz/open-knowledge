@@ -121,7 +121,7 @@ for (const kind of ['img', 'video', 'audio'] as const) {
     const docName = `prop-upload-${kind}-${randomUUID().slice(0, 8)}`;
     await api.seedDocs([{ name: docName, markdown: c.initialMarkdown }]);
     await page.goto(`/#/${docName}`);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await waitForActiveProviderSynced(page);
 
     expect(await readSrc(page, c.tag)).toBe(c.initialSrc);
@@ -164,7 +164,7 @@ test('UPLOAD-IMG-SUBDIR-01: subdir-doc upload renders <img> that fetches the ass
   const docName = `sidebar-folder/upload-${randomUUID().slice(0, 8)}`;
   await api.seedDocs([{ name: docName, markdown: cases.img.initialMarkdown }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
 
   expect(await readSrc(page, 'img')).toBe(cases.img.initialSrc);
@@ -201,7 +201,7 @@ test('UPLOAD-IMG-ERR: 0-byte upload → 400 No file received → toast.error →
   const docName = `prop-upload-err-${randomUUID().slice(0, 8)}`;
   await api.seedDocs([{ name: docName, markdown: cases.img.initialMarkdown }]);
   await page.goto(`/#/${docName}`);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   await waitForActiveProviderSynced(page);
 
   expect(await readSrc(page, 'img')).toBe(cases.img.initialSrc);

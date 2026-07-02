@@ -64,7 +64,7 @@ test.describe('create → inline-rename → click → type', () => {
         .getByRole('button', { name: `${uniqueName}.md`, exact: true }),
     ).toBeVisible({ timeout: 10_000 });
 
-    const proseMirror = page.locator('.ProseMirror').first();
+    const proseMirror = page.locator('.ProseMirror:not(.composer-prosemirror)').first();
     await expect(proseMirror).toBeVisible({ timeout: 10_000 });
     await proseMirror.click();
 

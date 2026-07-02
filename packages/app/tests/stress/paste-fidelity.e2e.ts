@@ -31,7 +31,7 @@ async function getYText(page: Page): Promise<string> {
 
 async function pasteText(page: Page, text: string) {
   await page.evaluate((content) => {
-    const editor = document.querySelector('.ProseMirror');
+    const editor = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
     if (!editor) throw new Error('ProseMirror editor not found');
     const dt = new DataTransfer();
     dt.setData('text/plain', content);
@@ -51,7 +51,7 @@ async function pasteWithMimes(
 ) {
   await page.evaluate(
     ({ mimes: m, shiftKey }) => {
-      const editor = document.querySelector('.ProseMirror');
+      const editor = document.querySelector('.ProseMirror:not(.composer-prosemirror)');
       if (!editor) throw new Error('ProseMirror editor not found');
       const dt = new DataTransfer();
       for (const [key, value] of Object.entries(m)) dt.setData(key, value);
@@ -75,8 +75,8 @@ test.describe('V1 paste baseline — text/plain content through WYSIWYG', () => 
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('plain text paste survives round-trip', async ({ page }) => {
@@ -134,11 +134,11 @@ test.describe('Copy-side: simulateCopyAndRead captures MIME map', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('WYSIWYG copy → text/plain carries markdown', async ({ page }) => {
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await pasteText(page, '# Title\n\nBody text here.\n');
     await expect.poll(() => getYText(page), { timeout: 5_000 }).toContain('Body text here');
     const out = await simulateCopyAndRead(page, 'wysiwyg');
@@ -147,7 +147,7 @@ test.describe('Copy-side: simulateCopyAndRead captures MIME map', () => {
   });
 
   test('WYSIWYG copy → text/html is wrapped in data-pm-slice', async ({ page }) => {
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await pasteText(page, '# Hi');
     await expect.poll(() => getYText(page), { timeout: 5_000 }).toContain('Hi');
     const out = await simulateCopyAndRead(page, 'wysiwyg');
@@ -170,7 +170,7 @@ test.describe('Copy-side: simulateCopyAndRead captures MIME map', () => {
     await expect(async () => {
       expect(await getYText(page)).toContain('[[Page|Alias]]');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     const out = await simulateCopyAndRead(page, 'wysiwyg');
     expect(out.plain).toContain('[[Page|Alias]]');
     expect(out.html).toContain('class="wiki-link"');
@@ -193,8 +193,8 @@ test.describe('Paste from vendor HTML → structured content through Branch D', 
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('Gmail-shaped HTML strips gmail_* classes', async ({ page }) => {
@@ -283,8 +283,8 @@ test.describe('WYSIWYG FR-specific paste behavior', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('FR-10: paste inside a codeBlock inserts verbatim (no markdown parse)', async ({ page }) => {
@@ -365,7 +365,7 @@ test.describe('FR-21 large-paste chunked insertion (Source view)', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await page.getByRole('radio', { name: /Markdown source/i }).click({ timeout: 10_000 });
     await page.waitForSelector('.cm-content', { timeout: 10_000 });
   });
@@ -409,8 +409,8 @@ test.describe('FR-22 drag-and-drop MIME parity (dragstart uses same hooks as cop
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('dragstart writes both text/plain markdown AND text/html with data-pm-slice', async ({
@@ -418,9 +418,11 @@ test.describe('FR-22 drag-and-drop MIME parity (dragstart uses same hooks as cop
   }) => {
     await pasteText(page, '# Drag Me\n\nProse.\n');
     await expect.poll(() => getYText(page), { timeout: 5_000 }).toContain('Drag Me');
-    await selectAllAndWaitForSelection(page, '.ProseMirror');
+    await selectAllAndWaitForSelection(page, '.ProseMirror:not(.composer-prosemirror)');
     const out = await page.evaluate(() => {
-      const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
+      const editor = document.querySelector(
+        '.ProseMirror:not(.composer-prosemirror)',
+      ) as HTMLElement | null;
       if (!editor) throw new Error('no editor');
       const captured: Record<string, string> = {};
       const dt = new DataTransfer();
@@ -453,8 +455,8 @@ test.describe('Vendor HTML fixtures → structured content through Branch D', ()
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('QA-038 Apple Notes fixture strips Cocoa meta + Apple-tab-span classes', async ({
@@ -527,8 +529,8 @@ test.describe('Source-view copy output (FR-4, D4 byte-parity)', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await pasteText(page, '# Title\n\nBody with **bold** and a [[Page|Alias]] link.\n');
     await expect.poll(() => getYText(page), { timeout: 5_000 }).toContain('[[Page|Alias]]');
   });
@@ -578,8 +580,8 @@ test.describe('FR-11 fallback: oversized text/html falls through to text/plain',
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('QA-031 WYSIWYG >5MB text/html skips Branch D, lands via Branch E plain-text', async ({
@@ -617,8 +619,8 @@ test.describe('FR-20 URL scheme sanitization on copy', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('QA-034 javascript: / data: / vbscript: hrefs never reach the outbound clipboard HTML', async ({
@@ -639,7 +641,7 @@ test.describe('FR-20 URL scheme sanitization on copy', () => {
     await expect(async () => {
       expect(await getYText(page)).toContain('run-js');
     }).toPass({ timeout: 5_000 });
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     const out = await simulateCopyAndRead(page, 'wysiwyg');
     expect(out.html.toLowerCase()).not.toContain('javascript:');
     expect(out.html.toLowerCase()).not.toContain('data:text/html');
@@ -658,15 +660,17 @@ test.describe('FR-16 drag-and-drop scenarios beyond dragstart MIME parity', () =
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('QA-043 external drag-in from a Gmail-shaped HTML payload routes through Branch D', async ({
     page,
   }) => {
     await page.evaluate(() => {
-      const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
+      const editor = document.querySelector(
+        '.ProseMirror:not(.composer-prosemirror)',
+      ) as HTMLElement | null;
       if (!editor) throw new Error('no editor');
       const dt = new DataTransfer();
       dt.setData(
@@ -711,8 +715,8 @@ test.describe('FR-12 WYSIWYG cut writes MIMEs AND deletes selection', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('QA-044 Cmd+X emits text/plain markdown + text/html AND removes the selection', async ({
@@ -738,7 +742,7 @@ test.describe('FR-21 chunked insertion maintains 60fps frame budget', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
     await page.getByRole('radio', { name: /Markdown source/i }).click({ timeout: 10_000 });
     await page.waitForSelector('.cm-content', { timeout: 10_000 });
   });
@@ -840,8 +844,8 @@ test.describe('FR-17 + FR-12/FR-15 Source-view clipboard parity', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await pasteText(page, '# Source Heading\n\nProse with **bold**.\n');
     await expect.poll(() => getYText(page), { timeout: 5_000 }).toContain('Source Heading');
     await page.getByRole('radio', { name: /Markdown source/i }).click({ timeout: 10_000 });
@@ -933,7 +937,7 @@ test.describe('OK→OK round-trip through Branch C (data-pm-slice)', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('wikiLink + heading + bold round-trips through Branch C losslessly', async ({
@@ -950,7 +954,7 @@ test.describe('OK→OK round-trip through Branch C (data-pm-slice)', () => {
       expect(await getYText(page)).toContain('[[Page|Alias]]');
     }).toPass({ timeout: 5_000 });
 
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
     expect(captured.html).toContain('data-pm-slice');
     expect(captured.html).toContain('class="wiki-link"');
@@ -979,8 +983,8 @@ test.describe('OK→OK round-trip through Branch C (data-pm-slice)', () => {
     }, docName);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await expect
       .poll(() => getYText(page).then((s) => s.length), { timeout: 10_000 })
       .toBeLessThan(20);
@@ -1012,7 +1016,7 @@ test.describe('OK→OK round-trip through Branch C (data-pm-slice)', () => {
       expect(await getYText(page)).toContain('[[Thing]]');
     }).toPass({ timeout: 5_000 });
 
-    await page.click('.ProseMirror');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     const captured = await simulateCopyAndRead(page, 'wysiwyg');
     expect(captured.html).toContain('data-pm-slice');
 
@@ -1038,8 +1042,8 @@ test.describe('OK→OK round-trip through Branch C (data-pm-slice)', () => {
     }, docName);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await expect
       .poll(() => getYText(page).then((s) => s.length), { timeout: 10_000 })
       .toBeLessThan(20);
@@ -1065,8 +1069,8 @@ test.describe('Clipboard component contract — OK→OK descriptor identity (US-
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('CB-CONTRACT-1: <img/> JSX paste preserves descriptor identity (BUG class 1)', async ({
@@ -1148,8 +1152,8 @@ test.describe('Clipboard component contract — cross-machine + cross-PM-editor 
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('CB-CONTRACT-6: cross-machine D4 — raw markdown <Callout> from email recovers descriptor identity', async ({
@@ -1190,8 +1194,8 @@ test.describe('Clipboard component contract — drag-and-drop (US-009)', () => {
     await api.createPage(`${docName}.md`);
     await page.goto(`/#/${docName}`);
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
   });
 
   test('CB-CONTRACT-8: drag-out emits both text/plain markdown and text/html (FR-22 parity)', async ({
@@ -1266,8 +1270,8 @@ test.describe('Clipboard component contract — drag-and-drop (US-009)', () => {
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForProvider(page);
-    await page.waitForSelector('.ProseMirror');
-    await page.click('.ProseMirror');
+    await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
+    await page.click('.ProseMirror:not(.composer-prosemirror)');
     await expect
       .poll(() => getYText(page).then((s) => s.length), { timeout: 10_000 })
       .toBeLessThan(20);

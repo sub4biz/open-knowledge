@@ -43,7 +43,7 @@ test.beforeEach(async ({ page, api }) => {
   await api.createPage(`${testDocName}.md`);
   await page.goto(`/#/${testDocName}`);
   await waitForProvider(page);
-  await page.waitForSelector('.ProseMirror');
+  await page.waitForSelector('.ProseMirror:not(.composer-prosemirror)');
 });
 
 test.afterEach(() => {
