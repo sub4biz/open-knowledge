@@ -8,11 +8,15 @@ This guide will cover exporting your Notion workspace to markdown files so that 
 
 ## Install OpenKnowledge
 
-Download the latest version of the OpenKnowledge desktop app for macOS.
+### macOS (Apple Silicon)
+
+Download the latest version of the OpenKnowledge desktop app.
 
 <DownloadButton label="Download for macOS" />
 
-and install the [ok CLI](/docs/reference/cli):
+### Linux, Windows, Intel Mac
+
+Install the [ok CLI](/docs/reference/cli) with npm:
 
 ```bash
 npm install -g @inkeep/open-knowledge
@@ -36,6 +40,13 @@ ok migrate notion /path/to/unzipped-export
 # Apply the changes
 ok migrate notion /path/to/unzipped-export --apply
 ```
+
+<Callout type="info">
+  The desktop app installs the CLI automatically the
+  first time you launch it. If `ok` isn't found: make sure you've opened the
+  OpenKnowledge app at least once, then open a new terminal window. If it's still missing, add
+  `$HOME/.ok/bin` to your `PATH` manually.
+</Callout>
 
 Every transform is **idempotent**, so re-running is safe. See the tables below for a full list of differences between the Notion export and what OpenKnowledge supports.
 
