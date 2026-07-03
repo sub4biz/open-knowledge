@@ -45,7 +45,7 @@ export function DocsSidebarCta({ stars }: { stars: number | null }) {
         title={stars != null ? `${fullStars.format(stars)} GitHub stars` : 'Star on GitHub'}
         variant="outline"
         size="sm"
-        className="h-8 flex-1 justify-center gap-2 rounded-lg px-3 tracking-[-0.64px] text-sm! border-border uppercase  dark:border-border text-fd-secondary-foreground hover:bg-fd-accent hover:text-fd-accent-foreground bg-fd-secondary "
+        className="h-8 flex-1 justify-center gap-2 rounded-lg px-3 uppercase tracking-[-0.64px] text-sm sm:text-sm border-border bg-fd-secondary text-fd-secondary-foreground hover:bg-fd-accent hover:text-fd-accent-foreground"
       >
         <span className="flex items-center gap-2">
           <GitHubIcon className="size-4" />
