@@ -3,6 +3,7 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PageMarkdownActions } from '@/components/page-markdown-actions';
+import { ProductUpdatesForm } from '@/components/product-updates-form';
 import { metaDescription, SITE_NAME, SITE_URL, TWITTER_HANDLE } from '@/lib/site';
 import { source } from '@/lib/source';
 import { getMDXComponents } from '@/mdx-components';
@@ -19,6 +20,7 @@ export default async function Page(props: PageProps<'/docs/[...slug]'>) {
     <DocsPage
       toc={page.data.toc}
       full={page.data.full}
+      tableOfContent={{ footer: <ProductUpdatesForm /> }}
       footer={hideFooter ? { enabled: false } : undefined}
       // PageArticle has no bottom padding of its own; the prev/next footer
       // normally supplies it. Restore breathing room when the footer is hidden.

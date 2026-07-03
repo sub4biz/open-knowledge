@@ -273,6 +273,8 @@ export function MarketingButton({
           className={buttonClasses}
           target={target}
           rel={finalRel}
+          aria-label={props['aria-label']}
+          title={props.title}
           onClick={handleAnchorClick}
           download={computedDownload}
           aria-disabled={disabled ? 'true' : undefined}
@@ -284,7 +286,15 @@ export function MarketingButton({
     }
 
     return (
-      <Link href={href} className={buttonClasses} target={target} rel={finalRel} onClick={onClick}>
+      <Link
+        href={href}
+        className={buttonClasses}
+        target={target}
+        rel={finalRel}
+        aria-label={props['aria-label']}
+        title={props.title}
+        onClick={onClick}
+      >
         {buttonContent}
       </Link>
     );
