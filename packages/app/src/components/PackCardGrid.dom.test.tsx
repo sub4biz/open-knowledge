@@ -105,6 +105,7 @@ describe('PackCardGrid runtime behavior', () => {
 
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(allPacks.length + 1);
+    // Escape hatch is last, after every pack.
     const blankCard = buttons.at(-1);
     expect(blankCard?.textContent).toContain('create a new file');
 

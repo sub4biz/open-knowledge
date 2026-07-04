@@ -13,6 +13,16 @@ interface EmptyStateHeaderProps {
   readonly celebrateSignal: number;
 }
 
+/**
+ * Shared header for the editor canvas's empty-state surfaces. Renders the
+ * blob mascot beside a two-line title/subtitle column. Extracted so the
+ * surfaces stay visually consistent and a future copy/spacing change lands in
+ * one place.
+ *
+ * The blob sits in its own vertical slot (block-level) rather than inline-
+ * flex with the text — see the EmptyEditorState rAF-driven 3D transform
+ * comment for why mixing the two caused baseline jitter.
+ */
 export function EmptyStateHeader({ title, subtitle, celebrateSignal }: EmptyStateHeaderProps) {
   return (
     <div className="flex items-center gap-4">

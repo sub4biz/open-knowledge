@@ -4,12 +4,18 @@ import { GitHubIcon } from '@/components/icons/github';
 import { DOWNLOAD_ROUTE, GITHUB_URL } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
+// Compact for the button label (e.g. "1.5K"); full comma-grouped for the tooltip.
 const compactStars = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 1,
 });
 const fullStars = new Intl.NumberFormat('en-US');
 
+/**
+ * Two CTAs rendered in the docs sidebar `banner` slot, directly beneath the
+ * search bar. URLs share the source of truth in site.ts. `stars` is the live
+ * GitHub count (null when the fetch fails — the count is then omitted).
+ */
 export function DocsSidebarCta({ stars }: { stars: number | null }) {
   return (
     <div className="flex gap-2">

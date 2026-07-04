@@ -1,3 +1,33 @@
+/**
+ * Shared skill install-state at `~/.ok/skill-state.yml`.
+ *
+ * Single user-global YAML file describing the install-state of each
+ * actively-gated skill target.
+ *
+ * Targets:
+ *   - `claude-cowork` — written by `buildAndOpenSkill` (server HTTP path) and
+ *     `handleBuildAndOpen` (desktop Electron bridge). Read by the renderer's
+ *     install gate before triggering a fresh `.skill` rebuild.
+ *   - `cli-hosts`     — written by `installUserSkill` after a successful
+ *     `npx skills add --agent '*' -g` subprocess. Replaces the legacy
+ *     `~/.ok/skill-installed-version` file (migrated on first encounter).
+ *
+ * `recordedAt` is in-band: the YAML's own mtime is no longer authoritative.
+ * `recordedAt` updates on every successful `writeTargetVersion` call,
+ * including reinstalls of the same version (preserves the pre-promotion
+ * mtime-update semantic).
+ *
+ * Concurrency:
+ *   - Writes are atomic via tmp + rename (`atomicWriteFile` from core util).
+ *   - Read-modify-write through `writeTargetVersion` is serialized within
+ *     a single Node process by JS event-loop semantics; cross-process
+ *     concurrent installs converge via atomic rename — last writer wins.
+ *   - Read paths are fail-soft: ENOENT, parse error, or schema violation
+ *     return null without throwing (renderer-ladder fall-through contract).
+ *
+ * Schema lives at `packages/core/src/skill-state/schema.ts`.
+ */
+
 import { readFile } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,25 +48,52 @@ import { tracedAtomicFs, tracedMkdir } from './fs-traced.ts';
 
 const readFileAsync = promisify(readFile);
 
+// Re-exports for downstream callers (HTTP handlers, MCP tools, CLI):
+// keep importing from this module rather than core for a stable surface.
 export {
   SKILL_STATE_TARGETS,
   type SkillStateSurface,
   type SkillStateTarget,
 } from '@inkeep/open-knowledge-core';
 
+/** Path to the skill-state YAML file under `$home`. */
 export function skillStateYamlPath(home: string): string {
   return join(home, ...SKILL_STATE_REL);
 }
 
+/**
+ * Minimal logger duck-type. Compatible with `PinoLogger` (`warn(data, msg)`)
+ * and ad-hoc shims.
+ */
 export interface SkillStateLogger {
   warn: (data: unknown, message: string) => void;
   info?: (data: unknown, message: string) => void;
 }
 
+/**
+ * Console-backed logger used as the default when callers don't pass one.
+ * Emits structured payloads via `console.warn(message, data)` so the
+ * `event` field stays observable in stdout/journald regardless of whether
+ * a Pino logger is wired.
+ */
 const DEFAULT_LOGGER: SkillStateLogger = {
   warn: (data, message) => console.warn(message, data),
 };
 
+/**
+ * Adapter that routes core's atomic write through the server's traced
+ * fs primitives so disk writes show up as `fs.*` spans.
+ */
+/**
+ * Read and validate `~/.ok/skill-state.yml`. Returns:
+ *   - `null` on ENOENT, YAML parse error, or schema violation (fail-soft).
+ *   - The validated SkillState on success.
+ *
+ * Other fs errors (EACCES, EIO, …) propagate so the caller decides whether
+ * to fail-soft (renderer-bound gate) or fail-hard. Callers that want
+ * strict behavior on parse / schema issues use `SkillStateSchema.safeParse`
+ * directly on raw YAML they control.
+ */
 export async function readSkillStateFile(
   home: string,
   logger: SkillStateLogger = DEFAULT_LOGGER,
@@ -93,6 +150,13 @@ export async function readSkillStateFile(
   return parsed.data;
 }
 
+/**
+ * Write a validated SkillState atomically. Validates via `SkillStateSchema`
+ * before write — refuses to persist a malformed document. Caller is
+ * responsible for assembling the `SkillState` object correctly; this is
+ * not an "apply patch" surface. Most callers use `writeTargetVersion`
+ * which handles read-modify-write.
+ */
 async function writeSkillStateFile(home: string, state: SkillState): Promise<void> {
   const parsed = SkillStateSchema.safeParse(state);
   if (!parsed.success) {
@@ -106,6 +170,9 @@ async function writeSkillStateFile(home: string, state: SkillState): Promise<voi
   const path = skillStateYamlPath(home);
   await tracedMkdir(dirname(path), { recursive: true });
 
+  // Build YAML from the validated object. Cast matches the pattern in
+  // `write-config-patch.ts` — yaml@2's createNode returns a non-Parsed
+  // Node but the Document accepts it after assignment.
   const doc = parseDocument('');
   doc.contents = doc.createNode(parsed.data) as ParsedNode;
   const serialized = doc.toString();
@@ -113,6 +180,15 @@ async function writeSkillStateFile(home: string, state: SkillState): Promise<voi
   await atomicWriteFile(path, serialized, { fs: tracedAtomicFs });
 }
 
+/**
+ * Read the recorded version for a target.
+ *
+ * Returns `null` on:
+ *   - file absent (ENOENT)
+ *   - YAML parse error
+ *   - schema violation (including unknown schema version)
+ *   - target absent in `targets`
+ */
 export async function readTargetVersion(
   home: string,
   target: SkillStateTarget,
@@ -124,6 +200,13 @@ export async function readTargetVersion(
   return entry?.version ?? null;
 }
 
+/**
+ * Read the recorded `recordedAt` for a target.
+ *
+ * Source of truth is the in-band `recordedAt` field; the YAML file's mtime
+ * is no longer authoritative. Returns `null` on the same conditions as
+ * `readTargetVersion`.
+ */
 export async function readTargetRecordedAt(
   home: string,
   target: SkillStateTarget,
@@ -135,6 +218,19 @@ export async function readTargetRecordedAt(
   return entry?.recordedAt ?? null;
 }
 
+/**
+ * Write the recorded version for a target. Atomic via tmp + rename.
+ *
+ * `surface` is optional install-source attribution. When omitted, the
+ * existing entry's `surface` (if any) is preserved; passing a value
+ * overwrites it. `recordedAt` is updated to "now" on every successful
+ * call, including reinstalls of the same version.
+ *
+ * Errors propagate (existing `installUserSkill` contract: write failure
+ * flips the subprocess result to `'failed'`). The renderer-bound gate
+ * treats write failure as "guard didn't persist; install will run again
+ * on next click".
+ */
 export async function writeTargetVersion(
   home: string,
   target: SkillStateTarget,
@@ -146,9 +242,12 @@ export async function writeTargetVersion(
     throw new Error(`Refusing to write invalid version string: ${version}`);
   }
 
+  // Read existing or start fresh. A fresh document is generated when the
+  // file is absent or unreadable — same fail-soft contract as readers.
   const existing = (await readSkillStateFile(home, logger)) ?? emptySkillState();
   const recordedAt = new Date().toISOString();
 
+  // Preserve existing surface when caller doesn't pass one.
   const previousEntry = existing.targets[target];
   const nextSurface = surface !== undefined ? surface : (previousEntry?.surface ?? undefined);
 
@@ -168,6 +267,12 @@ export async function writeTargetVersion(
   await writeSkillStateFile(home, next);
 }
 
+/**
+ * Canonical skill version: the `version` field of
+ * `@inkeep/open-knowledge-server`'s `package.json`. Exposed to the renderer
+ * via `GET /api/skill/install-state` so callers don't have to worry about
+ * which version namespace to compare against.
+ */
 export async function readServerPackageVersion(): Promise<string> {
   const pkgUrl = new URL('../package.json', import.meta.url);
   const raw = await readFileAsync(fileURLToPath(pkgUrl), 'utf-8');
@@ -178,11 +283,18 @@ export async function readServerPackageVersion(): Promise<string> {
   return parsed.version;
 }
 
+/** Public snapshot returned by `GET /api/skill/install-state`. */
 export interface SkillInstallStateSnapshot {
   currentVersion: string;
   targets: Record<SkillStateTarget, { version: string; recordedAt: string } | null>;
 }
 
+/**
+ * Build the full GET-endpoint snapshot. If `readServerPackageVersion`
+ * throws (corrupt or missing package.json) the caller is expected to
+ * surface a 500 — we don't fall back here because a missing version is
+ * genuine breakage, not a per-target absence.
+ */
 export async function readSkillInstallStateSnapshot(
   home: string,
   logger?: SkillStateLogger,
@@ -194,6 +306,15 @@ export async function readSkillInstallStateSnapshot(
   return { currentVersion, targets };
 }
 
+/**
+ * Read the per-target snapshot. Each target resolves independently — a
+ * missing or unreadable target shows as `null` for that target alone; the
+ * snapshot still resolves.
+ *
+ * Errors during file read are NOT propagated here — this function follows
+ * the renderer-bound contract "missing target → null." Callers needing
+ * strict semantics use `readTargetVersion` directly.
+ */
 export async function readAllTargets(
   home: string,
   logger: SkillStateLogger = DEFAULT_LOGGER,
@@ -202,6 +323,9 @@ export async function readAllTargets(
   try {
     state = await readSkillStateFile(home, logger);
   } catch (err) {
+    // Non-ENOENT errors (EACCES, EIO, …) collapse to `null` for the
+    // GET-endpoint contract, but we surface them as a warning so
+    // permission/IO issues on `~/.ok/skill-state.yml` don't go invisible.
     logger.warn(
       {
         event: 'skill-state.read-error',

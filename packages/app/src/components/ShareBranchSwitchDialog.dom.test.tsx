@@ -1,9 +1,24 @@
+/**
+ * RTL behavioral tests for ShareBranchSwitchDialog.
+ *
+ * Exercises the actual main → renderer payload delivery seam at the unit
+ * layer: emit a `project-branch-switch` payload on an injected store, then
+ * assert the dialog mounts, Cancel just dismisses, Switch dispatches
+ * runCheckout, and warm-focus dispatch fires after the CC1 ack.
+ *
+ * Mocks `@lingui/react/macro` so the Trans/useLingui wrapper resolves without
+ * a real LinguiProvider (no babel-plugin-macros at test time — same gap
+ * AddPropertyRow.dom.test.tsx avoids by stubbing the macro).
+ */
+
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { BranchInfoResponse, CheckoutResponse } from '@inkeep/open-knowledge-core';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { OkDesktopBridge, OkShareReceivedPayload } from '@/lib/desktop-bridge-types';
 
+// Radix Dialog (focus-trap) reaches for `NodeFilter` + `ResizeObserver`.
+// Shim per the convention in sibling .dom.test.tsx files.
 type WindowGlobals = { NodeFilter?: typeof NodeFilter };
 type GlobalWithDomShims = typeof globalThis &
   WindowGlobals & { window?: WindowGlobals; ResizeObserver?: unknown };
@@ -23,6 +38,9 @@ if (globalWithDomShims.ResizeObserver === undefined) {
   globalWithDomShims.ResizeObserver = NoopResizeObserver;
 }
 
+// Lingui macros: not transformed in this test substrate. Stub to identity
+// renderers so Trans/Plural pass children through and useLingui returns a
+// passthrough `t` template tag.
 mock.module('@lingui/react/macro', () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
   useLingui: () => ({
@@ -39,6 +57,7 @@ mock.module('@lingui/react/macro', () => ({
   Plural: ({ children }: { children?: ReactNode }) => children ?? null,
 }));
 
+// Sonner is loaded by the SUT — stub to mute its real toaster.
 const toastError = mock(() => {});
 mock.module('sonner', () => ({
   toast: { error: toastError, info: mock(() => {}), success: mock(() => {}) },
@@ -138,12 +157,14 @@ describe('ShareBranchSwitchDialog — payload gating', () => {
     } as unknown as OkDesktopBridge;
     store.install({ bridge: fakeBridgeForStore });
     render(<ShareBranchSwitchDialog bridge={bridge} store={store} />);
+    // Component should not mount for launcher payloads.
     expect(screen.queryByTestId('share-branch-switch-dialog')).toBeNull();
   });
 
   test("mounts on a 'project-branch-switch' payload + fetches branch-info from the payload's projectPath", () => {
     const store = createShareReceiveStore();
     const { bridge, calls } = makeBridge({
+      // Pending so we observe the loading state before info arrives.
       fetchBranchInfo: mock(() => new Promise<BranchInfoResponse>(() => {})),
     });
     const payload = projectBranchSwitchPayload();
@@ -179,6 +200,7 @@ describe('ShareBranchSwitchDialog — Cancel discipline (OQ2)', () => {
   test('Cancel dismisses the store snapshot — editor stays open (no bridge.project.open call)', () => {
     const store = createShareReceiveStore();
     const { bridge, calls } = makeBridge({
+      // Hold the fetch open so we Cancel during loading state.
       fetchBranchInfo: mock(() => new Promise<BranchInfoResponse>(() => {})),
     });
     const payload = projectBranchSwitchPayload();
@@ -194,7 +216,9 @@ describe('ShareBranchSwitchDialog — Cancel discipline (OQ2)', () => {
 
     fireEvent.click(screen.getByTestId('share-branch-switch-cancel'));
 
+    // Store dismissed → snapshot null → dialog unmounts.
     expect(store.getSnapshot()).toBeNull();
+    // must NOT dispatch a project.open call as part of Cancel.
     expect(calls.open).not.toHaveBeenCalled();
   });
 });
@@ -217,6 +241,8 @@ describe('ShareBranchSwitchDialog — Open-in-current dispatch', () => {
     store.install({ bridge: fakeBridgeForStore });
     render(<ShareBranchSwitchDialog bridge={bridge} store={store} />);
 
+    // Branch info is needed before the open-current button shows
+    // (shareFileExists + clean tree → openCurrentEnabled).
     const button = await screen.findByTestId('share-branch-switch-open-current');
     await act(async () => {
       fireEvent.click(button);
@@ -228,7 +254,9 @@ describe('ShareBranchSwitchDialog — Open-in-current dispatch', () => {
     expect(firstArg).toBeDefined();
     expect(firstArg.path).toBe(payload.projectPath);
     expect(firstArg.pendingDeepLinkTarget).toEqual({ kind: 'doc', path: 'docs/notes.md' });
+    // Stay-on-current: no share-branch threading.
     expect(firstArg.pendingBranch).toBeUndefined();
+    // Store dismissed after dispatch.
     expect(store.getSnapshot()).toBeNull();
   });
 
@@ -255,6 +283,10 @@ describe('ShareBranchSwitchDialog — Open-in-current dispatch', () => {
       await Promise.resolve();
     });
 
+    // The dialog dismisses synchronously, but the open reject must still reach
+    // the user — otherwise they land in the editor with no doc and no feedback.
+    // Assert the path-specific message (not a global count) so a stray toast
+    // from a sibling test can't make this pass or fail spuriously.
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith(
         'The document could not be opened — try navigating to it manually.',
@@ -325,6 +357,9 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
       await Promise.resolve();
     });
 
+    // runCheckout fires synchronously off the click. awaitBranchSwitched
+    // and the warm-focus open() fire after the phase transition lands
+    // in the next render (the phase-keyed effect).
     expect(calls.runCheckout).toHaveBeenCalledTimes(1);
     expect(calls.runCheckout).toHaveBeenCalledWith({
       projectPath: payload.projectPath,
@@ -421,6 +456,7 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
 
   test('Switch warm-focus open() reject surfaces a toast — no silent swallow', async () => {
     const store = createShareReceiveStore();
+    // Checkout + CC1 ack succeed; only the final warm-focus open() rejects.
     const { bridge, calls } = makeBridge({
       open: mock(async () => {
         throw new Error('window-manager-error');
@@ -442,10 +478,15 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
       await Promise.resolve();
     });
 
+    // Pump the phase-keyed CC1 gate: runCheckout → awaiting-cc1-recycle effect
+    // → awaitBranchSwitched(ok) → warm-focus open() (which rejects here).
     await waitFor(() => {
       expect(calls.open).toHaveBeenCalledTimes(1);
     });
 
+    // After the open reject lands, the user gets a distinct toast rather than a
+    // closed dialog with no doc and no signal. Assert the switch-path message
+    // specifically — contamination-proof and pins the exact copy for this path.
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith(
         'Branch switched but the document could not be opened — try navigating to it manually.',
@@ -474,6 +515,7 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
       await Promise.resolve();
     });
 
+    // Checkout failure is surfaced and the CC1 gate never engages (no nav).
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith(
         'Could not switch to feat/branch-x. Try switching manually.',
@@ -485,6 +527,7 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
 
   test('Switch with awaitBranchSwitched {ok:false} (CC1 timeout) toasts the timeout copy', async () => {
     const store = createShareReceiveStore();
+    // Checkout succeeds; the CC1 recycle never acks within the window.
     const { bridge, calls } = makeBridge({
       awaitBranchSwitched: mock(async () => ({ ok: false as const })),
     });
@@ -504,6 +547,7 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
       await Promise.resolve();
     });
 
+    // Pump the phase-keyed CC1 gate to its {ok:false} resolution.
     await waitFor(() => {
       expect(calls.awaitBranchSwitched).toHaveBeenCalledTimes(1);
     });
@@ -512,6 +556,7 @@ describe('ShareBranchSwitchDialog — Switch path (runCheckout + CC1 gate)', () 
         'Branch switch timed out — try opening the document manually.',
       );
     });
+    // CC1 timeout is distinct from success — no warm-focus navigation.
     expect(calls.open).not.toHaveBeenCalled();
   });
 });

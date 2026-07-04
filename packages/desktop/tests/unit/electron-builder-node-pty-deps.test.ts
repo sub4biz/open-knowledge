@@ -4,6 +4,30 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
+/**
+ * Regression guard for node-pty packaging on the arm64 desktop build.
+ *
+ * node-pty ships its native addon and an extensionless `spawn-helper` binary
+ * under `prebuilds/<platform>-<arch>/`. Three things must hold together or the
+ * in-app terminal is dead on arrival in the packaged `.app`:
+ *
+ *   1. node-pty is a real (upstream) dependency — NOT `@lydell/node-pty`, whose
+ *      per-arch optionalDependency layout recreates the keyring universal-merge
+ *      hazard that forced this build arm64-only.
+ *   2. `**\/node-pty/prebuilds/**` is in asarUnpack. The generic `**\/*.node`
+ *      rule unpacks `pty.node` but NOT `spawn-helper` (no `.node` extension);
+ *      node-pty resolves the helper from `app.asar.unpacked` at runtime, so it
+ *      must be on the real filesystem or `pty.fork()` throws "posix_spawnp
+ *      failed".
+ *   3. afterPack.mjs chmods the unpacked spawn-helper to 0755 — node-pty ships
+ *      it 0644 (node-pty#850) and asarUnpack preserves that mode. Behavior of
+ *      that chmod is covered by ensure-node-pty-exec.test.ts; this guard only
+ *      pins that the call site still exists alongside the unpack rule.
+ *
+ * The build also stays arm64-only (no universal target) — node-pty would add a
+ * second per-arch native into any universal lipo-merge.
+ */
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(__dirname, '../..');
 const builderYml = resolve(desktopRoot, 'electron-builder.yml');

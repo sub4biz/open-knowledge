@@ -1,3 +1,19 @@
+/**
+ * Unit tests for the `share_link` MCP tool.
+ *
+ * Boundary checks:
+ *   - Polymorphic target resolution: doc OR folder, auto-probed from disk
+ *     (`.mdx` → `.md` → directory) or pinned via `kind`. The six-case
+ *     matrix lives in the "target resolution" describe block.
+ *   - Trailing `.md`/`.mdx` normalization on doc paths.
+ *   - The five `ShareConstructUrlErrorCode` business-logic branches map to
+ *     distinct, agent-actionable messages. `no-remote` is the load-bearing
+ *     one — it must direct the user at publishing (not run it).
+ *   - Tool-local codes (`target-not-found`, `kind-mismatch`, `unknown`) are
+ *     produced inline by the wrapper and are distinct from the system-wide
+ *     `urn:ok:error:doc-not-found` envelope.
+ *   - Happy path returns the marketing share URL + branch + resolvedKind.
+ */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { hostname, tmpdir } from 'node:os';
@@ -47,6 +63,7 @@ function createFakeServer() {
   };
 }
 
+/** Standard success body for the construct-url mock. */
 function successBody() {
   return {
     ok: true,
@@ -64,6 +81,9 @@ let mockResponse: { status: number; body: Record<string, unknown> } = {
   status: 200,
   body: {},
 };
+// Escape hatch for the non-JSON / non-2xx scenarios: when set, the fake server
+// returns this Response verbatim (bypasses JSON serialization). Per-test
+// `beforeEach` clears it so leakage between cases stays impossible.
 let mockRawResponse: Response | null = null;
 
 beforeAll(() => {
@@ -111,6 +131,14 @@ function makeDeps(serverUrl: string | undefined): ShareLinkDeps {
   };
 }
 
+/**
+ * Write a live `ui.lock` under `<tmpDir>/.ok/local/` so the preview-url
+ * resolver's reachability gate fires (a non-null `previewUrl` means "a UI is
+ * running"). Uses THIS process's pid + hostname so `readUiLock`'s
+ * `isProcessAlive` + same-host checks both pass. Without this, every success
+ * case resolves `previewUrl: null` (no UI), so the lock is what lets us assert
+ * the concrete doc/folder route shapes.
+ */
 async function writeUiLock(): Promise<void> {
   const lockDir = resolve(tmpDir, '.ok', 'local');
   await mkdir(lockDir, { recursive: true });
@@ -552,6 +580,12 @@ describe('share_link — business-logic errors', () => {
 });
 
 describe('share_link — message coverage', () => {
+  /**
+   * Every output-enum code must map to a non-empty, agent-actionable message.
+   * Server codes flow through `messageForShareError`; tool-local codes
+   * (target-not-found, kind-mismatch) are produced inline. `unknown` is
+   * exercised by the transport/protocol error paths below.
+   */
   const SERVER_CODES = [
     'no-remote',
     'detached-head',
@@ -601,6 +635,9 @@ describe('share_link — message coverage', () => {
 
 describe('share_link — transport / protocol error paths', () => {
   test('non-JSON 200 body: tool-level error mentions the parse failure', async () => {
+    // A misconfigured proxy returning HTML on a JSON shim, or a truncated
+    // response — covered defensively in share-link.ts. The test pins the
+    // catch site so a future refactor that drops the JSON parse guard fails.
     await writeFile(resolve(tmpDir, 'page.md'), '# page');
     mockRawResponse = new Response('<html>not json</html>', {
       status: 200,

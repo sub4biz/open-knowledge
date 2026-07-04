@@ -22,13 +22,21 @@ export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?
   );
   const [documentCount, setDocumentCount] = useState<number | null>(null);
   const [celebrateSignal, setCelebrateSignal] = useState(0);
+  // Sticky once true — fetch failures after first success keep the prior count.
   const documentCountResolvedRef = useRef(false);
+  // Cleared on unmount so a late burst doesn't fire on a stale component.
   const celebrateTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
 
     async function refresh() {
+      // Entry count is the sole signal driving the empty-state UX. We
+      // count BOTH documents AND folders here because 4 of 5 packs
+      // (software-lifecycle, plain-notes, worldbuilding, writing-pipeline)
+      // create only folders — counting `kind: 'document'` alone would
+      // re-show the onboarding CTA immediately after a successful non-KB
+      // seed.
       try {
         const { ok, body } = await fetchDocumentListShared();
         if (cancelled) return;
@@ -37,6 +45,7 @@ export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?
           setDocumentCount(countEntries(success.data.documents));
           documentCountResolvedRef.current = true;
         } else if (!documentCountResolvedRef.current) {
+          // Fallback on initial fetch failure — safer than pitching onboarding blind.
           setDocumentCount(1);
           documentCountResolvedRef.current = true;
         }
@@ -61,8 +70,11 @@ export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?
   }, []);
 
   function handleSeedApplied() {
+    // Delayed so the dialog close + toast settle before attention shifts to the blob.
     clearTimeout(celebrateTimerRef.current);
     celebrateTimerRef.current = setTimeout(() => setCelebrateSignal((prev) => prev + 1), 500);
+    // Apply created docs / scaffolded folders — refetch so the empty-state copy
+    // switches branches in sync.
     fetchDocumentListShared()
       .then(({ ok, body }) => {
         if (!ok) return;
@@ -71,17 +83,29 @@ export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?
           setDocumentCount(countEntries(success.data.documents));
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        /* best-effort — celebration is the priority */
+      });
   }
 
+  // Gate the copy until we know which branch to render — avoids flashing the wrong text.
   const messageReady = documentCount !== null;
   const isOnboarding = documentCount === 0;
 
   function handleDialogOpenChange(next: boolean) {
     setSeedDialogOpen(next);
+    // Drop the locked pack once the dialog closes so the next entry point
+    // (legacy "Pick a starter pack" CTA on the no-selection branch) doesn't
+    // inherit a stale selection.
     if (!next) setSeedDialogInitialPackId(undefined);
   }
 
+  // When the docked terminal is open (an empty-state CLI launch), keep the
+  // header — blob + headline + subtitle, left-aligned in the same column as the
+  // full view — but drop the composer bubble + starter-pack list, since the
+  // terminal owns the lower half and the full surface would crowd it.
+  // `justify-end` bottom-anchors the header just above the dock so it rides
+  // up/down as the terminal is resized (matching the prior blob-only pose).
   if (terminalVisible) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-end px-6 sm:px-12 md:px-16 pb-8 pt-10">
@@ -107,6 +131,8 @@ export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?
           <CreateView
             celebrateSignal={celebrateSignal}
             onAddStarterPack={() => {
+              // No `initialPackId` — lands at step 1 (PackCardGrid) so the
+              // user picks a pack inside the dialog rather than the canvas.
               setSeedDialogOpen(true);
             }}
           />
@@ -122,14 +148,36 @@ export function EmptyEditorState({ terminalVisible = false }: { terminalVisible?
   );
 }
 
+/**
+ * Counts user-visible content entries for the onboarding gate. Exported for
+ * unit-testing the hidden-file filter independently of the React tree.
+ */
 export function countEntries(
   entries: ReadonlyArray<{ kind?: unknown; docName?: string; path?: string }>,
 ): number {
+  // Count BOTH documents AND folders — most starter packs (4 of 5) create
+  // only folders, no top-level documents. Counting documents alone would
+  // re-trigger the onboarding CTA immediately after a successful non-KB
+  // seed.
+  //
+  // Hidden-file filter (core `isHiddenDocName`: the per-segment dot-prefix
+  // rule plus the `HIDDEN_CONFIG_BASENAMES` basename allowlist) lives in
+  // `filterVisibleEntries` — single source of truth shared with the
+  // sidebar FileTree ingestion. `.git/` and `.ok/` are already pruned
+  // server-side by `BUILTIN_SKIP_DIRS`; the shared filter handles
+  // user-authored hidden folders like `.private/` or `.archive/` plus
+  // non-dotted agent configs like `opencode.json`.
   return filterVisibleEntries(entries).filter(
     (entry) => entry.kind === 'document' || entry.kind === 'folder',
   ).length;
 }
 
+/**
+ * Header-only empty state shown while the docked terminal is open. Shares the
+ * onboarding/create copy with the full-height views via `getEmptyStateCopy`,
+ * but omits the composer + starter packs that would crowd the terminal below.
+ * Left-aligned within the shared `max-w-5xl` column; the parent bottom-anchors it.
+ */
 function TerminalEmptyHeader({
   isOnboarding,
   celebrateSignal,

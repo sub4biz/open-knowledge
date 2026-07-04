@@ -25,6 +25,8 @@ function renderStrip(props?: {
   const onToggleDock = mock(() => {});
   const onCollapse = mock(() => {});
   render(
+    // The app mounts a root TooltipProvider (main.tsx); the strip's control
+    // tooltips need that context, so the isolated render supplies its own.
     <TooltipProvider>
       <TerminalTabStrip
         sessions={props?.sessions ?? SESSIONS}
@@ -66,6 +68,8 @@ describe('TerminalTabStrip', () => {
 
   test('hovering a tab surfaces the full (untruncated) title in a tooltip', async () => {
     const user = userEvent.setup();
+    // A process-set OSC title long enough to hard-clip at the tab's max width;
+    // the tooltip must carry the whole thing so a hover reveals what was cut.
     const longTitle =
       'claude — refactor the terminal dock reveal affordance across every view kind';
     renderStrip({ sessions: [{ id: 's1', label: longTitle }], activeSessionId: 's1' });
@@ -96,6 +100,8 @@ describe('TerminalTabStrip', () => {
     await user.click(screen.getByRole('tab', { name: 'Terminal 2' }));
 
     expect(onSelect).toHaveBeenCalledWith('s2');
+    // No prop change happened, so the strip must still show the original active
+    // tab — the component owns no selection state of its own.
     expect(screen.getByRole('tab', { name: 'Terminal 1' }).getAttribute('aria-selected')).toBe(
       'true',
     );
@@ -108,9 +114,13 @@ describe('TerminalTabStrip', () => {
     const user = userEvent.setup();
     const { onTabActivate } = renderStrip({ activeSessionId: 's1' });
 
+    // Pointer/Enter activation routes through onTabActivate so the consumer can
+    // move focus into the terminal on a deliberate select.
     await user.click(screen.getByRole('tab', { name: 'Terminal 2' }));
     expect(onTabActivate).toHaveBeenCalledWith('s2');
 
+    // Arrow-key navigation must NOT fire onTabActivate — it would steal focus
+    // out of the tablist while the user is arrowing across tabs.
     onTabActivate.mockClear();
     act(() => screen.getByRole('tab', { name: 'Terminal 2' }).focus());
     await user.keyboard('{ArrowRight}');
@@ -167,6 +177,8 @@ describe('TerminalTabStrip', () => {
     const newChat = screen.getByRole('button', { name: 'New Claude chat' });
     const dockToggle = screen.getByRole('button', { name: 'Dock terminal to the right' });
     const collapse = screen.getByRole('button', { name: 'Collapse terminal' });
+    // New chat sits immediately right of the tablist; the spacer pushes the
+    // trailing group (dock-toggle … collapse) to the far right.
     expect(
       newChat.compareDocumentPosition(dockToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -189,6 +201,7 @@ describe('TerminalTabStrip', () => {
 
   test('the dock-toggle reports onToggleDock and labels the resulting position', async () => {
     const user = userEvent.setup();
+    // Bottom-docked → the toggle moves it to the right.
     const bottom = renderStrip({ dockPosition: 'bottom' });
     const toRight = screen.getByRole('button', { name: 'Dock terminal to the right' });
     await user.click(toRight);
@@ -196,6 +209,7 @@ describe('TerminalTabStrip', () => {
     expect(screen.queryByRole('button', { name: 'Dock terminal to the bottom' })).toBeNull();
     cleanup();
 
+    // Right-docked → the toggle moves it to the bottom (label flips).
     const right = renderStrip({ dockPosition: 'right' });
     const toBottom = screen.getByRole('button', { name: 'Dock terminal to the bottom' });
     await user.click(toBottom);

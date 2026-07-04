@@ -1,3 +1,18 @@
+/**
+ * `share_link` MCP tool — construct a GitHub-substrate share URL for a doc
+ * OR a folder. The target kind is auto-probed from disk by default and can be
+ * pinned explicitly via the optional `kind` argument.
+ *
+ * Wraps `POST /api/share/construct-url` (the same endpoint the editor's
+ * Share button calls). Read-only against the working tree: probes HEAD
+ * branch, `[remote "origin"] url`, and `refs/remotes/origin/<branch>`. No
+ * commits, no pushes, no fetches.
+ *
+ * Agents do NOT get the Publish-to-GitHub wizard. When the project has no
+ * GitHub remote, the no-remote branch returns a clear actionable error
+ * rather than walking the agent through `gh repo create` + initial push —
+ * publishing is an explicit user act, not an agent-initiated side effect.
+ */
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -49,6 +64,16 @@ interface ShareLinkSuccess {
   resolvedKind: ShareKind;
 }
 
+/**
+ * Tool-local failure codes. The five `ShareConstructUrlErrorCode` server codes
+ * flow through verbatim; `target-not-found`, `kind-mismatch`, and `unknown`
+ * are produced INLINE by this wrapper (not by `messageForShareError`, whose
+ * `never`-guard must keep covering exactly the five server codes).
+ *
+ * `target-not-found` / `kind-mismatch` are distinct from the system-wide
+ * `urn:ok:error:doc-not-found` problem+json envelope — they live only in this
+ * tool's structured output, never on the wire.
+ */
 type ShareLinkErrorCode =
   | ShareConstructUrlErrorCode
   | 'target-not-found'
@@ -62,6 +87,10 @@ interface ShareLinkError {
   branch?: string;
 }
 
+/**
+ * Map a `ShareConstructUrlErrorCode` to a one-line agent-facing message.
+ * Phrased so an agent can relay it to the user verbatim without re-writing.
+ */
 function messageForShareError(error: ShareConstructUrlErrorCode, branch?: string): string {
   switch (error) {
     case 'no-remote':
@@ -69,6 +98,12 @@ function messageForShareError(error: ShareConstructUrlErrorCode, branch?: string
     case 'detached-head':
       return 'HEAD is detached (no branch checked out). Ask the user to check out a branch (`git checkout <branch>`) before sharing.';
     case 'branch-not-on-origin': {
+      // Branch-existence is checked against the local `refs/remotes/origin/<branch>`
+      // ref (no `git ls-remote`). A stale local fetch can produce a false negative
+      // on a branch that's already on origin — see the schema docstring in
+      // `core/src/schemas/api/share.ts`. The fetch hint gives the agent a recovery
+      // prompt for that case so it doesn't get stuck if the user replies
+      // "I already pushed it."
       const fetchHint =
         ' (If the user says it is already pushed, ask them to `git fetch origin` first to refresh the local mirror, then retry.)';
       return branch
@@ -80,12 +115,19 @@ function messageForShareError(error: ShareConstructUrlErrorCode, branch?: string
     case 'invalid-path':
       return 'The resolved share path is not shareable (escapes the project root or names the `.git` subtree). Pass a normal target path under the content directory.';
     default: {
+      // Exhaustiveness guard: adding a new variant to `ShareConstructUrlErrorCodeSchema`
+      // becomes a compile error here. The runtime fallback is informational only —
+      // TypeScript catches the divergence before we ship. Tool-local codes
+      // (target-not-found / kind-mismatch / unknown) are handled at their inline
+      // call sites, never routed here, so the `never` guard stays over the five
+      // server codes.
       const _exhaustive: never = error;
       return `Unknown share-construct-url error: ${String(_exhaustive)}`;
     }
   }
 }
 
+/** Probe whether `<contained.abs>` resolves to a directory on disk. */
 function isExistingDirectory(abs: string): boolean {
   try {
     return statSync(abs).isDirectory();
@@ -94,12 +136,31 @@ function isExistingDirectory(abs: string): boolean {
   }
 }
 
+/**
+ * Probe `<absBase>.mdx` then `.md`; return the project-relative path of the
+ * first existing file, or `null` when neither exists / the file escapes the
+ * project root.
+ *
+ * Precedence matches `SUPPORTED_DOC_EXTENSIONS` in `doc-extensions.ts`:
+ * `.mdx` wins over `.md` when both exist (industry convention — `.mdx` is a
+ * strict superset, so a co-located `.mdx` is presumed to intentionally
+ * override the `.md`). The wider OK system keys writes/edits/the editor on
+ * the same precedence via `getDocExtension`; share URLs must point at the
+ * same file the user is editing, not its `.md` shadow.
+ *
+ * `getDocExtension` itself isn't reachable from here — it lives in the
+ * Hocuspocus server process's module state, and the MCP stdio server hits
+ * Hocuspocus over HTTP. The existsSync probe is the out-of-process equivalent;
+ * it iterates `SUPPORTED_DOC_EXTENSIONS` directly so the precedence can't drift.
+ */
 function resolveExistingDocPath(projectDir: string, absBase: string): string | null {
   for (const ext of SUPPORTED_DOC_EXTENSIONS) {
     const absWithExt = `${absBase}${ext}`;
     if (existsSync(absWithExt)) {
       const projectContained = resolveWithinRoot(projectDir, absWithExt);
       if (!projectContained.ok) return null;
+      // `path.relative` returns `/`-separated paths on POSIX (the OK server's
+      // target platform per `path-safety.ts`), so no separator normalization needed.
       return projectContained.rel;
     }
   }
@@ -110,6 +171,30 @@ type ResolveShareTargetResult =
   | { ok: true; kind: ShareKind; sharePath: string }
   | { ok: false; code: 'target-not-found' | 'kind-mismatch' | 'invalid-path' };
 
+/**
+ * Resolve a caller-supplied `path` (+ optional `kind`) to the project-relative
+ * share path + kind the construct-url endpoint expects. Doc and folder share
+ * the SAME containment + relative-to-content-root convention as the prior
+ * doc-only resolver (`resolveWithinRoot` against `contentDir`, then re-project
+ * the absolute hit against `projectDir`).
+ *
+ * Decision logic:
+ *   - `path === ''` (root sentinel): valid ONLY for `kind === 'folder'` →
+ *     `{kind:'folder', sharePath:''}`. `{path:''}` (no kind) or
+ *     `{path:'', kind:'doc'}` → `invalid-path` (auto-probe can't disambiguate
+ *     the empty root, and a doc always names a file).
+ *   - otherwise, probe disk: a doc exists iff `<path>.mdx`/`<path>.md` exists;
+ *     a folder exists iff `<path>` is a directory.
+ *       - `kind === 'doc'`: doc → doc; else folder → kind-mismatch; else
+ *         target-not-found.
+ *       - `kind === 'folder'`: folder → folder; else doc → kind-mismatch; else
+ *         target-not-found.
+ *       - `kind` omitted (auto-probe, first hit wins): `.mdx` → doc;
+ *         `.md` → doc; directory → folder; none → target-not-found.
+ *
+ * Containment escape (path leaves `contentDir`) collapses to
+ * `target-not-found`, mirroring the prior doc-only resolver's null-on-escape.
+ */
 function resolveShareTarget(
   projectDir: string,
   contentDir: string,
@@ -117,6 +202,8 @@ function resolveShareTarget(
   kind?: ShareKind,
 ): ResolveShareTargetResult {
   if (path === '') {
+    // Auto-probe can't disambiguate the empty root, and a doc always names a
+    // file — so the root is shareable only when the caller pins `folder`.
     if (kind === 'folder') return { ok: true, kind: 'folder', sharePath: '' };
     return { ok: false, code: 'invalid-path' };
   }
@@ -124,6 +211,10 @@ function resolveShareTarget(
   const contained = resolveWithinRoot(contentDir, path);
   if (!contained.ok) return { ok: false, code: 'target-not-found' };
 
+  // Doc probe strips a trailing `.md`/`.mdx` from the supplied path before
+  // appending the probe extension — `path: 'notes.md'` resolves the same file
+  // as `path: 'notes'`. Folder probe uses the raw `contained.abs` (a directory
+  // named `foo.md` is its own literal path, not `foo`).
   const docBase = contained.abs.replace(/\.(mdx|md)$/i, '');
   const docPath = resolveExistingDocPath(projectDir, docBase);
   const dirExists = isExistingDirectory(contained.abs);
@@ -143,6 +234,7 @@ function resolveShareTarget(
     return { ok: false, code: 'target-not-found' };
   }
 
+  // Auto-probe: first hit wins in `.mdx` → `.md` → directory order.
   if (docPath !== null) return { ok: true, kind: 'doc', sharePath: docPath };
   if (dirExists) {
     const folderContained = resolveWithinRoot(projectDir, contained.abs);
@@ -152,6 +244,19 @@ function resolveShareTarget(
   return { ok: false, code: 'target-not-found' };
 }
 
+/**
+ * Structured output declaration. Mirrors `ShareLinkSuccess | ShareLinkError`
+ * (the runtime discriminated union returned via `textPlusStructured`).
+ *
+ * Strict MCP clients (Claude) validate `structuredContent` against this
+ * schema via AJV and reject any undeclared key — declaring `outputSchema`
+ * here also routes through the `output-schema-strictness.test.ts` sweep,
+ * which guards the `outputSchemaWithText` text-mirror invariant
+ * (see `shared.ts` for the helper's docstring).
+ *
+ * `previewUrl` / `previewUrlSource` are optional success-path additions
+ * (route-only preview hint for hosts that watch the user's browser).
+ */
 const OutputSchema = outputSchemaWithText({
   ok: z.boolean().describe('Success discriminator.'),
   shareUrl: z.string().optional().describe('Marketing share URL (success only).'),
@@ -243,6 +348,11 @@ export function register(server: ServerInstance, deps: ShareLinkDeps): void {
           ? { kind: 'doc' as const, docPath: resolved.sharePath }
           : { kind: 'folder' as const, folderPath: resolved.sharePath };
 
+      // construct-url returns HTTP 200 for BOTH the happy path AND the five
+      // business-logic failures, discriminated on body `ok`. Routing through
+      // `httpPost`/`normalizeResponse` would strip the body's `ok` field and
+      // force `ok: true` on every 200, so go direct and parse with the
+      // shared schema.
       let res: Response;
       try {
         res = await fetch(`${url}/api/share/construct-url`, {
@@ -273,6 +383,10 @@ export function register(server: ServerInstance, deps: ShareLinkDeps): void {
         );
       }
       if (!res.ok) {
+        // RFC 9457 problem+json: surface `title` + `detail` when present so the
+        // agent has both the high-level diagnostic and any actionable specifics
+        // the server attached. Fall back to a bare HTTP status when neither
+        // field shows up (rare — proxy error pages or non-server intermediaries).
         let message: string;
         if (rawBody && typeof rawBody === 'object') {
           const record = rawBody as Record<string, unknown>;
@@ -326,6 +440,14 @@ export function register(server: ServerInstance, deps: ShareLinkDeps): void {
         branch,
         resolvedKind: resolved.kind,
       };
+      // Preview hint is route-only and symmetric across kinds: a doc previews
+      // at `/#/<doc>`, a folder at `/#/<folderPath>/` (`/#/` for the
+      // content-root sentinel — mirrors the app's `hashFromFolderPath` in
+      // `packages/app/src/lib/doc-hash.ts`). Both share the SAME `ui.lock`
+      // reachability gate (a UI must be running for the route to be navigable),
+      // so `resolvePreviewUrlForTool` resolves the gate + `'lock'` source for
+      // both; the folder branch then rewrites the route shape to the
+      // trailing-slash folder form.
       const previewDeps = { config: deps.config, resolveCwd: deps.resolveCwd };
       let preview = await resolvePreviewUrlForTool(
         resolved.sharePath.replace(/\.(mdx|md)$/i, ''),

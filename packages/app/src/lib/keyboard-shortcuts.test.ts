@@ -164,6 +164,7 @@ describe('keyboard shortcut registry', () => {
         'windowsLinux',
       ),
     ).toBe(true);
+    // Wrong platform modifier: Ctrl+J on macOS must NOT match (mod is exact).
     expect(
       matchesKeyboardShortcut(
         { metaKey: false, ctrlKey: true, altKey: false, key: 'j' },
@@ -171,6 +172,7 @@ describe('keyboard shortcut registry', () => {
         'mac',
       ),
     ).toBe(false);
+    // Extra Alt / Shift / bare key are all excluded.
     expect(
       matchesKeyboardShortcut(
         { metaKey: true, ctrlKey: false, altKey: true, key: 'j' },
@@ -214,6 +216,7 @@ describe('keyboard shortcut registry', () => {
         'windowsLinux',
       ),
     ).toBe(true);
+    // Wrong platform modifier: Ctrl+L on macOS must NOT match (mod is exact).
     expect(
       matchesKeyboardShortcut(
         { metaKey: false, ctrlKey: true, altKey: false, key: 'l' },
@@ -221,6 +224,7 @@ describe('keyboard shortcut registry', () => {
         'mac',
       ),
     ).toBe(false);
+    // Shift+Cmd+L stays free for CodeMirror's source-multi-cursor binding.
     expect(
       matchesKeyboardShortcut(
         { metaKey: true, ctrlKey: false, altKey: false, shiftKey: true, key: 'l' },

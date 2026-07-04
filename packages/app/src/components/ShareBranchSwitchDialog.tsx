@@ -1,3 +1,20 @@
+/**
+ * Project-scoped branch-switch dialog. Mounts in the editor shell and
+ * renders only on `project-branch-switch` payloads — the editor window
+ * owns this project, but its current checkout differs from the share's
+ * branch. Main has already resolved the target, so the renderer consumes
+ * `payload.projectPath` + `payload.share` directly and drives the
+ * state machine in `@/lib/share/branch-switch-flow`.
+ *
+ * STOP rule: the Switch path MUST NOT navigate on `runCheckout` HTTP 200
+ * alone — dismissal waits for the CC1 `branch-switched` broadcast via
+ * `bridge.project.awaitBranchSwitched`.
+ *
+ * Cancel discipline: this window IS the editor; Cancel only dismisses the
+ * store (no window close), so the user remains in the project on its
+ * current branch.
+ */
+
 import { Trans, useLingui } from '@lingui/react/macro';
 import { GitBranch, Loader2, MapPin } from 'lucide-react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -34,6 +51,7 @@ import { type ShareReceiveStore, shareReceiveStore } from '@/lib/share/receive-s
 
 export interface ShareBranchSwitchDialogProps {
   bridge: OkDesktopBridge;
+  /** Override store for testability. Production uses the singleton. */
   store?: ShareReceiveStore;
 }
 
@@ -60,8 +78,17 @@ export function ShareBranchSwitchDialog({
   const awaitBranchSwitchedStartedRef = useRef(false);
 
   const active = isBranchSwitchPayload(payload) ? payload : null;
+  // Kind-aware noun so every surface (title, body, toasts) reads correctly for
+  // both single-doc and folder shares. `share.target.kind` is the discriminant;
+  // defaults to "document" when there's no active payload (no surface renders then).
   const targetNoun = active?.share.target.kind === 'folder' ? t`folder` : t`document`;
 
+  // Per-payload reset so a second share doesn't inherit the prior payload's
+  // single-fire refs / state. The component stays mounted at the App root.
+  // Unlike ShareReceiveDialog (which uses a keyed remount to dodge a
+  // consent-seed-vs-reset race between two effects), this dialog resets in a
+  // single effect with no competing seed effect, and the store nulls `payload`
+  // via dismiss() between shares — so the imperative reset is race-free here.
   // biome-ignore lint/correctness/useExhaustiveDependencies: payload is the reset trigger; effect body only resets state.
   useEffect(() => {
     setBranchSwitchState(initialBranchSwitchState);
@@ -69,6 +96,9 @@ export function ShareBranchSwitchDialog({
     awaitBranchSwitchedStartedRef.current = false;
   }, [payload]);
 
+  // Fetch branch-info once per payload so the variant matrix has fresh
+  // dirty-conflicts + shareTargetExists data. Single-fire via ref so render
+  // churn (state changes that re-trigger the effect) can't double-fetch.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref-guarded single-fire; unstable bridge identity would re-trigger.
   useEffect(() => {
     if (!active) return;
@@ -93,6 +123,11 @@ export function ShareBranchSwitchDialog({
       });
   }, [active]);
 
+  // CC1-driven post-checkout navigation gate. After Switch resolves
+  // `{ok:true}` the state transitions to `awaiting-cc1-recycle`; we poll
+  // server-info (the late-join backstop for the CC1 `branch-switched`
+  // broadcast) and dispatch the warm-focus deep-link only after the recycle
+  // settles. Mirrors the proven pattern in the legacy ShareReceiveDialog.
   // biome-ignore lint/correctness/useExhaustiveDependencies: phase-keyed single-fire; bridge identity churns every parent render.
   useEffect(() => {
     if (branchSwitchState.phase !== 'awaiting-cc1-recycle') return;
@@ -136,6 +171,10 @@ export function ShareBranchSwitchDialog({
                 '[receive] warm-focus-dispatch-failed branch_action=switch',
                 err instanceof Error ? err.message : err,
               );
+              // The dialog dismisses synchronously below before this open
+              // settles, so a reject here would otherwise leave the user in
+              // the editor with no doc open and no explanation. Surface it —
+              // matching the timeout/reject paths above.
               toast.error(
                 t`Branch switched but the ${targetNoun} could not be opened — try navigating to it manually.`,
               );
@@ -154,6 +193,9 @@ export function ShareBranchSwitchDialog({
       })
       .catch((err) => {
         if (cancelled) return;
+        // A reject here is an unexpected IPC failure, not the CC1 timeout
+        // handled above — log the identity and use a distinct message so the
+        // two are not conflated in diagnostics or the user's view.
         console.warn(
           '[receive] awaitBranchSwitched rejected',
           err instanceof Error ? err.message : err,
@@ -206,6 +248,9 @@ export function ShareBranchSwitchDialog({
         if (shouldDismiss) store.dismiss();
       })
       .catch((err) => {
+        // Log the rejection identity (IPC timeout, channel closed) — the toast
+        // alone gives no triage signal — consistent with every other catch in
+        // this component.
         console.warn(
           '[receive] runCheckout rejected branch_action=switch',
           err instanceof Error ? err.message : err,
@@ -234,6 +279,9 @@ export function ShareBranchSwitchDialog({
           '[receive] warm-focus-dispatch-failed branch_action=open-current',
           err instanceof Error ? err.message : err,
         );
+        // `store.dismiss()` runs synchronously below before this open settles;
+        // without a toast a reject leaves the user in the editor with no doc
+        // and no feedback. Surface it like the switch path does.
         toast.error(t`The ${targetNoun} could not be opened — try navigating to it manually.`);
       });
     store.dismiss();
@@ -266,6 +314,8 @@ export function ShareBranchSwitchDialog({
     store.dismiss();
   }
 
+  // Cancel: this window IS the editor; closing it would close the user's
+  // session. store.dismiss() leaves the editor open on its current branch.
   function handleCancel(): void {
     console.log(formatReceiveLog({ branch_dialog_action: 'cancel' }));
     store.dismiss();

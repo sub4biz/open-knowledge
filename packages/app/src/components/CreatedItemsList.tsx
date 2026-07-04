@@ -18,6 +18,8 @@ function describeCreatedItems(
   plan: OkScaffoldPlan,
   selectedPack: OkSeedPackInfo | undefined,
 ): CreatedItem[] {
+  // Match folder summaries by basename so root-mode and subfolder-mode
+  // (e.g. `brain/external-sources`) share the same lookup.
   const folderBlurbs = new Map<string, string>();
   for (const f of selectedPack?.folders ?? []) {
     folderBlurbs.set(f.path, f.summary);
@@ -39,6 +41,10 @@ function describeCreatedItems(
   return [...folders, ...files];
 }
 
+/**
+ * Renders `plan.created` as an indented file tree with vertical guide bars.
+ * Folder descriptions surface in a hover/focus tooltip on the `Info` icon.
+ */
 export function CreatedItemsList({
   plan,
   selectedPack,
@@ -49,8 +55,12 @@ export function CreatedItemsList({
   const { t } = useLingui();
   const items = describeCreatedItems(plan, selectedPack);
 
+  // Lex sort gives parent-before-children via string-prefix comparison.
   const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
+  // Re-scaffold may put the parent in `plan.skipped`; anchoring depth +
+  // displayed name to PRESENT ancestors keeps guide bars from descending
+  // into rows that never render.
   const presentPaths = new Set(sorted.map((i) => i.name.replace(/\/$/, '')));
 
   return (
@@ -66,6 +76,8 @@ export function CreatedItemsList({
           {sorted.map((item) => {
             const pathKey = item.name.replace(/\/$/, '');
             const segments = pathKey.split('/');
+            // Count present ancestors (= visual depth); the leaf name spans
+            // any absent intermediate segments so the row stays unambiguous.
             let depth = 0;
             let nearestPresentEnd = 0;
             for (let i = 1; i < segments.length; i++) {
@@ -102,6 +114,7 @@ export function CreatedItemsList({
                     strokeWidth={1.5}
                   />
                 ) : (
+                  // Spacer keeps file names aligned with sibling folder names.
                   <span aria-hidden="true" className="size-3.5 shrink-0" />
                 )}
                 <code className="font-mono text-1sm shrink-0 text-foreground/80">

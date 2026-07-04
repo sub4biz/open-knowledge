@@ -43,6 +43,9 @@ describe('isValidBranchName', () => {
   });
 
   test('rejects colon (refspec injection: HEAD:refs/heads/evil)', () => {
+    // git fetch origin <branch> interprets `:` as the refspec separator —
+    // a branch like `HEAD:refs/heads/evil` would otherwise survive the gate
+    // and rewrite local refs from attacker-controlled share URLs.
     expect(isValidBranchName('HEAD:refs/heads/evil')).toBe(false);
     expect(isValidBranchName('foo:bar')).toBe(false);
   });
@@ -68,6 +71,10 @@ describe('isValidBranchInfoPath', () => {
   });
 
   test('rejects any backslash — wire contract is forward-slash only', () => {
+    // A `\`-bearing docPath from a hostile share URL would otherwise survive
+    // the gate and reach `git cat-file -e <ref>:<docPath>` with an anomalous
+    // ref-spec. Tightens the asymmetry with `buildGitHubBlobUrl` (which
+    // splits on `/` only).
     expect(isValidBranchInfoPath('docs\\page.md', 'doc')).toBe(false);
     expect(isValidBranchInfoPath('\\etc\\passwd', 'doc')).toBe(false);
     expect(isValidBranchInfoPath('foo/bar\\baz.md', 'folder')).toBe(false);
@@ -133,6 +140,9 @@ describe('isBranchResolutionError', () => {
   });
 
   test('rejects disk I/O failures (EACCES on .git/index)', () => {
+    // real I/O errors must NOT be swallowed as
+    // "no conflict, branch isn't local" — they should propagate (or at
+    // minimum log loudly) so the operator sees the actual problem.
     expect(
       isBranchResolutionError(
         new Error('error: cannot open .git/index: Permission denied (EACCES)'),

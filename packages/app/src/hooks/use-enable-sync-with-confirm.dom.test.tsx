@@ -212,6 +212,9 @@ describe('useSyncDefaultWriter runtime behavior', () => {
         return { ok: true };
       },
     };
+    // A project-local binding is also mounted: the scope-collision regression
+    // (targeting projectLocalBinding instead of projectBinding) would land the
+    // write here, silently writing per-machine config instead of committed.
     projectLocalBinding = {
       patch: (patch: unknown) => {
         localPatches.push(patch);
@@ -224,6 +227,7 @@ describe('useSyncDefaultWriter runtime behavior', () => {
     expect(committedPatches).toEqual([{ autoSync: { default: false } }]);
     expect(localPatches).toEqual([]);
 
+    // `null` clears the committed key (RFC 7396 delete) → reset to ask.
     expect(latestDefaultWriter?.(null)).toEqual({ ok: true });
     expect(committedPatches).toEqual([
       { autoSync: { default: false } },

@@ -54,6 +54,10 @@ describe('isBranchNotFoundFetchError', () => {
   });
 
   test('rejects a French-locale translation of the branch-not-found message', () => {
+    // Without LANG=C/LC_ALL=C on the git env, a receiver on a non-English
+    // host locale would see a translated stderr and the classifier would
+    // fall through to `fetch-failed`. `createGitInstance` pins LANG=C so
+    // git always emits the English variants above; the regex stays narrow.
     expect(
       isBranchNotFoundFetchError(
         new Error("fatal: n'a pas pu trouver de référence distante refs/heads/missing"),
@@ -75,6 +79,12 @@ describe('isBranchNotFoundFetchError', () => {
 });
 
 describe('createGitInstance locale stabilization', () => {
+  // The classifier above is English-anchored. The fix that makes it work
+  // across host locales is the LANG/LC_ALL env on every spawned git
+  // process — pin both here so a future refactor doesn't drop them.
+  // simple-git's public surface shadows the env getter with the env setter
+  // method; we read the underlying executor's stored env to assert the
+  // spawned-process environment.
   function readEnv(handle: ReturnType<typeof createGitInstance>): Record<string, string> {
     // biome-ignore lint/suspicious/noExplicitAny: probing internal simple-git executor for spawn-env assertion
     return ((handle.git as any)._executor?.env ?? {}) as Record<string, string>;
@@ -105,6 +115,10 @@ describe('isBranchInOtherWorktreeError', () => {
   });
 
   test('matches the newer "used by worktree at" phrasing (git version skew, e.g. Linux CI)', () => {
+    // Older git (macOS system git) says "is already checked out at"; newer git
+    // (Linux CI image) says "is already used by worktree at". Both must yield
+    // the typed branch-in-other-worktree outcome — matching only the former
+    // silently degrades to checkout-failed on newer git.
     const result = isBranchInOtherWorktreeError(
       new Error("fatal: 'feat-bar' is already used by worktree at '/tmp/x/wt-feat-bar'"),
     );
@@ -126,6 +140,12 @@ describe('isBranchInOtherWorktreeError', () => {
   });
 
   test('truncates a path containing an apostrophe at the first inner quote (known limitation)', () => {
+    // The quote-bounded `[^']+` capture stops at the apostrophe inside the
+    // path, so the captured path is truncated. This is the documented degrade:
+    // realpath then fails (or resolves elsewhere) and the raw truncated path is
+    // surfaced. Pinned so a future end-anchor "fix" — which would force a clean
+    // miss here but break ordinary paths when git appends a `hint:` line — is a
+    // conscious change, not an accident.
     const result = isBranchInOtherWorktreeError(
       new Error("fatal: 'feat' is already checked out at '/Users/me/it's-fine/wt'"),
     );
@@ -178,9 +198,11 @@ describe('runCheckoutFlow against real git', () => {
       writeFileSync(join(main, 'README.md'), '# main\n');
       await git(main, 'add', 'README.md');
       await git(main, 'commit', '-m', 'initial');
+      // Create feat-bar on a linked worktree; main is on `main`.
       const wt = join(root, 'wt-feat-bar');
       await git(main, 'worktree', 'add', '-b', 'feat-bar', wt);
 
+      // Now attempt to check out feat-bar from main — git refuses.
       const outcome = await runCheckoutFlow(main, 'feat-bar');
       expect(outcome.ok).toBe(false);
       if (!outcome.ok) {

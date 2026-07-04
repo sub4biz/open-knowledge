@@ -1,3 +1,28 @@
+/**
+ * Enumerate the user-global built-in SKILL bundle directories `ok uninstall`
+ * must remove — the exact reverse of the installer's fan-out in
+ * `repair-skills.ts`'s `installUserBundleToHostDirs`.
+ *
+ * OK force-installs its user-global bundles (`open-knowledge-discovery` +
+ * `open-knowledge-write-skill`) into:
+ *   - the central store  `~/.agents/skills/<name>/`, and
+ *   - each per-host dir  `~/<hostDir>/skills/<name>/`  (claude / cursor / codex /
+ *     opencode).
+ *
+ * This computes the identical set from the SAME single sources the installer
+ * loops over — `USER_GLOBAL_BUNDLE_IDS`, `BUNDLE_SKILL_NAME`, and
+ * `HOSTS_WITH_USER_SKILL_DIR` — so the teardown can never remove more or less
+ * than what was installed (a new user-global bundle or host flows to both sides
+ * automatically). Only the specific `open-knowledge-*` bundle dirs are targeted,
+ * never the shared `~/.agents/skills/` root, so a user's other skills survive.
+ *
+ * Pure enumeration — no filesystem access. The removal engine turns each target
+ * into a whole-dir removal (tolerant of an already-absent dir).
+ *
+ * NOT included (user content, preserved by default): `~/.ok/skills/<name>/`
+ * (OK-authored global skills) and `~/Downloads/openknowledge.skill`.
+ */
+
 import { join } from 'node:path';
 import {
   BUNDLE_SKILL_NAME,
@@ -7,12 +32,21 @@ import {
 import { HOSTS_WITH_USER_SKILL_DIR } from '../commands/editors.ts';
 
 export interface SkillBundleTarget {
+  /** Absolute path of the bundle directory to remove. */
   path: string;
+  /** Which built-in user-global bundle this directory holds. */
   bundleId: BundleId;
+  /** `central` = the shared `~/.agents/skills` store; `host` = a per-editor dir. */
   scope: 'central' | 'host';
+  /** The editor host dir (e.g. `.claude`) for `host`-scope targets. */
   hostDir?: string;
 }
 
+/**
+ * Every user-global built-in skill-bundle directory OK installs, for the given
+ * home dir. Ordered central-first per bundle so plan output reads bundle by
+ * bundle.
+ */
 export function userGlobalSkillBundleTargets(home: string): SkillBundleTarget[] {
   const targets: SkillBundleTarget[] = [];
   for (const bundleId of USER_GLOBAL_BUNDLE_IDS) {

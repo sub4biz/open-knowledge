@@ -96,6 +96,9 @@ describe('formatCurrentLabel', () => {
   });
 
   test('falls back to HEAD when not detached but currentBranch is null', () => {
+    // computeBranchInfo emits {detached: false, currentBranch: null} when
+    // symbolic-ref returns something other than `refs/heads/*` (e.g.
+    // unusual ref layouts). Last-resort sentinel keeps the dialog rendering.
     expect(formatCurrentLabel(cleanInfo({ currentBranch: null }))).toBe('HEAD');
   });
 
@@ -132,6 +135,10 @@ describe('BranchInfoResponseSchema (discriminated union)', () => {
   });
 
   test('rejects the contradictory state ({detached: true, currentBranch: "main"})', () => {
+    // this was a representable invalid
+    // state because the schema had `detached`, `currentBranch`, and
+    // `currentHeadSha` as independent fields. The discriminated union
+    // makes it unrepresentable.
     const invalid = {
       detached: true,
       currentBranch: 'main',
@@ -202,6 +209,10 @@ describe('classifyCheckoutOutcome', () => {
   });
 
   test('exhaustiveness guard rejects an unhandled CheckoutFailureReason at runtime', () => {
+    // The compile-time `_exhaustive: never` guard catches new failure reasons
+    // at build time; this runtime check pins the safety net for the case
+    // where a wire response carries a reason the schema parser missed (e.g.
+    // a forward-compatibility hole in `.loose()`).
     expect(() =>
       classifyCheckoutOutcome({
         ok: false,
@@ -393,6 +404,7 @@ describe('applyCheckoutOutcome — J5 transition', () => {
       otherWorktreePath: '/tmp/wt/feat-bar',
       pendingDoc: 'README.md',
     });
+    // No toast — the dialog re-renders with the pivot CTA.
     expect(result.sideEffect).toBeUndefined();
   });
 
@@ -411,6 +423,15 @@ describe('applyCheckoutOutcome — J5 transition', () => {
   });
 
   test('cancel-from-pivot (J5): branch-in-other-worktree is a reducer terminal — every transition is identity', () => {
+    // The dialog cancels via store.dismiss() — the parent controls
+    // unmounting. The state machine itself has no `cancel` action; the
+    // safety net is that every reducer (applyBranchInfo, markSwitching,
+    // applyCheckoutOutcome) is an identity no-op from
+    // branch-in-other-worktree. This test guards against accidentally
+    // adding a transition out of this phase that would corrupt the
+    // dialog mid-cancel (e.g., a late branch-info arrival rewriting
+    // the otherWorktreePath, or a delayed checkout response promoting
+    // the user past the pivot dialog).
     const pivot: BranchSwitchDialogState = {
       phase: 'branch-in-other-worktree',
       info: cleanInfo(),
@@ -418,11 +439,17 @@ describe('applyCheckoutOutcome — J5 transition', () => {
       pendingDoc: 'README.md',
     };
 
+    // applyBranchInfo: ignored (only loading → ready/error).
     expect(applyBranchInfo(pivot, cleanInfo())).toBe(pivot);
     expect(applyBranchInfo(pivot, null)).toBe(pivot);
 
+    // markSwitching: ignored (only ready → switching).
     expect(markSwitching(pivot, 'OTHER.md')).toBe(pivot);
 
+    // applyCheckoutOutcome: ignored (only switching → terminal). The
+    // typed result returns the unchanged state with no side-effect so a
+    // delayed checkout response can't fire a ghost toast after the user
+    // has already chosen the pivot CTA path.
     const lateResponse = applyCheckoutOutcome(pivot, { ok: true, currentBranch: 'feat-bar' });
     expect(lateResponse.state).toBe(pivot);
     expect(lateResponse.sideEffect).toBeUndefined();

@@ -1,3 +1,11 @@
+/**
+ * Terminal lifecycle telemetry (main half) — assert each emitter wraps
+ * `withSpanSync` with the canonical span name + bounded-cardinality attribute
+ * shape, and that no command contents / paths can reach a span. `withSpanSync`
+ * is mocked at the module boundary so the assertions hold regardless of whether
+ * the OTel SDK is enabled. The subject mirrors the `onboarding-telemetry.ts`
+ * emitter pattern (same `withSpanSync` + bounded-attribute discipline).
+ */
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 interface CapturedSpanCall {

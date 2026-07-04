@@ -19,6 +19,8 @@ export default async function Page(props: PageProps<'/docs/[...slug]'>) {
       toc={page.data.toc}
       full={page.data.full}
       footer={hideFooter ? { enabled: false } : undefined}
+      // PageArticle has no bottom padding of its own; the prev/next footer
+      // normally supplies it. Restore breathing room when the footer is hidden.
       article={hideFooter ? { className: 'pb-12' } : undefined}
     >
       <div className="flex items-start justify-between gap-4">
@@ -46,6 +48,10 @@ export async function generateMetadata(props: PageProps<'/docs/[...slug]'>): Pro
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  // Google has ignored <meta name="keywords"> since 2009. Bing/Yandex still
+  // consider it — kept for optional per-page hinting on those engines, not
+  // load-bearing for SEO. Pages without a frontmatter `keywords` field are
+  // unaffected.
   const keywords = page.data.keywords
     ?.split(',')
     .map((k) => k.trim())

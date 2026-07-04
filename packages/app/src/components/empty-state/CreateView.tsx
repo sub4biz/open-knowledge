@@ -12,10 +12,24 @@ import { useIsEmbedded } from '@/hooks/use-is-embedded';
 import { emitCreateTopLevelFile } from '@/lib/create-file-events';
 
 interface CreateViewProps {
+  /** Bumped to replay the OkBlob celebrate burst (post-seed). */
   readonly celebrateSignal: number;
+  /** Open the SeedDialog at step 1 (PackCardGrid) from the bottom strip. */
   readonly onAddStarterPack: () => void;
 }
 
+/**
+ * Post-init empty-state view (project has content, no doc open). Three
+ * non-obvious behaviors worth flagging:
+ *   - New files always create at root (the "or create a new file" link, like
+ *     the sidebar `+`). Sticky last-folder tracking was tried and reverted
+ *     (two sources of truth with the sidebar `+`).
+ *   - Template rows create in each template's `source_folder` — keeps
+ *     this surface consistent with `write({ template })`.
+ *   - The AI surface sits at the top: `CreatePromptComposer` normally, or
+ *     `CopyablePromptList` (copy-to-paste prompts) when OK runs inside
+ *     Cursor/Codex/Claude, where the launch handoff would loop back to the host.
+ */
 export function CreateView({ celebrateSignal, onAddStarterPack }: CreateViewProps) {
   const { t } = useLingui();
   const isEmbedded = useIsEmbedded();
@@ -157,6 +171,8 @@ function TemplateRow({ template, targetLabel, onClick }: TemplateRowProps) {
   const displayTitle = template.title?.trim() || template.name;
   const fileName = `${template.name}.md`;
   const targetIsRoot = template.source_folder === '';
+  // Explicit aria-label — the default computed name concatenates the spans
+  // into a run-on string ("Meeting Notesmeeting-notes.mdmeetings/").
   const accessibleName = targetIsRoot
     ? t`New file from template "${displayTitle}" (${fileName}) in the project root`
     : t`New file from template "${displayTitle}" (${fileName}) in ${targetLabel}`;

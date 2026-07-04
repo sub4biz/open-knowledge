@@ -17,6 +17,12 @@ import type { OkPackId, OkSeedPackInfo } from '@/lib/desktop-bridge-types';
 import { seedClient } from '@/lib/seed-client';
 import { cn } from '@/lib/utils';
 
+/**
+ * Visual icon per pack on the empty-state grid. Hardcoded by pack id rather
+ * than threaded through the wire schema — the registry is small and stable,
+ * and the icons are presentation-only. A future pack lands here as a new
+ * entry; the fallback (`Library`) keeps the card renderable in the meantime.
+ */
 const PACK_ICONS: Record<OkPackId, React.ComponentType<{ className?: string }>> = {
   'knowledge-base': Library,
   'software-lifecycle': GitBranch,
@@ -33,12 +39,35 @@ function iconForPack(id: string): React.ComponentType<{ className?: string }> {
 }
 
 interface PackCardGridProps {
+  /** Invoked when the user clicks a card. Opens the per-pack configurator. */
   onPackSelect: (packId: OkPackId) => void;
+  /**
+   * When provided, render a trailing "Blank file" card after the packs — a
+   * muted/dashed escape hatch that starts an empty doc instead of seeding a
+   * scaffold. Gated by presence so the modal picker (`SeedDialog`) can omit
+   * it: every card there must advance to a per-pack configurator, and a blank
+   * file has no configurator step. The empty-state `OnboardingView` passes it.
+   */
   onCreateBlankFile?: () => void;
   className?: string;
+  /**
+   * Pre-fetched pack list. When provided, the grid renders from these
+   * directly and skips its internal fetch — used by the two-step
+   * `SeedDialog` which already owns `packs` state for the downstream
+   * configurator. `null` reads as "still loading"; `[]` renders the empty
+   * state. Omitted → component self-fetches via `seedClient().listPacks()`
+   * (the empty-state canvas usage).
+   */
   packs?: OkSeedPackInfo[] | null;
 }
 
+/**
+ * Pack grid rendered on the empty-state canvas and as step 1 of
+ * `SeedDialog`. Each card is a primary action — click advances to the
+ * per-pack configurator. Fetches the pack registry on mount (single shared
+ * transport with `SeedDialog` via `seedClient`) unless the caller supplied
+ * `packs` directly; loading and error states render in-place.
+ */
 export function PackCardGrid({
   onPackSelect,
   onCreateBlankFile,
@@ -100,6 +129,10 @@ export function PackCardGrid({
     );
   }
 
+  // Empty packs[] is an unexpected runtime state (the registry ships >= 7
+  // packs at build time) but the server-error fallback elsewhere also lands
+  // here as `[]` to short-circuit the spinner. Surface a labelled empty
+  // state so the user sees something actionable instead of a blank gap.
   if (packs.length === 0) {
     return (
       <div
@@ -124,6 +157,12 @@ export function PackCardGrid({
   );
 }
 
+/**
+ * Escape-hatch card rendered after the packs when the caller opts in. A dashed
+ * border + centered "create a new file" label deliberately break from the
+ * pack-card layout so it reads as the no-scaffold alternative, not another
+ * pack — while filling the trailing grid slot so the row stays even.
+ */
 function BlankFileCard({ onSelect }: { onSelect: () => void }) {
   return (
     <button

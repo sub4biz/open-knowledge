@@ -1,3 +1,24 @@
+/**
+ * Desktop preload bridge — exposes `window.okDesktop` to the renderer.
+ *
+ * Runs in Electron's preload context (Node + DOM available, but isolated
+ * from the renderer's JavaScript world via `contextIsolation: true`). Adds
+ * a single `okDesktop` global on `window` that the renderer can use to:
+ *
+ *   - read the project's collab URL + apiOrigin synchronously at startup
+ *   - subscribe to project-switch + menu-action events from main
+ *   - invoke main-process IPC handlers (folder picker, shell, clipboard)
+ *
+ * Per electron/electron#33328, subscription methods MUST track the wrapped-
+ * listener reference for `removeListener` to actually detach. Returning an
+ * unsubscribe closure that closes over the wrapper is the canonical pattern.
+ *
+ * Per electron/electron#25516, `contextBridge.exposeInMainWorld` evaluates
+ * accessors at exposure time, not access time — every value we put on the
+ * bridge object is captured immediately. Plain values + methods only; no
+ * getters / setters.
+ */
+
 import type {
   WorktreeCreateRequest,
   WorktreeCreateResult,
@@ -32,6 +53,16 @@ import { createInvoker } from '../shared/ipc-invoke.ts';
 
 const invoke = createInvoker(ipcRenderer);
 
+/**
+ * Async-iterable stream over a streamId-keyed IPC event channel. The
+ * factory subscribes to `eventChannel` immediately so events that arrive
+ * before iteration starts are buffered. Iteration ends when a `complete`
+ * or `error` event arrives (or `cancel()` is called by the consumer).
+ *
+ * Pattern keeps the renderer surface simple — components consume via
+ * `for await (const event of stream.events)` without thinking about
+ * subscriptions or unsubscribes; preload owns the listener lifetime.
+ */
 function createIpcEventStream<E extends { type: string }>(
   startResultPromise: Promise<{ ok: true; streamId: string } | { ok: false; error: string }>,
   eventChannel: 'ok:local-op:auth:event' | 'ok:local-op:clone:event',
@@ -54,6 +85,7 @@ function createIpcEventStream<E extends { type: string }>(
     if (event.type === 'complete' || event.type === 'error') {
       terminated = true;
       detach();
+      // Drain waiting consumers with `null` so iterators end.
       for (const w of waiters.splice(0)) w(null);
     }
   };
@@ -70,6 +102,10 @@ function createIpcEventStream<E extends { type: string }>(
     }
   };
 
+  // Attach the listener BEFORE awaiting the start invoke — events fired
+  // from main between the invoke resolving and the listener attaching
+  // would otherwise be lost. The streamId-match guard discards events
+  // for any other in-flight stream until we know our own.
   // biome-ignore lint/plugin/no-loosely-typed-webcontents-ipc: preload-side subscription wrapper (precedent #14)
   ipcRenderer.on(eventChannel, listener);
   listenerAttached = true;
@@ -77,12 +113,18 @@ function createIpcEventStream<E extends { type: string }>(
   startResultPromise
     .then((result) => {
       if (!result.ok) {
+        // Synthesize an error event so the iterator terminates with a clear
+        // signal. The shape mirrors the auth/clone error variants.
         push({ type: 'error', message: result.error } as unknown as E);
         return;
       }
       myStreamId = result.streamId;
     })
     .catch((err: unknown) => {
+      // IPC invoke itself rejected (e.g. handler threw before returning,
+      // channel not registered). Without this catch the consumer's
+      // `await iter.next()` hangs permanently — `myStreamId` never gets
+      // set, no terminal event is ever pushed.
       const message = err instanceof Error ? err.message : String(err);
       push({ type: 'error', message: `IPC error: ${message}` } as unknown as E);
     });
@@ -119,6 +161,7 @@ function createIpcEventStream<E extends { type: string }>(
         invoke(cancelChannel, myStreamId).catch(() => {});
         return;
       }
+      // IPC invoke hasn't resolved yet — chain cancel onto the result.
       void startResultPromise.then((result) => {
         if (result.ok) invoke(cancelChannel, result.streamId).catch(() => {});
       });
@@ -146,12 +189,14 @@ function createLocalOpCloneStream(request: {
   );
 }
 
+/** Parse an `--ok-key=value` argv flag, returning the value or undefined. */
 function parseArg(name: string): string | undefined {
   const prefix = `--ok-${name}=`;
   const arg = process.argv.find((a) => a.startsWith(prefix));
   return arg?.slice(prefix.length);
 }
 
+/** Read window-bound config from preload's `process.argv` (injected by main via `additionalArguments`). */
 function readConfigFromArgv(): OkDesktopConfig {
   const collabUrl = parseArg('collab-url') ?? '';
   const apiOrigin = parseArg('api-origin') ?? '';
@@ -159,9 +204,19 @@ function readConfigFromArgv(): OkDesktopConfig {
   const projectName = parseArg('project-name') ?? '';
   const modeRaw = parseArg('mode') ?? 'editor';
   const mode: OkDesktopConfig['mode'] = modeRaw === 'navigator' ? 'navigator' : 'editor';
+  // Present only on ephemeral single-file windows (`ok <file>`); every normal
+  // project window omits the flag and coerces to `false`.
   const singleFile = parseArg('single-file') === '1';
+  // Ephemeral single-file windows carry the doc to seed into the hash before
+  // first paint; normal project windows omit it (`null` → seed is a no-op).
   const initialDoc = parseArg('initial-doc') ?? null;
+  // Set only under the Electron smoke suite (main injects `--ok-e2e-smoke=1`):
+  // tells the renderer to use xterm's DOM renderer instead of the WebGL canvas
+  // so the DOM-based terminal smoke assertions can read output + deliver input.
   const e2eSmoke = parseArg('e2e-smoke') === '1';
+  // W3C traceparent of main's `ok.app-startup` root span (Plan A). Present only
+  // when OTel is enabled in main; the renderer extracts it to parent its startup
+  // span into the launch trace. Absent → renderer skips the startup span.
   const startupTraceparent = parseArg('startup-traceparent');
   return Object.freeze({
     collabUrl,
@@ -180,6 +235,8 @@ const bridge: OkDesktopBridge = {
   config: readConfigFromArgv(),
 
   onProjectSwitched(cb: (next: OkDesktopConfig) => void) {
+    // Wrapper is what gets registered + later removed (electron/electron#33328).
+    // Channel name is the canonical form declared in shared/ipc-events.ts's EventChannels map.
     const listener = (_event: IpcRendererEvent, next: OkDesktopConfig) => cb(next);
     // biome-ignore lint/plugin/no-loosely-typed-webcontents-ipc: preload-side subscription wrapper (precedent #14)
     ipcRenderer.on('ok:project:switched', listener);
@@ -290,6 +347,20 @@ const bridge: OkDesktopBridge = {
   setThemeSource: (source: OkThemeSource) => invoke('ok:theme:set-source', { source }),
 
   signalThemeApplied: (opts?: { reducedTransparency?: boolean }) => {
+    // Fire-and-forget renderer→main signal. Mirror of mcpWiring.signalReady's
+    // shape: invoke (not raw send) so it composes through the typed
+    // createInvoker wrapper and clears the IPC-discipline ratchet. The
+    // handler invocation is what releases the window-show gate per-window
+    // via event.sender correlation; optional opts.reducedTransparency
+    // drives the vibrancy toggle.
+    //
+    // Rejection is logged with a structured warn (vs mcpWiring.signalReady's
+    // empty catch) because this signal is paired with a 5 s show-gate
+    // safety timeout in main — when the timeout fires, the only diagnostic
+    // is the main-side `show-gate-timeout` event. The structured warn here
+    // gives the upstream cause (channel teardown race, bridge-contract
+    // divergence, marshaling error) so cold-launch chrome failures stay
+    // debuggable end-to-end.
     invoke('ok:theme:applied', opts).catch((err: unknown) => {
       console.warn(
         JSON.stringify({
@@ -339,6 +410,10 @@ const bridge: OkDesktopBridge = {
   },
 
   worktree: {
+    // One discriminated channel (`ok:worktree:dispatch`) backs both methods,
+    // respecting the hand-rolled-channel cap. Each method knows its branch, so
+    // it casts the union result to its own arm (the shapes overlap only on the
+    // shared `no-git` failure, so a runtime discriminant would be noise).
     list: () => invoke('ok:worktree:dispatch', { kind: 'list' }) as Promise<WorktreeListResult>,
     create: (request: WorktreeCreateRequest) =>
       invoke('ok:worktree:dispatch', {
@@ -348,6 +423,9 @@ const bridge: OkDesktopBridge = {
   },
 
   sharing: {
+    // The two-method surface maps onto a single discriminated channel
+    // (`ok:sharing:dispatch`) so the codebase's hand-rolled-channel cap is respected.
+    // Each method narrows the result type via the typed-IPC layer.
     status: async () => {
       const result = await invoke('ok:sharing:dispatch', { kind: 'status' });
       if (result.kind !== 'status') {
@@ -406,6 +484,10 @@ const bridge: OkDesktopBridge = {
       return () => ipcRenderer.removeListener('ok:mcp-wiring:show', listener);
     },
     signalReady: () => {
+      // Fire-and-forget: render doesn't need the resolved result. We invoke
+      // (not send) so it composes through the typed `createInvoker` wrapper
+      // and stays on the typed-IPC path. Any rejection is swallowed — a
+      // missing handler during teardown is expected, not a programmer error.
       invoke('ok:mcp-wiring:renderer-ready').catch(() => {});
     },
     confirm: (request) =>
@@ -495,15 +577,23 @@ const bridge: OkDesktopBridge = {
 
   editor: {
     notifyActiveTargetChanged: (target: OkEditorActiveTargetSnapshot) => {
+      // Fire-and-forget renderer→main push. Mirrors `signalThemeApplied`'s
+      // shape: invoke (not raw send) so it composes through the typed
+      // createInvoker wrapper. Rejection is swallowed — a missing handler
+      // during window teardown is expected, not a programmer error.
       invoke('ok:editor:active-target-changed', target).catch(() => {});
     },
     notifyViewMenuStateChanged: (state: Partial<OkEditorViewMenuStateSnapshot>) => {
+      // Sibling fire-and-forget push for the View menu's check + smart-hide
+      // state. Same swallow-rejection contract as the active-target push.
       invoke('ok:editor:view-menu-state-changed', state).catch(() => {});
     },
   },
 
   startup: {
     reportMarks: (marks: { pageListReadyMs: number; firstContentMs: number }) => {
+      // Fire-and-forget renderer→main push of the two launch checkpoints.
+      // Swallow a missing-handler rejection (window teardown / older main).
       invoke('ok:startup:renderer-marks', marks).catch(() => {});
     },
   },
@@ -525,6 +615,8 @@ const bridge: OkDesktopBridge = {
 
   terminal: {
     create: (opts) => invoke('ok:pty:create', opts),
+    // Fire-and-forget like editor.notify* — swallow a missing-handler rejection
+    // during window teardown (expected, not a programmer error).
     input: (ptyId, data) => {
       invoke('ok:pty:input', { ptyId, data }).catch(() => {});
     },
@@ -559,12 +651,19 @@ const bridge: OkDesktopBridge = {
   platform: process.platform as 'darwin' | 'win32' | 'linux',
   appVersion: parseArg('app-version') ?? '0.0.0',
 
+  // Resolve a dropped File to its on-disk path. `webUtils.getPathForFile` is a
+  // renderer-side call (no IPC) and the only way to recover the path since
+  // Electron removed `File.path`. Empty string (in-memory blob, no backing
+  // file) maps to null so callers can skip it.
   getPathForFile: (file) => {
     const path = webUtils.getPathForFile(file);
     return path === '' ? null : path;
   },
 };
 
+// Debug namespace — populated ONLY when main decided the runtime gate is
+// open. When the flag is absent, `bridge.debug` stays undefined so a typo
+// in renderer code calling the method surfaces at TypeScript compile time.
 if (parseArg('debug-keyring-smoke') === '1') {
   bridge.debug = {
     keyringSmoke: () => invoke('ok:debug:keyring-smoke'),

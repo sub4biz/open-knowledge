@@ -66,6 +66,8 @@ describe('classifyGitAuthError', () => {
   });
 
   test('classifies reversed "expired token" as unknown-auth, not 401', () => {
+    // Reversed wording is auth but not 401 — mirrors the server 401 discriminator
+    // (forward-only) so the delegated classifyGitError output stays unchanged.
     expect(classifyGitAuthError(new Error('expired token'))).toEqual({
       kind: 'auth',
       subclass: 'unknown-auth',
@@ -181,6 +183,8 @@ describe('isLoginFixableGitAuthError', () => {
 });
 
 describe('isValidBranchName', () => {
+  // The single source of truth for share/clone branch validity — 7 security
+  // rules with named threats in its JSDoc. Pure predicate; no mocking needed.
   test('accepts a plain branch', () => expect(isValidBranchName('main')).toBe(true));
   test('accepts a slashed namespaced branch', () =>
     expect(isValidBranchName('feat/foo')).toBe(true));

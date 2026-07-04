@@ -25,6 +25,7 @@ const payload: OkMcpWiringShowPayload = {
   },
 };
 
+/** Same editors, zero detected — exercises the Add-enable matrix. */
 const noneDetectedPayload: OkMcpWiringShowPayload = {
   detectedEditors: [{ id: 'codex', label: 'Codex', detected: false, willReplace: false }],
   pathInstall: payload.pathInstall,
@@ -182,6 +183,9 @@ describe('McpConsentDialog PATH consent row', () => {
   afterEach(() => cleanup());
 
   test('PATH section is pinned outside the scrollable editor list', async () => {
+    // The editor list can outgrow the dialog (DialogBody is the overflow
+    // container); the PATH toggle must stay visible without scrolling, so
+    // it lives in its own section ABOVE that container.
     await renderDialog();
 
     const pathCheckbox = screen.getByTestId('mcp-consent-path-checkbox');
@@ -199,6 +203,8 @@ describe('McpConsentDialog PATH consent row', () => {
     expect(screen.getByTestId('mcp-consent-path-status').textContent).toBe(
       'Adds a managed block to ~/.zshrc, ~/.config/fish/conf.d/open-knowledge.fish',
     );
+    // Warning is uncheck-scoped: it names the real degradation (external
+    // terminals only) at the moment the user is making that choice.
     expect(screen.queryByTestId('mcp-consent-path-warning')).toBeNull();
 
     await userEvent.click(checkbox);

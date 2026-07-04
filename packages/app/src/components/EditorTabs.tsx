@@ -121,6 +121,23 @@ function stripRenameExtensionSuffix(value: string, docExt: string): string {
   return extension ? value.slice(0, -extension.length) : value;
 }
 
+/**
+ * Sortable wrapper for one tab div, bound to `@dnd-kit/sortable`'s
+ * `useSortable` so the whole tab (not a separate drag handle) is draggable.
+ * Activation is gated by the outer DndContext's PointerSensor `distance: 8`
+ * so plain clicks still activate / close the tab. While renaming, `disabled`
+ * short-circuits the sortable bindings — the inline input keeps full
+ * pointer/keyboard affordance and the tab stays in place.
+ *
+ * Callers should not pass a `role` prop. `useSortable`'s `attributes` inject
+ * `role="button"` + `aria-roledescription="sortable"` so screen readers can
+ * discover and announce reorder. `{...attributes}` is spread AFTER `{...rest}`
+ * (see the render JSX below) so dnd-kit's bindings structurally win over any
+ * caller-supplied `role`. Keep the convention anyway — the spread-order
+ * guarantee is one refactor away from being lost. The outer sortable tab is
+ * the keyboard focus target; inner activation buttons stay out of the tab
+ * order so each tab is one stop.
+ */
 function SortableTab({
   activateFromKeyboard,
   className,
@@ -152,6 +169,7 @@ function SortableTab({
     setNodeRef(node);
     if (typeof outerRef === 'function') outerRef(node);
     else if (outerRef && 'current' in outerRef) {
+      // React 19's RefObject<T> is { current: T } — mutable, no cast needed.
       outerRef.current = node;
     }
   }
@@ -312,6 +330,17 @@ function TabPinOrCloseButton({
   );
 }
 
+/**
+ * Per-tab lifecycle-status reader for the conflict badge. Renders an inline
+ * `⚠` icon adjacent to the tab name when the doc's `lifecycle.status` is
+ * `'conflict'`. Informational only — clicking the tab still goes through the
+ * existing tab-click activation; the editor-area swap to DiffViewBoundary
+ * fires from the lifecycle observer on the active tab, not from this badge.
+ *
+ * Returns `null` when the doc is clean or has no pool entry (closed tab) so
+ * the badge auto-clears as soon as the lifecycle Y.Map drops the conflict
+ * status.
+ */
 function TabConflictBadge({ docName }: { docName: string }) {
   const status = useLifecycleStatus(docName);
   if (status !== 'conflict') return null;
@@ -496,9 +525,19 @@ export function EditorTabs() {
       const currentActiveDocName = activeDocNameRef.current;
       const nextActiveDocName = remapActiveDocName(currentActiveDocName, renamed);
 
+      // Split try/catch: server-side rename already committed
+      // (`parsed.ok === true`). A failure inside the post-commit work
+      // (IDB clear via closeAndClearForRename, tab remap, event dispatch)
+      // is a client-side reconciliation failure, NOT a network error.
+      // Labeling it "Network error — please try again" would misdirect
+      // the user toward a retry that POSTs against a now-nonexistent
+      // source path and fails differently. The correct recovery is to
+      // refresh and resync with disk truth.
       captureRenameSnapshots(renamed);
       let reconcileOk = true;
       try {
+        // Same gate as FileTree.applyRenamedDocuments — rationale documented
+        // at `planRenameCleanupCalls` in file-tree-operations.ts.
         const cleanupDocNames = planRenameCleanupCalls(renamed, getPoolActiveDocName(), poolHas);
         await Promise.all(cleanupDocNames.map((name) => closeAndClearForRename(name)));
         remapTabsForRename(renamed);
@@ -522,6 +561,10 @@ export function EditorTabs() {
       commitInProgressRef.current = false;
       lastFailedValueRef.current = null;
 
+      // Skip navigation when reconciliation failed: remapTabsForRename never
+      // ran, so no tab is keyed to nextActiveDocName. Calling navigateToDoc
+      // would silently open a new tab and contradict the "refresh to resync"
+      // toast. Refresh recovers consistent state.
       if (reconcileOk && nextActiveDocName && nextActiveDocName !== currentActiveDocName) {
         navigateToDoc(nextActiveDocName);
       }
@@ -535,6 +578,23 @@ export function EditorTabs() {
     }
   }
 
+  // Electron-host gate. Two regions, split by geometry:
+  //
+  //   • The strip ROOT stays a window-drag region (`-webkit-app-region: drag`).
+  //     The strip is h-12 (48px) and `items-end`, so the empty 8px band ABOVE
+  //     the h-10 (40px) tabs — plus all trailing space after the last tab when
+  //     the strip isn't full — is the root showing through, and stays draggable.
+  //   • An inner wrapper that hugs the tabs + add-button (content width, 40px
+  //     tall, bottom-aligned) declares `no-drag`. That covers the tabs AND the
+  //     4px gaps between them, so they stay interactive.
+  //
+  // Why the split: macOS hijacks pointer/wheel events in drag regions at the OS
+  // chrome level (the DOM never sees them; see the `[data-electron-drag]`
+  // neutralization rule in globals.css). A draggable inter-tab gap therefore
+  // killed wheel-scroll whenever the cursor sat between two tabs. Scoping
+  // `no-drag` to the content-hugging wrapper keeps wheel-scroll alive over the
+  // tabs and gaps while preserving the drag affordance on the genuinely-empty
+  // top band and trailing space. Web mode (no `window.okDesktop`) is unchanged.
   const isElectronHost = typeof window !== 'undefined' && window.okDesktop != null;
   const newTabIdSet = new Set(newTabIds);
   const tabReorderModifiers = [createTabReorderModifier(tabReorderBounds)];
@@ -555,6 +615,13 @@ export function EditorTabs() {
     for (const tabId of emptyTabIds) closeNewTab(tabId);
   }
 
+  // Tab drag-reorder. PointerSensor `distance: 8` keeps plain clicks from
+  // initiating a drag (tabs differ from the PropertyPanel drag-handle pattern,
+  // where the handle is a dedicated child — here the entire tab is the drag
+  // source, so the activation threshold has to be looser than the panel's 4px).
+  // KeyboardSensor + sortableKeyboardCoordinates makes keyboard reorder work.
+  // Space starts drag so Enter can stay available for one-stop tab activation
+  // on the outer sortable tab while inner activation buttons remain tabIndex=-1.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -592,7 +659,15 @@ export function EditorTabs() {
       )}
       onWheel={scrollTabListOnWheel}
     >
-      <div className={cn('flex items-end gap-1', isElectronHost && '[-webkit-app-region:no-drag]')}>
+      <div
+        className={cn(
+          // Content-hugging, bottom-aligned no-drag wrapper. Hugs the tabs +
+          // add-button (no flex-1) so the root's empty space stays draggable;
+          // `no-drag` here keeps the tabs and inter-tab gaps wheel-scrollable.
+          'flex items-end gap-1',
+          isElectronHost && '[-webkit-app-region:no-drag]',
+        )}
+      >
         <DndContext
           sensors={sensors}
           autoScroll={TAB_REORDER_AUTO_SCROLL}
@@ -602,6 +677,14 @@ export function EditorTabs() {
           onDragEnd={handleDragEnd}
           onDragCancel={clearTabReorderBounds}
           accessibility={{
+            // Portal @dnd-kit's `DndDescribedBy` + `DndLiveRegion` SR helpers
+            // out of the strip's flex container — without this they land as
+            // siblings of the SortableTab list and the `+` button, occupying
+            // the `:first-child` slot in the parent flex flow. That breaks
+            // the `+` Button's `first:mb-3 mb-1.5` Tailwind variant when the
+            // tabs list is empty, leaving the `+` button 6px below where it
+            // should sit (cy=37 instead of cy=32). SSR/test-safe: only pass
+            // `document.body` when `document` exists in the runtime.
             container: typeof document !== 'undefined' ? document.body : undefined,
           }}
         >
@@ -751,6 +834,9 @@ export function EditorTabs() {
               }
 
               if (tab.kind === 'asset' || tab.kind === 'skill-file') {
+                // Skill bundle files share the asset tab's read-only chrome.
+                // Label off the skill-relative path (`references/x.md`) for the
+                // skill-file case, the asset path otherwise.
                 const labelPath = tab.kind === 'asset' ? tab.assetPath : tab.path;
                 const { baseName, label, prefix } = tabParts(labelPath, '');
                 const accessibleLabel = `${prefix}${label}`;

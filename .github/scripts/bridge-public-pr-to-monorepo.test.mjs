@@ -225,8 +225,8 @@ describe("applyPatchWithConflictDetection (graceful conflict routing canary)", (
   test("a divergence far from the contributor's edit applies 'clean'", () => {
     // The contributor edits B (top); OURS's comment divergence is at C (bottom),
     // separated by filler so they land in DIFFERENT diff hunks → 3-way merges
-    // cleanly. (Adjacent divergences share a hunk and conflict — see the test
-    // above; that's exactly why the bridge conflicts on comment-dense regions.)
+    // cleanly. (Adjacent divergences share a hunk and conflict; that's exactly
+    // why the bridge conflicts on comment-dense regions.)
     const longBase =
       "export const A = 1;\nexport const B = 2;\n" +
       "const p = 0;\nconst q = 0;\nconst r = 0;\nconst s = 0;\nconst u = 0;\nconst v = 0;\n" +
