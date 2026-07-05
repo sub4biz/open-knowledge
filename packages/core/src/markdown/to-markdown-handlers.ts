@@ -471,6 +471,11 @@ export const toMarkdownHandlers = {
     const bodyWidth = matrix.slice(1).reduce((m, r) => Math.max(m, r.length), 0);
     const mostCellsPerRow = Math.max(headerWidth, bodyWidth, alignArr.length);
 
+    if (mostCellsPerRow === 0) {
+      console.warn(JSON.stringify({ event: 'table-serialize-dropped-empty', rows: rows.length }));
+      return '';
+    }
+
     const alignmentCells: string[] = [];
     for (let col = 0; col < mostCellsPerRow; col++) {
       const align = alignArr[col];

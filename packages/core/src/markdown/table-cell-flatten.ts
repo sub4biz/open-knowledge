@@ -114,7 +114,7 @@ export function flattenCellBlocks(children: readonly Nodes[]): PhrasingContent[]
         return;
       default: {
         const withChildren = node as { children?: Nodes[] };
-        if (Array.isArray(withChildren.children)) {
+        if (Array.isArray(withChildren.children) && withChildren.children.length > 0) {
           withChildren.children.forEach((child, i) => {
             if (i > 0) pushBreak();
             pushBlock(child);
