@@ -93,7 +93,7 @@ export function SplashShareView({ encoded, view }: { encoded: string; view: OkSp
       </section>
 
       <div className="relative z-10">
-        <SiteFooter showSubscribe={false} />
+        <SiteFooter />
       </div>
     </main>
   );
@@ -149,7 +149,7 @@ export function SplashFallback({ heading }: { heading: string }) {
       </section>
 
       <div className="relative z-10">
-        <SiteFooter showSubscribe={false} />
+        <SiteFooter />
       </div>
     </main>
   );

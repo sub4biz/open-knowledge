@@ -39,7 +39,7 @@ export function SlidePageShell({ children }: { children: ReactNode }) {
       </section>
 
       <div className="relative z-10">
-        <SiteFooter showSubscribe={false} />
+        <SiteFooter />
       </div>
     </main>
   );
