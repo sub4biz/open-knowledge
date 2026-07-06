@@ -13,8 +13,8 @@ const subscribeSchema = z.object({
 
 type SubscribeValues = z.infer<typeof subscribeSchema>;
 
-// Compact variant of the marketing SubscribeForm, sized for the docs
-// "On this page" TOC column. POSTs to /api/subscribe, which the microfrontends
+// Compact email-capture form for the docs "On this page" TOC column. POSTs to
+// /api/subscribe, which the microfrontends
 // group routes to the ok-marketing app (see docs/microfrontends.json).
 export function ProductUpdatesForm() {
   const [submitFailed, setSubmitFailed] = useState(false);
