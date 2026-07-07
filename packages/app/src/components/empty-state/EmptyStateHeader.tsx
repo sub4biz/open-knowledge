@@ -25,7 +25,10 @@ interface EmptyStateHeaderProps {
  */
 export function EmptyStateHeader({ title, subtitle, celebrateSignal }: EmptyStateHeaderProps) {
   return (
-    <div className="flex items-center gap-4">
+    // Narrow pane (`@container/emptystate` in EmptyEditorState): stack the blob
+    // above the title, left-aligned with it, so a cramped split-view doesn't
+    // squeeze the headline into a sliver beside the blob. Side-by-side at `@md`.
+    <div className="flex flex-col items-start gap-3 @md/emptystate:flex-row @md/emptystate:items-center @md/emptystate:gap-4">
       <OkBlob size={64} celebrateSignal={celebrateSignal} />
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-light tracking-tighter text-balance">{title}</h2>

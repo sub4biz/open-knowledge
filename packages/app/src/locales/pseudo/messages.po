@@ -120,6 +120,11 @@ msgstr ""
 msgid "{0, plural, one {# request blocked by the preview's security policy} other {# requests blocked by the preview's security policy}}"
 msgstr ""
 
+#. placeholder {0}: folder.templateCount
+#: src/components/CreatedItemsList.tsx
+msgid "{0, plural, one {# template} other {# templates}}"
+msgstr ""
+
 #. placeholder {0}: item.count
 #: src/editor/tag-suggestion/TagSuggestionMenu.tsx
 msgid "{0, plural, one {# use} other {# uses}}"
@@ -283,6 +288,14 @@ msgstr ""
 msgid "{fileCount, plural, one {# file} other {# files}}"
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "{fileCount, plural, one {file} other {files}}"
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "{folderCount, plural, one {folder} other {folders}}"
+msgstr ""
+
 #: src/components/HelpPopover.tsx
 msgid "{formatted} GitHub stars"
 msgstr ""
@@ -378,6 +391,14 @@ msgstr ""
 msgid "{settingsDescriptorLabel} properties"
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "{skillCount, plural, one {skill} other {skills}}"
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "{templateCount, plural, one {template} other {templates}}"
+msgstr ""
+
 #: src/components/EditorFooter.tsx
 msgid "{tokens, plural, one {token} other {tokens}}"
 msgstr ""
@@ -468,6 +489,10 @@ msgstr ""
 msgid "A key is set, but the embeddings provider rejected it or was unreachable — search fell back to keyword matching. Check the key in <0>Settings → Account</0> and your provider settings."
 msgstr ""
 
+#: src/components/SeedDialog.tsx
+msgid "A knowledge base that follows Google's Open Knowledge Format, a shared way of organizing what you know. Pick this if you want your notes to work well with other tools that understand the format."
+msgstr ""
+
 #: src/editor/slash-command/items.tsx
 msgid "A line with a footnote<0><1>[1]</1></0> and a definition shown below."
 msgstr ""
@@ -503,6 +528,10 @@ msgstr ""
 
 #: src/components/TemplateForm.tsx
 msgid "A short line shown under the name in the template list."
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "A simple place to write, with one file per topic and a daily journal. Pick this if you just want to start writing and let the links between notes build up over time."
 msgstr ""
 
 #: src/components/SkillRenameDialog.tsx
@@ -618,6 +647,10 @@ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Add cursors or select matching occurrences through CodeMirror."
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Add it directly to this project."
 msgstr ""
 
 #: src/components/ArrayOfObjectsWidget.tsx
@@ -758,7 +791,7 @@ msgid "API key set"
 msgstr ""
 
 #: src/components/CreatedItemsList.tsx
-msgid "Append-only timeline"
+msgid "Append-only log of what changed."
 msgstr ""
 
 #: src/editor/bubble-menu/LinkEditPopover.tsx
@@ -1022,6 +1055,10 @@ msgstr ""
 
 #: src/components/empty-state/use-create-suggestions.ts
 msgid "Build a knowledge wiki about the different types of flightless birds. Start with an overview page, then add cross-linked pages for each major group (ratites like ostriches, emus, and kiwis; penguins; and flightless rails), the regions they live in, and a timeline of how flightlessness evolved."
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Build and keep track of the world behind your story. A home for your characters, places, factions, and the lore that ties them together, so details stay consistent as you write."
 msgstr ""
 
 #: src/components/InstallInClaudeDesktopDialog.tsx
@@ -1402,10 +1439,6 @@ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Component boundary navigation"
-msgstr ""
-
-#: src/components/SeedDialog.tsx
-msgid "Computing scaffold plan"
 msgstr ""
 
 #: src/components/BottomComposer.tsx
@@ -2061,10 +2094,6 @@ msgstr ""
 msgid "created folder"
 msgstr ""
 
-#: src/components/SeedDialog.tsx
-msgid "Created if missing; reused if it exists."
-msgstr ""
-
 #: src/components/FolderTimelineCard.tsx
 msgid "created template"
 msgstr ""
@@ -2660,6 +2689,10 @@ msgstr ""
 msgid "Expires in {timeLabel}"
 msgstr ""
 
+#: src/components/SeedDialog.tsx
+msgid "Explain how your codebase works so teammates and AI agents can find their way around. Good for documenting the architecture, the main parts, and the questions new contributors always ask."
+msgstr ""
+
 #: src/components/GraphPanel.tsx
 msgid "Explore"
 msgstr ""
@@ -2973,6 +3006,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "Files & folders"
+msgstr ""
+
 #: src/lib/keyboard-shortcuts.ts
 msgid "Files sidebar"
 msgstr ""
@@ -3185,6 +3222,10 @@ msgstr ""
 msgid "Grid of rows and columns with a header row."
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "Guides your AI agents on how to work here."
+msgstr ""
+
 #: src/editor/extensions/InternalLinkPropPanel.tsx
 msgid "guides/install or https://example.com"
 msgstr ""
@@ -3312,6 +3353,14 @@ msgstr ""
 
 #: src/components/TimelinePanel.tsx
 msgid "History unavailable"
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "Home page and entry point."
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "Home page and navigation hub."
 msgstr ""
 
 #: src/editor/slash-command/component-items.tsx
@@ -3612,6 +3661,10 @@ msgstr ""
 msgid "just now"
 msgstr ""
 
+#: src/components/SeedDialog.tsx
+msgid "Keep a written record of how your product gets built. A home for proposing ideas, recording decisions, writing specs, and capturing what you learned after something broke."
+msgstr ""
+
 #: src/components/AutoSyncOnboardingDialog.tsx
 msgid "Keep disabled"
 msgstr ""
@@ -3622,6 +3675,10 @@ msgstr ""
 
 #: src/components/DiffViewBoundary.tsx
 msgid "Keep my version"
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Keep track of the people and companies you work with and the meetings you have with them. Good for remembering who someone is, how you know them, and what you last talked about."
 msgstr ""
 
 #: src/components/settings/EmbeddingsKeySection.tsx
@@ -3770,6 +3827,10 @@ msgstr ""
 
 #: src/editor/components/Pdf.tsx
 msgid "Loading PDF"
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Loading preview"
 msgstr ""
 
 #: src/components/CloneDialog.tsx
@@ -5008,10 +5069,6 @@ msgstr ""
 msgid "Pick <0>openknowledge.skill</0> from your <1>Downloads</1> folder. It enables automatically."
 msgstr ""
 
-#: src/components/SeedDialog.tsx
-msgid "Pick a layout that matches what you're building. Each pack ships with folders, templates, and agent-readable descriptions. You can mix and match later."
-msgstr ""
-
 #: src/components/PublishToGitHubDialog.tsx
 msgid "Pick a name"
 msgstr ""
@@ -5220,6 +5277,14 @@ msgstr ""
 
 #: src/editor/slash-command/component-items.tsx
 msgid "Read-only copy of a MirrorSource block from another doc. Edit at the source and it updates live."
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Ready-made folders and templates to get you started quickly."
+msgstr ""
+
+#: src/components/EmptyEditorState.tsx
+msgid "Ready-made folders and templates to get you started quickly. Select a pack to preview what gets created, then add it to your project."
 msgstr ""
 
 #: src/components/TrashFailureModal.tsx
@@ -5592,6 +5657,10 @@ msgstr ""
 msgid "Retrying"
 msgstr ""
 
+#: src/components/SeedDialog.tsx
+msgid "Reused if it already exists, created if not."
+msgstr ""
+
 #: src/components/FileTree.tsx
 msgid "Reveal in File Explorer"
 msgstr ""
@@ -5686,10 +5755,6 @@ msgstr ""
 
 #: src/components/settings/EmbeddingsKeySection.tsx
 msgid "Saving"
-msgstr ""
-
-#: src/components/SeedDialog.tsx
-msgid "Scaffold directly under this project."
 msgstr ""
 
 #: src/components/NewSkillDialog.tsx
@@ -6009,6 +6074,11 @@ msgstr ""
 msgid "Sharing a doc needs a GitHub repository. Create one for this project."
 msgstr ""
 
+#. placeholder {0}: hiddenPacks.length
+#: src/components/PackCardGrid.tsx
+msgid "Show {0} more"
+msgstr ""
+
 #: src/components/LinksPanel.tsx
 #: src/components/TimelinePanel.tsx
 msgid "Show {hidden} more"
@@ -6045,6 +6115,10 @@ msgstr ""
 
 #: src/editor/extensions/CodeBlockView.tsx
 msgid "Show HTML preview"
+msgstr ""
+
+#: src/components/PackCardGrid.tsx
+msgid "Show less"
 msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
@@ -6120,6 +6194,10 @@ msgstr ""
 
 #: src/editor/components/Pdf.tsx
 msgid "Single page"
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "Skill"
 msgstr ""
 
 #. placeholder {0}: skill.name
@@ -6248,6 +6326,10 @@ msgstr ""
 msgid "Start from"
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "Start here: what this is and how it's organized."
+msgstr ""
+
 #: src/lib/keyboard-shortcuts.ts
 msgid "Start source completion"
 msgstr ""
@@ -6304,6 +6386,10 @@ msgstr ""
 
 #: src/lib/keyboard-shortcuts.ts
 msgid "Strikethrough"
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Subfolder name"
 msgstr ""
 
 #: src/components/settings/SettingsDialogBody.tsx
@@ -6478,6 +6564,10 @@ msgstr ""
 msgid "Tags matching \"{tagListQuery}\""
 msgstr ""
 
+#: src/components/SeedDialog.tsx
+msgid "Take a piece of writing from a rough idea to a finished draft to something you're ready to share. Good for blog posts, essays, or anything you want to move through clear stages."
+msgstr ""
+
 #: src/lib/keyboard-shortcuts.ts
 msgid "Task list"
 msgstr ""
@@ -6591,6 +6681,10 @@ msgstr ""
 msgid "The <0>type</0> every document created from this template gets (e.g. <1>research-note</1>). Keeps new docs Open Knowledge Format–conformant."
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "The agent's persona, values, and voice."
+msgstr ""
+
 #: src/components/InstallInClaudeDesktopDialog.tsx
 msgid "The Claude Desktop App didn't open the file. Is it installed? ({msg})"
 msgstr ""
@@ -6617,7 +6711,7 @@ msgid "The folder on disk and the id agents use to invoke this skill."
 msgstr ""
 
 #: src/components/SeedDialog.tsx
-msgid "The folders and templates are in place; there's nothing left to scaffold."
+msgid "The folders and templates are already here, so there's nothing to add."
 msgstr ""
 
 #: src/editor/slash-command/items.tsx
@@ -6626,11 +6720,6 @@ msgstr ""
 
 #: src/components/TemplateProperties.tsx
 msgid "The menu label agents pick this template by (required)."
-msgstr ""
-
-#. placeholder {0}: phase.plan.packSkill.name
-#: src/components/SeedDialog.tsx
-msgid "The pack skill <0>{0}</0> will be (re)installed."
 msgstr ""
 
 #: src/editor/components/PreviewBlockedNotice.tsx
@@ -6973,6 +7062,10 @@ msgstr ""
 msgid "Tree view options"
 msgstr ""
 
+#: src/components/empty-state/CreatePromptComposer.tsx
+msgid "Try a prompt"
+msgstr ""
+
 #: src/components/DocumentErrorBoundary.tsx
 #: src/components/InstallInClaudeDesktopDialog.tsx
 #: src/components/settings/AccountSection.tsx
@@ -6986,6 +7079,10 @@ msgstr ""
 
 #: src/components/settings/SearchSection.tsx
 msgid "Turn on semantic search?"
+msgstr ""
+
+#: src/components/SeedDialog.tsx
+msgid "Turn the things you read into clear, trusted articles. Save a source, figure out what it means, then keep the final version so you can rely on it later."
 msgstr ""
 
 #: src/editor/components/Pdf.tsx
@@ -7348,6 +7445,10 @@ msgstr ""
 msgid "What gets created"
 msgstr ""
 
+#: src/components/EmptyEditorState.tsx
+msgid "What is a starter pack?"
+msgstr ""
+
 #: src/components/PublishToGitHubDialog.tsx
 msgid "What is this knowledge base for?"
 msgstr ""
@@ -7355,6 +7456,10 @@ msgstr ""
 #: src/components/handoff/EditWithAiPopover.tsx
 #: src/components/handoff/OpenInAgentMenu.tsx
 msgid "What should the AI do? (optional)"
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "What the agent may read, write, and surface."
 msgstr ""
 
 #: src/components/empty-state/empty-state-copy.ts
@@ -7369,12 +7474,20 @@ msgstr ""
 msgid "When enabled, the agent opens or refreshes the preview after each edit. Disable if you manage your own preview window (OK Desktop, a browser tab on another display, etc.)."
 msgstr ""
 
+#: src/components/CreatedItemsList.tsx
+msgid "When the agent runs its scheduled work."
+msgstr ""
+
 #: src/components/settings/SettingsDialogBody.tsx
 msgid "Where newly added attachments are placed."
 msgstr ""
 
 #: src/components/SeedDialog.tsx
 msgid "Where should it live?"
+msgstr ""
+
+#: src/components/CreatedItemsList.tsx
+msgid "Who you are, so the agent has your context."
 msgstr ""
 
 #: src/editor/find-replace/FindReplaceBar.tsx

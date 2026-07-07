@@ -453,6 +453,9 @@ export function CreatePromptComposer({ scenario, className }: CreatePromptCompos
           generic prefills there (the embedded copy-list still shows them). */}
       {scenario !== 'existing-repo' && suggestions.length > 0 ? (
         <div className="flex flex-wrap items-center justify-center gap-2">
+          <span className="text-1sm text-muted-foreground">
+            <Trans>Try a prompt</Trans>
+          </span>
           {suggestions.map((suggestion) => {
             const Icon = suggestion.icon;
             return (

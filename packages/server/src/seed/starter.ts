@@ -61,9 +61,19 @@ export interface StarterFolder {
    * **primary agent-guidance surface** for folder purpose — `ok seed` does
    * NOT emit AGENTS.md files; agent guidance for each folder lives in this
    * description, which surfaces at every `exec` (`ls` / `cat`) and `search`
-   * call as part of the folder's own frontmatter.
+   * call as part of the folder's own frontmatter. Written FOR the agent:
+   * dense, jargon-carrying (prior-art shapes, status vocab) on purpose.
    */
   description: string;
+  /**
+   * Short, plain-language, user-facing one-liner surfaced in the pack picker
+   * preview (`StarterPackFolderInfo.summary`). Separate from `description` so
+   * the agent surface can stay dense while users see jargon-free copy —
+   * mirrors the pack-level `pack.description` (short) vs `packBlurbs` split.
+   * Keep it a single short sentence; no code spans, no prior-art references.
+   * Falls back to the first sentence of `description` when omitted.
+   */
+  uiSummary?: string;
   /** Tags written to the folder's `.ok/frontmatter.yml`. */
   tags: string[];
   /**
@@ -128,6 +138,7 @@ const KNOWLEDGE_BASE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'external-sources',
     title: 'External Sources',
+    uiSummary: 'The original sources, saved word-for-word.',
     description:
       'Raw sources saved verbatim — the fetched text of URLs, extracted PDFs, and copied files, each with the original URL and access date in frontmatter. Produced by `ingest`. Immutable after capture; no analysis here (that goes in `research/`).',
     tags: ['source', 'immutable', 'layer-ingest'],
@@ -136,6 +147,7 @@ const KNOWLEDGE_BASE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'research',
     title: 'Research',
+    uiSummary: 'Your work-in-progress take on what the sources mean.',
     description:
       'Provisional analysis that synthesizes the external sources. Every claim cites a doc in `external-sources/`; `status: provisional`. Promoted to `articles/` via `consolidate` once the findings are stable.',
     tags: ['research', 'provisional', 'layer-research'],
@@ -144,6 +156,7 @@ const KNOWLEDGE_BASE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'articles',
     title: 'Articles',
+    uiSummary: 'The finished, trusted version you can rely on.',
     description:
       'Canonical knowledge, committed after a team decision. The source of truth for the domain; carries a `supersedes:` chain back to the `research/` docs it replaces.',
     tags: ['article', 'canonical', 'layer-consolidate'],
@@ -237,6 +250,7 @@ const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'proposals',
     title: 'Proposals',
+    uiSummary: "Ideas you're putting forward for discussion.",
     description:
       'In-flight design proposals (RFC-shape), one file per proposal (`0001-feature-name.md`). Status flows `draft → fcp → accepted/rejected`; accepted proposals graduate to a record in `decisions/`.',
     tags: ['proposal', 'design', 'in-flight'],
@@ -245,6 +259,7 @@ const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'decisions',
     title: 'Decisions',
+    uiSummary: "Decisions you've made, and why.",
     description:
       'Architecture Decision Records (MADR / Nygard shape), frozen once accepted. One file per decision (`NNNN-title.md`); a new decision links back via `Supersedes:` to the one it replaces.',
     tags: ['decision', 'adr', 'frozen'],
@@ -253,6 +268,7 @@ const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'specs',
     title: 'Specs',
+    uiSummary: "Detailed plans for what you're building.",
     description:
       'Implementation specs derived from accepted proposals. Prefer the `github/spec-kit` triple — one folder per spec with `spec.md` + `plan.md` + `tasks.md` (the folder ships all three templates). References the parent proposal.',
     tags: ['spec', 'implementation'],
@@ -262,6 +278,7 @@ const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'postmortems',
     title: 'Postmortems',
+    uiSummary: 'Write-ups of what broke and what you learned.',
     description:
       'Blameless incident write-ups, one file per incident (`YYYY-MM-DD-name.md`): Summary / Timeline / Root cause / What went well / Action items (Google SRE shape).',
     tags: ['postmortem', 'incident', 'blameless'],
@@ -270,6 +287,7 @@ const SOFTWARE_LIFECYCLE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'guides',
     title: 'Guides',
+    uiSummary: 'How-to guides, onboarding, and runbooks.',
     description:
       'How-to guides, onboarding docs, and service runbooks (Diátaxis "how-to"). Ships `guide`, `onboarding-guide`, and `runbook` templates; carries `last_verified`.',
     tags: ['guide', 'how-to', 'onboarding'],
@@ -502,6 +520,7 @@ const CODEBASE_WIKI_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'wiki/architecture',
     title: 'Architecture',
+    uiSummary: 'The big-picture structure of your codebase.',
     description:
       'System boundaries, layers, subsystems, and cross-cutting concerns — the big-picture structure. One page per architectural area, each with a `mermaid` system-context or component diagram, the key components, and the design decisions behind them. Uses the `architecture-page` template. Cross-link the modules and flows each area touches. Reference source files per the wiki source-reference convention (relative links + symbol code-spans for `internal`; GitHub blob URLs for `public`).',
     tags: ['wiki', 'architecture'],
@@ -510,6 +529,7 @@ const CODEBASE_WIKI_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'wiki/modules',
     title: 'Modules',
+    uiSummary: 'What each package or module does.',
     description:
       'One page per package or module: purpose, responsibilities, public API / entry points, key files (linked per the source-reference convention), dependencies, and the flows it participates in. Uses the `module-page` template. At `depth: tour` these fold into the architecture pages; at `standard`+ each package gets its own page. Cross-link concepts and flows.',
     tags: ['wiki', 'module'],
@@ -518,6 +538,7 @@ const CODEBASE_WIKI_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'wiki/flows',
     title: 'Flows',
+    uiSummary: 'How key actions move through the system.',
     description:
       'Key end-to-end flows as `mermaid` sequence or flow diagrams plus narrative — how a request, job, or interaction moves through the system. Uses the `flow-page` template; record failure modes at `depth: exhaustive`. Link every module and concept the flow crosses.',
     tags: ['wiki', 'flow'],
@@ -526,6 +547,7 @@ const CODEBASE_WIKI_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'wiki/concepts',
     title: 'Concepts',
+    uiSummary: 'Plain definitions of the terms and ideas in your code.',
     description:
       'Glossary of atomic pages for domain terms and core abstractions — the vocabulary a newcomer needs. Uses the `concept-page` template: definition, why it matters, where it lives in the code. Keep pages small and densely cross-linked so concepts become hubs for everywhere they appear.',
     tags: ['wiki', 'concept'],
@@ -534,6 +556,7 @@ const CODEBASE_WIKI_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'wiki/guides',
     title: 'Guides',
+    uiSummary: 'How and where to make common changes.',
     description:
       'Task-oriented "how / where do I change X" walkthroughs. Uses the `guide-page` template: goal, steps, relevant code, gotchas. Populated at `depth: standard` and rich at `exhaustive`; thin or empty at `tour`. Link the modules and flows each guide touches.',
     tags: ['wiki', 'guide', 'how-to'],
@@ -686,6 +709,7 @@ const PLAIN_NOTES_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'notes',
     title: 'Notes',
+    uiSummary: 'One file per topic. Just write.',
     description:
       'Flat notes, one file per topic. The "I just want to write" home base — link freely and the graph builds itself.',
     tags: ['notes', 'flat'],
@@ -694,6 +718,7 @@ const PLAIN_NOTES_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'daily',
     title: 'Daily',
+    uiSummary: 'One journal entry per day.',
     description:
       'Daily journal entries, one file per day (`YYYY-MM-DD.md`): morning intentions, evening reflection.',
     tags: ['daily', 'journal'],
@@ -746,6 +771,7 @@ const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'characters',
     title: 'Characters',
+    uiSummary: 'The people in your story.',
     description:
       'One file per character (PC + NPC); frontmatter carries `type`, status, faction, first appearance.',
     tags: ['character', 'fiction', 'entity'],
@@ -754,6 +780,7 @@ const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'settings',
     title: 'Settings',
+    uiSummary: 'The places and regions of your world.',
     description:
       'Locations, regions, and world-rules — the "where" of the story. Frontmatter carries region, controlling faction, danger level.',
     tags: ['setting', 'location', 'world'],
@@ -762,6 +789,7 @@ const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'themes',
     title: 'Themes',
+    uiSummary: 'The big ideas your story keeps returning to.',
     description:
       'Recurring narrative concerns (love, betrayal, identity) — the "why" of the story. Each entry captures the theme and its tension.',
     tags: ['theme', 'narrative', 'meaning'],
@@ -770,6 +798,7 @@ const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'factions',
     title: 'Factions',
+    uiSummary: 'The groups and their rivalries.',
     description:
       'Political, social, criminal, magical, or religious groups — the "who-vs-who" of the story. Ships `faction`, `political-faction`, and `religion` templates.',
     tags: ['faction', 'group', 'politics'],
@@ -779,6 +808,7 @@ const WORLDBUILDING_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'lore',
     title: 'Lore',
+    uiSummary: 'History, myth, and how the world works.',
     description:
       'History, mythology, cosmology, and magic systems — the foundational fabric the story stands on. Ships `lore`, `magic-system`, and `historical-event` templates.',
     tags: ['lore', 'history', 'world'],
@@ -1016,6 +1046,7 @@ const WRITING_PIPELINE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'ideas',
     title: 'Ideas',
+    uiSummary: 'Quick sparks to write about later.',
     description:
       'One-line ideas captured before they fade — premises, headlines, fragments. Not a draft folder; promote an idea into `drafts/` when you commit to writing it.',
     tags: ['idea', 'inbox', 'pre-draft'],
@@ -1024,6 +1055,7 @@ const WRITING_PIPELINE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'drafts',
     title: 'Drafts',
+    uiSummary: "Pieces you're actively writing.",
     description:
       'Active prose. Frontmatter tracks `status`, word count, and parent idea. CRDT history covers every revision, so no named-revision folders.',
     tags: ['draft', 'prose'],
@@ -1032,6 +1064,7 @@ const WRITING_PIPELINE_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'published',
     title: 'Published',
+    uiSummary: "Finished work you've shared.",
     description:
       'Shipped work; carries `published_at`, `canonical_url`, `channel`. Treat as immutable — to revise, copy to a new draft.',
     tags: ['published', 'live'],
@@ -1109,6 +1142,7 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'people',
     title: 'People',
+    uiSummary: 'The people you know and work with.',
     description:
       'Person dossiers. Compiled-truth section above `--- timeline ---` (rewritten as understanding changes); append-only timeline below using `- **YYYY-MM-DD** | source | @author — evidence` bullets. Frontmatter `type: person`. Prefer path-qualified links such as `[[companies/acme|Acme]]` and `[[meetings/2026-05-12-acme|meeting]]` when identity matters. Agent: when a meeting note mentions a person not yet captured, stub a file here; route new facts into either compiled-truth (current synthesis) or timeline (raw evidence). Never rewrite the timeline.',
     tags: ['person', 'entity', 'dossier'],
@@ -1117,6 +1151,7 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'companies',
     title: 'Companies',
+    uiSummary: 'The companies on your radar.',
     description:
       'Company dossiers. Same body convention as `people/`: compiled-truth above `--- timeline ---`, append-only parseable timeline below. Frontmatter `type: company`. Prefer path-qualified links to `people/`, `meetings/`, and `concepts/`. Agent: when a person dossier references a company not yet captured, stub a file here; surface company-to-person edges when both exist.',
     tags: ['company', 'entity', 'dossier'],
@@ -1125,6 +1160,7 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'meetings',
     title: 'Meetings',
+    uiSummary: 'Notes from your meetings.',
     description:
       'Meeting notes. Filename `YYYY-MM-DD-<slug>.md`. Frontmatter carries `title`, `date`, `attendees:` (prefer person slugs/names that resolve to `people/` dossiers), and `type: meeting`. Body is raw notes with path-qualified links to the people, companies, and concepts mentioned. Agent: after a meeting note lands, extract entity mentions and append dated timeline bullets to each referenced dossier. Do NOT rewrite the meeting note; it is the verbatim record.',
     tags: ['meeting', 'note'],
@@ -1133,6 +1169,7 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'concepts',
     title: 'Concepts',
+    uiSummary: 'Recurring ideas that connect people and companies.',
     description:
       'Evergreen idea pages: abstract patterns, frameworks, recurring concepts that surface across people / companies / meetings. Compiled-truth above `--- timeline ---`, append-only parseable timeline below. Frontmatter `type: concept`. Agent: when a meeting note or person dossier references a concept (e.g. "agent-runtime observability") not yet captured, stub a file here; thread path-qualified links so the concept becomes a hub for everywhere it appears.',
     tags: ['concept', 'idea', 'evergreen'],
@@ -1141,6 +1178,7 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'originals',
     title: 'Originals',
+    uiSummary: 'Your own raw thinking.',
     description:
       "Your own thinking, untransformed. Frontmatter `type: original`. Use freely; link to anything that should become its own entity. Agent: treat originals as authoritative source material when extracting facts; these are the user's words, not inferences. Append timeline entries to referenced dossiers when a clear new claim appears, citing the original by markdown link.",
     tags: ['original', 'thinking', 'user'],
@@ -1149,6 +1187,7 @@ const ENTITY_VAULT_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'media',
     title: 'Media',
+    uiSummary: 'Transcripts, voice notes, and long attachments.',
     description:
       "Bulk transcripts, voice notes, articles, large attachments. Frontmatter `type: transcript` (template provided). Often `.okignore`-d so the OK index stays light. Keep raw media/source material here; analysis belongs in dossiers, not here. If you also run Garry Tan's `gbrain`, import/sync can index these Markdown transcripts alongside the entity dossiers.",
     tags: ['media', 'transcript', 'bulk'],
@@ -1435,6 +1474,7 @@ const OKF_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'concepts',
     title: 'Concepts',
+    uiSummary: 'Ideas and definitions worth keeping.',
     description:
       'Durable ideas and definitions, one file per concept. Each doc carries `type: concept` in its frontmatter. Link related concepts so the graph builds itself.',
     tags: ['concept', 'okf'],
@@ -1443,6 +1483,7 @@ const OKF_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'references',
     title: 'References',
+    uiSummary: 'Sources and citations you rely on.',
     description:
       'External sources and citations you rely on, one file per source. Each doc carries `type: reference`. Link the docs that cite a reference so the evidence trail stays navigable.',
     tags: ['reference', 'okf'],
@@ -1451,6 +1492,7 @@ const OKF_FOLDERS: readonly StarterFolder[] = [
   {
     path: 'notes',
     title: 'Notes',
+    uiSummary: 'Working notes and observations.',
     description:
       'Working notes and observations, one file per note. Each doc carries `type: note`. The lightest section — capture first, link as ideas connect.',
     tags: ['note', 'okf'],
@@ -1802,7 +1844,9 @@ export function listStarterPacks(): StarterPackInfo[] {
       defaultSubfolder: pack.defaultSubfolder,
       folders: pack.folders.map((f) => ({
         path: f.path,
-        summary: deriveFolderSummary(f.description),
+        // Prefer the authored user-facing line; fall back to the first
+        // sentence of the agent description for any folder without one.
+        summary: f.uiSummary ?? deriveFolderSummary(f.description),
       })),
       entryCounts: computePackEntryCounts(pack),
     };

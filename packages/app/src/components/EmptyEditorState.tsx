@@ -1,5 +1,6 @@
 import { DocumentListSuccessSchema } from '@inkeep/open-knowledge-core';
-import { useLingui } from '@lingui/react/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { CopyablePromptList } from '@/components/empty-state/CopyablePromptList';
 import { CreatePromptComposer } from '@/components/empty-state/CreatePromptComposer';
@@ -9,6 +10,7 @@ import { getEmptyStateCopy } from '@/components/empty-state/empty-state-copy';
 import { filterVisibleEntries } from '@/components/file-tree-utils';
 import { PackCardGrid } from '@/components/PackCardGrid';
 import { SeedDialog } from '@/components/SeedDialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsEmbedded } from '@/hooks/use-is-embedded';
 import { emitCreateTopLevelFile } from '@/lib/create-file-events';
 import type { OkPackId } from '@/lib/desktop-bridge-types';
@@ -117,47 +119,57 @@ export function EmptyEditorState({
   // its vertical space, so the header centers instead.
   if (terminalDock !== null) {
     return (
+      // `@container/emptystate` scopes the child media queries to the editor
+      // pane's own width, not the window's — a narrow split-view pane gets the
+      // narrow layout even on a wide monitor. The padding + blob-stacking below
+      // key off `@md/emptystate:` for that reason.
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col items-center px-6 sm:px-12 md:px-16 pb-8 pt-10',
+          '@container/emptystate flex min-h-0 flex-1 flex-col items-center pb-8 pt-10',
           terminalDock === 'bottom' ? 'justify-end' : 'justify-center',
         )}
       >
-        {messageReady ? (
-          <TerminalEmptyHeader isOnboarding={isOnboarding} celebrateSignal={celebrateSignal} />
-        ) : null}
+        <div className="flex w-full flex-col items-center px-4 @md/emptystate:px-10 @2xl/emptystate:px-16">
+          {messageReady ? (
+            <TerminalEmptyHeader isOnboarding={isOnboarding} celebrateSignal={celebrateSignal} />
+          ) : null}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 sm:px-12 md:px-16 subtle-scrollbar">
-      {messageReady ? (
-        isOnboarding ? (
-          <OnboardingView
-            celebrateSignal={celebrateSignal}
-            onPackSelect={(packId) => {
-              setSeedDialogInitialPackId(packId);
-              setSeedDialogOpen(true);
-            }}
-          />
-        ) : (
-          <CreateView
-            celebrateSignal={celebrateSignal}
-            onAddStarterPack={() => {
-              // No `initialPackId` — lands at step 1 (PackCardGrid) so the
-              // user picks a pack inside the dialog rather than the canvas.
-              setSeedDialogOpen(true);
-            }}
-          />
-        )
-      ) : null}
-      <SeedDialog
-        open={seedDialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        onSeedApplied={handleSeedApplied}
-        initialPackId={seedDialogInitialPackId}
-      />
+    // See the terminal branch above for why this is an `@container/emptystate`:
+    // padding + header layout respond to the pane width, not the viewport.
+    <div className="@container/emptystate flex min-h-0 flex-1 flex-col items-center overflow-y-auto subtle-scrollbar">
+      <div className="flex w-full flex-1 flex-col items-center px-4 @md/emptystate:px-10 @2xl/emptystate:px-16">
+        {messageReady ? (
+          isOnboarding ? (
+            <OnboardingView
+              celebrateSignal={celebrateSignal}
+              onPackSelect={(packId) => {
+                setSeedDialogInitialPackId(packId);
+                setSeedDialogOpen(true);
+              }}
+            />
+          ) : (
+            <CreateView
+              celebrateSignal={celebrateSignal}
+              onAddStarterPack={() => {
+                // No `initialPackId` — lands at step 1 (PackCardGrid) so the
+                // user picks a pack inside the dialog rather than the canvas.
+                setSeedDialogOpen(true);
+              }}
+            />
+          )
+        ) : null}
+        <SeedDialog
+          open={seedDialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          onSeedApplied={handleSeedApplied}
+          initialPackId={seedDialogInitialPackId}
+        />
+      </div>
     </div>
   );
 }
@@ -234,29 +246,50 @@ function OnboardingView({
       {/* Group the divider + grid + escape hatch in their own tight container
           so the link sits close beneath the cards while the header/composer
           above keep the parent's wider `gap-10` breathing room. */}
-      <div className="flex w-full flex-col gap-4">
+      <div className="flex w-full flex-col gap-3">
         <TemplateDivider label={isEmbedded ? t`Use a starter pack` : t`Or use a starter pack`} />
-        {/* The trailing "Blank file" card is the escape hatch for users who
-            don't want a scaffolded layout — it fires the same window-level
+        {/* Non-modal grid: keep the primary packs visible and park the
+            secondary ones (`okf`, `entity-vault`) behind "Show more". The
+            "or create a new file" footer button is the escape hatch for users
+            who don't want a scaffolded layout — it fires the same window-level
             event the sidebar toolbar uses, so the new file lands with the
             standard inline-rename flow (sidebar handles focus + navigation). */}
         <PackCardGrid
           onPackSelect={onPackSelect}
           onCreateBlankFile={() => emitCreateTopLevelFile()}
+          collapsedPackIds={['okf', 'entity-vault']}
         />
       </div>
     </div>
   );
 }
 
-/** Labeled hairline rule above the starter-pack grid ("Or start from a
- *  template"). Mirrors the screenshot's section divider. */
+/** Labeled section header above the starter-pack grid ("Or use a starter
+ *  pack") plus an info tooltip explaining what a starter pack is. */
 function TemplateDivider({ label }: { label: string }) {
+  const { t } = useLingui();
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1.5">
       <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
         {label}
       </span>
+      <Tooltip>
+        <TooltipTrigger
+          className="text-muted-foreground transition-colors hover:text-foreground"
+          aria-label={t`What is a starter pack?`}
+          data-testid="starter-pack-info"
+        >
+          <Info className="size-3.5" aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          <p className="leading-relaxed wrap-break-word">
+            <Trans>
+              Ready-made folders and templates to get you started quickly. Select a pack to preview
+              what gets created, then add it to your project.
+            </Trans>
+          </p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

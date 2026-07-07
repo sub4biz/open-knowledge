@@ -266,10 +266,25 @@ export function SeedDialog({ open, onOpenChange, onSeedApplied, initialPackId }:
     step === 'configure' && selectedPack
       ? t`Initialize ${selectedPackName}`
       : t`Initialize a starter pack`;
+  // The configure step has room for more than the one-line card blurb: a
+  // sentence or two on why you'd reach for this pack and what you'd do with it.
+  // Dialog-only copy, so it lives here rather than on the pack wire (a
+  // drift-guarded three-way mirror). Unmapped packs fall back to the short
+  // `description`.
+  const packBlurbs: Partial<Record<OkPackId, string>> = {
+    'knowledge-base': t`Turn the things you read into clear, trusted articles. Save a source, figure out what it means, then keep the final version so you can rely on it later.`,
+    'software-lifecycle': t`Keep a written record of how your product gets built. A home for proposing ideas, recording decisions, writing specs, and capturing what you learned after something broke.`,
+    'codebase-wiki': t`Explain how your codebase works so teammates and AI agents can find their way around. Good for documenting the architecture, the main parts, and the questions new contributors always ask.`,
+    'plain-notes': t`A simple place to write, with one file per topic and a daily journal. Pick this if you just want to start writing and let the links between notes build up over time.`,
+    okf: t`A knowledge base that follows Google's Open Knowledge Format, a shared way of organizing what you know. Pick this if you want your notes to work well with other tools that understand the format.`,
+    'writing-pipeline': t`Take a piece of writing from a rough idea to a finished draft to something you're ready to share. Good for blog posts, essays, or anything you want to move through clear stages.`,
+    'entity-vault': t`Keep track of the people and companies you work with and the meetings you have with them. Good for remembering who someone is, how you know them, and what you last talked about.`,
+    worldbuilding: t`Build and keep track of the world behind your story. A home for your characters, places, factions, and the lore that ties them together, so details stay consistent as you write.`,
+  };
   const description =
     step === 'configure' && selectedPack
-      ? selectedPack.description
-      : t`Pick a layout that matches what you're building. Each pack ships with folders, templates, and agent-readable descriptions. You can mix and match later.`;
+      ? (packBlurbs[selectedPack.id] ?? selectedPack.description)
+      : t`Ready-made folders and templates to get you started quickly.`;
 
   function handlePackSelect(id: OkPackId) {
     setSelectedPackId(id);
@@ -359,6 +374,7 @@ function RootPicker({
   onChoiceChange: (next: RootChoice) => void;
   onSubfolderChange: (next: string) => void;
 }) {
+  const { t } = useLingui();
   return (
     <div className="space-y-2 py-1">
       <p className="text-sm font-medium">
@@ -376,7 +392,7 @@ function RootPicker({
                 <Trans>Project root</Trans>
               </FieldTitle>
               <FieldDescription className="text-1sm">
-                <Trans>Scaffold directly under this project.</Trans>
+                <Trans>Add it directly to this project.</Trans>
               </FieldDescription>
             </FieldContent>
             <RadioGroupItem value="project-root" id="seed-root-project-root" />
@@ -389,13 +405,14 @@ function RootPicker({
                 <Trans>In a subfolder</Trans>
               </FieldTitle>
               <FieldDescription className="nth-last-2:mt-0 text-1sm">
-                <Trans>Created if missing; reused if it exists.</Trans>
+                <Trans>Reused if it already exists, created if not.</Trans>
               </FieldDescription>
               {choice === 'subfolder' && (
                 <Input
                   value={subfolder}
                   onChange={(e) => onSubfolderChange(e.target.value)}
                   placeholder={placeholder}
+                  aria-label={t`Subfolder name`}
                   spellCheck={false}
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -418,12 +435,29 @@ function SeedDialogBody({
   phase: DialogPhase;
   selectedPack: OkSeedPackInfo | undefined;
 }) {
+  const { t } = useLingui();
   if (phase.kind === 'loading') {
+    // Card-sized skeleton blocks in the same grid as the real cards, so the
+    // plan swaps in without a layout jump. Count tracks the pack's folders (the
+    // dominant card kind). `role="status"` so assistive tech hears it loading.
+    const cardCount = selectedPack?.folders.length ?? 6;
     return (
-      <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-        <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-        <Trans>Computing scaffold plan</Trans>
-      </div>
+      <section
+        className="@container/created"
+        role="status"
+        aria-busy="true"
+        aria-label={t`Loading preview`}
+      >
+        <div className="grid gap-3 @sm/created:grid-cols-2 @2xl/created:grid-cols-3">
+          {Array.from({ length: cardCount }, (_, i) => i).map((i) => (
+            <div
+              key={`seed-skeleton-${i}`}
+              aria-hidden="true"
+              className="h-20 animate-pulse rounded-xl bg-muted"
+            />
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -442,7 +476,7 @@ function SeedDialogBody({
           <Trans>This pack is already set up here.</Trans>
         </p>
         <p className="text-muted-foreground">
-          <Trans>The folders and templates are in place; there's nothing left to scaffold.</Trans>
+          <Trans>The folders and templates are already here, so there's nothing to add.</Trans>
         </p>
       </div>
     );
@@ -450,17 +484,8 @@ function SeedDialogBody({
 
   return (
     <div className="space-y-6 py-1 text-sm">
-      {phase.plan.created.length > 0 ? (
+      {phase.plan.created.length > 0 || phase.plan.packSkill?.pending ? (
         <CreatedItemsList plan={phase.plan} selectedPack={selectedPack} />
-      ) : null}
-      {phase.plan.packSkill?.pending ? (
-        <p className="text-sm text-muted-foreground">
-          <Trans>
-            The pack skill{' '}
-            <code className="font-mono text-foreground/80">{phase.plan.packSkill.name}</code> will
-            be (re)installed.
-          </Trans>
-        </p>
       ) : null}
       {phase.plan.warnings.length > 0 ? (
         <div className="rounded-md bg-warning/10 p-3 text-xs text-warning-foreground">

@@ -72,9 +72,9 @@ export function CreateView({ celebrateSignal, onAddStarterPack }: CreateViewProp
         <div className="-mt-6 flex w-full items-center justify-between gap-4">
           <Button
             onClick={onAddStarterPack}
-            variant="link"
+            variant="link-muted"
             size="xs"
-            className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-normal hover:text-foreground hover:no-underline"
+            className="font-mono text-xs uppercase tracking-wider"
           >
             <Plus aria-hidden="true" className="size-3" />
             <Trans>Add a starter pack</Trans>
@@ -83,8 +83,8 @@ export function CreateView({ celebrateSignal, onAddStarterPack }: CreateViewProp
               toolbar uses, so the new file lands with the standard inline-rename
               flow. Mirrors OnboardingView's "or create a new file" link. */}
           <Button
-            variant="link"
-            className="text-muted-foreground font-normal justify-end"
+            variant="link-muted"
+            className="justify-end"
             size="sm"
             onClick={() => emitCreateTopLevelFile({ initialDir })}
           >
