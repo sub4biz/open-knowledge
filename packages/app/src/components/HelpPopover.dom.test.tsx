@@ -122,7 +122,7 @@ describe('HelpPopover runtime behavior', () => {
       },
       {
         label: 'X (Twitter)',
-        href: 'https://x.com/OpenKnowledgeAI',
+        href: 'https://x.com/OpenKnowledge',
         target: '_blank',
         rel: 'noopener noreferrer',
         hasIcon: true,

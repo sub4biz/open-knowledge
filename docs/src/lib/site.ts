@@ -14,7 +14,7 @@ import { STABLE_DMG_URL } from './download-links';
 export const SITE_URL = 'https://openknowledge.ai';
 export const SITE_NAME = 'OpenKnowledge';
 /** Official X/Twitter handle, used for `twitter:site` card attribution. */
-export const TWITTER_HANDLE = '@OpenKnowledgeAI';
+export const TWITTER_HANDLE = '@OpenKnowledge';
 
 /**
  * Single source for the public social/community links surfaced in the nav,

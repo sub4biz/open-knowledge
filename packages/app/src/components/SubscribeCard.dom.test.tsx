@@ -79,7 +79,7 @@ describe('SubscribeCard (combined release-notes + subscribe)', () => {
     expect(screen.getByText('1.4.0', { exact: false })).toBeTruthy();
 
     const hrefs = Array.from(document.querySelectorAll('a')).map((a) => a.getAttribute('href'));
-    expect(hrefs).toContain('https://x.com/OpenKnowledgeAI');
+    expect(hrefs).toContain('https://x.com/OpenKnowledge');
     expect(hrefs).toContain('https://github.com/inkeep/open-knowledge');
     expect(hrefs).toContain('https://discord.com/invite/YujKpFN49');
   });
