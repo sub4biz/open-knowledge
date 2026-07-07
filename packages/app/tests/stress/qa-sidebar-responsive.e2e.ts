@@ -384,25 +384,26 @@ test.describe('non-embedded UA', () => {
     api,
   }) => {
     await page.setViewportSize(WIDE);
-    // non-embedded → handoff affordances ARE present in the
-    // empty editor state. Assert on the "With AI" section header (the
-    // AgentHandoffGrid lives under this label in CreateView; non-embedded
-    // hosts render it, embedded hosts hide it). Mirrors
-    // count-is-zero check for embedded mode. Seed at least one doc first so
-    // the empty-state branches to CreateView (documentCount > 0 =
-    // not-onboarding) rather than the OnboardingView fork.
+    // non-embedded → the empty-state AI surface IS present: CreateView
+    // renders CreatePromptComposer, which shows either the agent split
+    // button (create-with-agent, when an installed agent is detected) or
+    // the install nudge (create-no-agents, agent-less machines like CI
+    // runners). The union pins the affordance CONTRACT independent of the
+    // host machine's agent-installation state. Anchor on these testids, not
+    // rendered copy: the surface's copy differs per installation state and
+    // is Lingui-managed, so a copy anchor is environment-conditional and
+    // silently outlives copy changes. Mirrors the embedded empty-state
+    // absence check in the Cursor-UA describe.
+    // Seed at least one doc first so the empty-state branches to CreateView
+    // (documentCount > 0 = not-onboarding) rather than the OnboardingView
+    // fork.
     await seedDoc(api, 'qa-033-seed');
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await expect
-      .poll(() => page.locator('text=With AI').count(), {
-        // No inline timeout: inherit the config-owned expect budget — this is
-        // the first UI wait after goto, exactly the site class a hand-rolled
-        // sub-config budget exposes on cold/contended workers.
-        intervals: [200, 500, 1000],
-        message: 'With AI section visible in non-embedded empty state',
-      })
-      .toBeGreaterThan(0);
+    await expect(
+      page.getByTestId('create-with-agent').or(page.getByTestId('create-no-agents')).first(),
+      'empty-state AI surface (composer button or install nudge) visible when non-embedded',
+    ).toBeVisible();
     // seed a doc + verify install-skill entries are hidden from the
     // command palette.
     await seedDoc(api, 'qa-020');
@@ -1112,13 +1113,18 @@ test.describe('Cursor UA (embedded)', () => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    // Empty state should NOT have the AgentHandoffView block — check for absence of
-    // any element whose text would describe an AI handoff. The empty-state container
-    // is rendered (EmptyEditorState) but the AgentHandoffView grid is omitted.
-    const handoffBlock = await page.locator('text=Open in Cursor').count();
-    expect(handoffBlock, 'no AgentHandoffView "Open in Cursor" in embedded empty state').toBe(0);
-    const handoffClaude = await page.locator('text=Open in Claude').count();
-    expect(handoffClaude, 'no "Open in Claude" affordance in embedded mode').toBe(0);
+    // Embedded → the launch handoff would loop back into the host, so the
+    // empty-state view (OnboardingView here — no doc seeded; CreateView
+    // does the same swap) replaces CreatePromptComposer with
+    // CopyablePromptList. Assert the replacement surface renders FIRST so
+    // the composer zero-checks below cannot pass vacuously on an unpainted
+    // page, then that neither composer state is present.
+    await expect(
+      page.getByTestId(/^copy-prompt-/).first(),
+      'embedded empty state shows copy-to-paste prompts',
+    ).toBeVisible();
+    await expect(page.getByTestId('create-with-agent')).toHaveCount(0);
+    await expect(page.getByTestId('create-no-agents')).toHaveCount(0);
   });
 });
 
@@ -1190,9 +1196,13 @@ test.describe('Codex(Dev) UA — parenthetical-tolerant embedded', () => {
       .count();
     expect(installCount, 'no install items in embedded palette').toBe(0);
     await page.keyboard.press('Escape');
-    // No "Open with AI" / "Open in Cursor" affordance text anywhere visible
-    const handoffOpenCursor = await page.locator('text="Open in Cursor"').count();
-    expect(handoffOpenCursor, 'no Open in Cursor handoff text on embedded page').toBe(0);
+    // No handoff-affordance check here: every doc-page handoff surface is
+    // gated on more than the host (the palette's "Open with AI" group needs
+    // a principal-backed /api/workspace plus per-target install state), so
+    // any assertion on one is environment-conditional. The
+    // embedded-hides-AI-surface contract is pinned by the Cursor-UA
+    // empty-state test (copy-prompt rows present, composer states absent),
+    // which depends on the host alone.
   });
 });
 
